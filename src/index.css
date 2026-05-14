@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: #0f172a;
+    color: #f1f5f9;
+    font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-lg transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold py-2.5 px-5 rounded-lg transition-colors duration-200 cursor-pointer;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-5 rounded-lg transition-colors duration-200 cursor-pointer;
+  }
+
+  .btn-google {
+    @apply w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2.5 px-5 rounded-lg border border-gray-300 transition-colors duration-200 cursor-pointer;
+  }
+
+  .input-field {
+    @apply w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-slate-400 transition-colors;
+  }
+
+  .card {
+    @apply bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-slate-300 mb-1.5;
+  }
+
+  .stat-card {
+    @apply bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-md flex flex-col gap-2;
+  }
+
+  .table-header {
+    @apply bg-slate-900 text-slate-400 text-xs font-semibold uppercase tracking-wider;
+  }
+
+  .table-row {
+    @apply border-b border-slate-700 hover:bg-slate-700/50 transition-colors;
+  }
+}
