@@ -1,252 +1,227 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
+import TabMateriales from '../components/cotizador/TabMateriales'
+import TabHorasHombre from '../components/cotizador/TabHorasHombre'
+import TabServicios from '../components/cotizador/TabServicios'
+import TabBases from '../components/cotizador/TabBases'
+import TabEmbalaje from '../components/cotizador/TabEmbalaje'
+import TabResumen from '../components/cotizador/TabResumen'
+import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
+import { useAuth } from '../hooks/useAuth'
+import { guardarCotizacion } from '../firebase/firestore'
+import { getEmpresa } from '../utils/empresa'
+import { exportPDF } from '../utils/exportPDF'
 
-const MATERIALES = [
-  { value: 'acero_a36', label: 'Acero A36', precioPorKg: 1850 },
-  { value: 'acero_inox_304', label: 'Acero Inoxidable 304', precioPorKg: 4200 },
-  { value: 'acero_inox_316', label: 'Acero Inoxidable 316', precioPorKg: 5800 },
-  { value: 'aluminio_6061', label: 'Aluminio 6061', precioPorKg: 3200 },
-  { value: 'hierro_fundido', label: 'Hierro Fundido', precioPorKg: 1200 },
+const TABS = [
+  { id: 'materiales', label: 'Materiales' },
+  { id: 'hh', label: 'Horas Hombre' },
+  { id: 'servicios', label: 'Servicios' },
+  { id: 'bases', label: '% Bases' },
+  { id: 'embalaje', label: 'Embalaje y Envío' },
+  { id: 'resumen', label: 'Resumen' },
 ]
 
-const PROCESOS = [
-  { value: 'corte_laser', label: 'Corte Láser', precioHora: 15000 },
-  { value: 'soldadura_mig', label: 'Soldadura MIG', precioHora: 8000 },
-  { value: 'soldadura_tig', label: 'Soldadura TIG', precioHora: 12000 },
-  { value: 'torneado', label: 'Torneado CNC', precioHora: 18000 },
-  { value: 'fresado', label: 'Fresado CNC', precioHora: 22000 },
-  { value: 'pintura', label: 'Pintura en polvo', precioHora: 6000 },
+const DEFAULT_ROLES = [
+  { id: 1, nombre: 'Soldador', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
+  { id: 2, nombre: 'Ayudante', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
+  { id: 3, nombre: 'Fresador', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
+  { id: 4, nombre: 'Tornero', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
+  { id: 5, nombre: 'Ingeniero', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
 ]
 
-const emptyItem = () => ({
-  id: Date.now(),
-  descripcion: '',
-  material: '',
-  cantidad: 1,
-  pesoKg: 0,
-  proceso: '',
-  horas: 0,
-})
+const DEFAULT_SERVICIOS = {
+  corte_plasma: { activo: false, precio: 0 }, corte_laser: { activo: false, precio: 0 },
+  oxicorte: { activo: false, precio: 0 }, tratamiento_termico: { activo: false, tipo: '', precio: 0 },
+  plegado: { activo: false, precio: 0 }, cilindrado: { activo: false, precio: 0 },
+}
+
+const DEFAULT_BASES = [
+  { id: 1, nombre: 'Gastos Generales', porcentaje: 20 },
+  { id: 2, nombre: 'Utilidades', porcentaje: 0 },
+  { id: 3, nombre: 'Costos Financieros', porcentaje: 0 },
+  { id: 4, nombre: 'Imprevistos', porcentaje: 0 },
+]
+
+const DEFAULT_CONFIG = { flete: 0, incluyeIVA: false, validezDias: 30, condicionesPago: '', plazoEntrega: '', notas: '' }
+
+const DEFAULT_EMBALAJE_MATERIALES = [
+  { id: 1, nombre: 'Pallet de madera 1200×800 mm (EPAL)', unidad: 'unid.', precio_ref: 8500, cantidad: 1, precio_unitario: 8500 },
+  { id: 2, nombre: 'Pallet de madera 1200×1000 mm (ISO)', unidad: 'unid.', precio_ref: 9500, cantidad: 0, precio_unitario: 9500 },
+  { id: 3, nombre: 'Strech film 500mm × 300m (23 µm)', unidad: 'rollo', precio_ref: 4200, cantidad: 1, precio_unitario: 4200 },
+  { id: 4, nombre: 'Cinta de zuncho plástico 16mm × 200m', unidad: 'rollo', precio_ref: 9800, cantidad: 1, precio_unitario: 9800 },
+  { id: 5, nombre: 'Cantonera de cartón 35×35×3mm (x100 unid.)', unidad: 'paquete', precio_ref: 5200, cantidad: 1, precio_unitario: 5200 },
+  { id: 6, nombre: 'Zuncho metálico 19mm (rollo 200m)', unidad: 'rollo', precio_ref: 28500, cantidad: 0, precio_unitario: 28500 },
+  { id: 7, nombre: 'Lámina de cartón corrugado 1200×1000 mm', unidad: 'unid.', precio_ref: 850, cantidad: 4, precio_unitario: 850 },
+  { id: 8, nombre: 'Espuma polietileno 10mm (plancha 1×2m)', unidad: 'unid.', precio_ref: 3200, cantidad: 0, precio_unitario: 3200 },
+  { id: 9, nombre: 'Bolsa VCI anticorrosión 1200×1000mm', unidad: 'unid.', precio_ref: 1800, cantidad: 0, precio_unitario: 1800 },
+  { id: 10, nombre: 'Silica gel 100g (caja x25 sobres)', unidad: 'caja', precio_ref: 4500, cantidad: 0, precio_unitario: 4500 },
+  { id: 11, nombre: 'Caja de cartón corrugado (triple pared)', unidad: 'unid.', precio_ref: 3500, cantidad: 0, precio_unitario: 3500 },
+  { id: 12, nombre: 'Flejes metálicos con hebillas (x100)', unidad: 'kit', precio_ref: 6800, cantidad: 0, precio_unitario: 6800 },
+]
+
+const DEFAULT_EMBALAJE = { palletId: '', cargaKg: '', alturaCm: '', materiales: DEFAULT_EMBALAJE_MATERIALES, notas: '' }
+
+const DRAFT_KEY = 'cotizador_draft'
+const getDraft = () => { try { const s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : {} } catch { return {} } }
 
 export default function Cotizador() {
-  const [cliente, setCliente] = useState('')
-  const [items, setItems] = useState([emptyItem()])
-  const [margen, setMargen] = useState(30)
-  const [submitted, setSubmitted] = useState(false)
+  const { user } = useAuth()
+  const printRef = useRef(null)
 
-  const addItem = () => setItems([...items, emptyItem()])
-  const removeItem = (id) => setItems(items.filter((i) => i.id !== id))
-  const updateItem = (id, field, value) =>
-    setItems(items.map((i) => (i.id === id ? { ...i, [field]: value } : i)))
+  const [activeTab, setActiveTab] = useState('materiales')
+  const [cliente, setCliente] = useState(() => getDraft().cliente ?? '')
+  const [materiales, setMateriales] = useState(() => getDraft().materiales ?? [])
+  const [roles, setRoles] = useState(() => getDraft().roles ?? DEFAULT_ROLES)
+  const [servicios, setServicios] = useState(() => getDraft().servicios ?? DEFAULT_SERVICIOS)
+  const [bases, setBases] = useState(() => getDraft().bases ?? DEFAULT_BASES)
+  const [cantidadLotes, setCantidadLotes] = useState(() => getDraft().cantidadLotes ?? 1)
+  const [unidadesPorLote, setUnidadesPorLote] = useState(() => getDraft().unidadesPorLote ?? 1)
+  const [config, setConfig] = useState(() => ({ ...DEFAULT_CONFIG, ...(getDraft().config ?? {}) }))
+  const [embalaje, setEmbalaje] = useState(() => {
+    const d = getDraft().embalaje
+    return d ? { ...DEFAULT_EMBALAJE, ...d, materiales: d.materiales ?? DEFAULT_EMBALAJE_MATERIALES } : DEFAULT_EMBALAJE
+  })
+  const [numeroCot, setNumeroCot] = useState(() => getDraft().numeroCot ?? '')
 
-  const calcItem = (item) => {
-    const mat = MATERIALES.find((m) => m.value === item.material)
-    const proc = PROCESOS.find((p) => p.value === item.proceso)
-    const costoMat = mat ? mat.precioPorKg * item.pesoKg * item.cantidad : 0
-    const costoProc = proc ? proc.precioHora * item.horas * item.cantidad : 0
-    return costoMat + costoProc
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [exportando, setExportando] = useState(false)
+  const [showPrint, setShowPrint] = useState(false)
+
+  const setConfigField = (field, value) => setConfig((c) => ({ ...c, [field]: value }))
+
+  useEffect(() => {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      cliente, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot,
+    }))
+  }, [cliente, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot])
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY)
+    setCliente(''); setMateriales([]); setRoles(DEFAULT_ROLES); setServicios(DEFAULT_SERVICIOS)
+    setBases(DEFAULT_BASES); setCantidadLotes(1); setUnidadesPorLote(1)
+    setConfig(DEFAULT_CONFIG); setEmbalaje(DEFAULT_EMBALAJE); setNumeroCot(''); setSaveSuccess(false); setSaveError('')
   }
 
-  const subtotal = items.reduce((acc, i) => acc + calcItem(i), 0)
-  const margenMonto = subtotal * (margen / 100)
-  const total = subtotal + margenMonto
+  // Calculations
+  const totalMateriales = materiales.reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const totalHH = roles.reduce((acc, r) => {
+    const hh = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
+    const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
+    return acc + hh + col
+  }, 0)
+  const totalServicios = Object.values(servicios).reduce((acc, s) => acc + (s.activo ? Number(s.precio) || 0 : 0), 0)
+  const totalEmbalaje = (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const baseCalculo = totalMateriales + totalHH
+  const totalBases = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
+  const costoTotal = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
+  const totalNeto = costoTotal + Number(config.flete || 0)
+  const totalIVA = config.incluyeIVA ? totalNeto * 0.19 : 0
+  const totalFinal = totalNeto + totalIVA
 
-  const fmt = (n) => n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+  const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => setSubmitted(false), 3000)
+  const cotizacionData = {
+    cliente, materiales, roles, servicios, bases, config, embalaje,
+    cantidadLotes, unidadesPorLote,
+    totalMateriales, totalHH, totalServicios, totalBases, totalEmbalaje,
+    totalNeto, totalIVA, totalFinal,
+    numero: numeroCot,
+    fecha: new Date().toLocaleDateString('es-CL'),
+  }
+
+  const handleGuardar = async () => {
+    if (!user) return
+    setSaving(true); setSaveError(''); setSaveSuccess(false)
+    try {
+      const { numero } = await guardarCotizacion(user.uid, {
+        ...cotizacionData, empresa: getEmpresa(),
+      })
+      setNumeroCot(numero)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 5000)
+    } catch (err) {
+      setSaveError('Error al guardar: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleExportPDF = async () => {
+    setExportando(true)
+    setShowPrint(true)
+    await new Promise((r) => setTimeout(r, 300))
+    const filename = `${numeroCot || 'cotizacion'}_${cliente || 'cliente'}.pdf`
+    await exportPDF('cotizacion-print', filename)
+    setShowPrint(false)
+    setExportando(false)
   }
 
   return (
     <DashboardLayout>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Nueva Cotización</h1>
-          <p className="text-slate-400 mt-1">Completa los datos para generar la cotización</p>
+          <p className="text-slate-400 mt-1 text-sm">El borrador se guarda automáticamente</p>
         </div>
-        <span className="text-slate-500 font-mono text-sm">COT-{String(Date.now()).slice(-4)}</span>
+        <div className="flex items-center gap-3">
+          {totalFinal > 0 && (
+            <div className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-right">
+              <p className="text-slate-400 text-xs">Total estimado</p>
+              <p className="text-blue-400 font-bold text-lg">{fmt(totalFinal)}</p>
+            </div>
+          )}
+          <button
+            onClick={clearDraft}
+            className="text-slate-500 hover:text-red-400 text-xs transition-colors border border-slate-700 hover:border-red-500/40 px-3 py-2 rounded-lg"
+          >
+            Limpiar borrador
+          </button>
+        </div>
       </div>
 
-      {submitted && (
-        <div className="bg-green-900/30 border border-green-500/50 text-green-400 rounded-lg px-4 py-3 mb-6 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          Cotización guardada correctamente.
-        </div>
+      <div className="flex gap-1 bg-slate-900 p-1 rounded-xl mb-6 overflow-x-auto">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 min-w-max px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              activeTab === tab.id ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'materiales' && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
+      {activeTab === 'hh' && <TabHorasHombre roles={roles} setRoles={setRoles} />}
+      {activeTab === 'servicios' && <TabServicios servicios={servicios} setServicios={setServicios} />}
+      {activeTab === 'bases' && <TabBases bases={bases} setBases={setBases} totalMateriales={totalMateriales} totalHH={totalHH} />}
+      {activeTab === 'embalaje' && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} />}
+      {activeTab === 'resumen' && (
+        <TabResumen
+          cliente={cliente} setCliente={setCliente}
+          totalMateriales={totalMateriales} totalHH={totalHH}
+          totalServicios={totalServicios} totalBases={totalBases} totalEmbalaje={totalEmbalaje}
+          bases={bases} baseCalculo={baseCalculo} costoTotal={costoTotal}
+          cantidadLotes={cantidadLotes} setCantidadLotes={setCantidadLotes}
+          unidadesPorLote={unidadesPorLote} setUnidadesPorLote={setUnidadesPorLote}
+          config={config} setConfigField={setConfigField}
+          servicios={servicios}
+          numeroCot={numeroCot}
+          saving={saving} saveSuccess={saveSuccess} saveError={saveError}
+          onGuardar={handleGuardar} onExportPDF={handleExportPDF} exportando={exportando}
+        />
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="card">
-          <h2 className="text-lg font-semibold text-white mb-4">Datos del cliente</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">Nombre del cliente / empresa</label>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="Ej: Industrias Metálicas Ltda."
-                value={cliente}
-                onChange={(e) => setCliente(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="label">Fecha de emisión</label>
-              <input
-                type="date"
-                className="input-field"
-                defaultValue={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-          </div>
+      {/* Hidden PDF template */}
+      {showPrint && (
+        <div ref={printRef} style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+          <CotizacionPrintView empresa={getEmpresa()} cot={cotizacionData} />
         </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Ítems de la cotización</h2>
-            <button type="button" onClick={addItem} className="btn-secondary text-sm py-2">
-              + Agregar ítem
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {items.map((item, idx) => (
-              <div key={item.id} className="bg-slate-900 border border-slate-600 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-slate-400 text-sm font-medium">Ítem #{idx + 1}</span>
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item.id)}
-                      className="text-red-400 hover:text-red-300 text-sm transition-colors"
-                    >
-                      Eliminar
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2 lg:col-span-3">
-                    <label className="label">Descripción</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="Ej: Estructura metálica para galpón"
-                      value={item.descripcion}
-                      onChange={(e) => updateItem(item.id, 'descripcion', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Material</label>
-                    <select
-                      className="input-field"
-                      value={item.material}
-                      onChange={(e) => updateItem(item.id, 'material', e.target.value)}
-                    >
-                      <option value="">Seleccionar...</option>
-                      {MATERIALES.map((m) => (
-                        <option key={m.value} value={m.value}>{m.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Proceso</label>
-                    <select
-                      className="input-field"
-                      value={item.proceso}
-                      onChange={(e) => updateItem(item.id, 'proceso', e.target.value)}
-                    >
-                      <option value="">Seleccionar...</option>
-                      {PROCESOS.map((p) => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Cantidad</label>
-                    <input
-                      type="number"
-                      min="1"
-                      className="input-field"
-                      value={item.cantidad}
-                      onChange={(e) => updateItem(item.id, 'cantidad', Number(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Peso total (kg)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      className="input-field"
-                      value={item.pesoKg}
-                      onChange={(e) => updateItem(item.id, 'pesoKg', Number(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Horas de trabajo</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      className="input-field"
-                      value={item.horas}
-                      onChange={(e) => updateItem(item.id, 'horas', Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <div className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5">
-                      <p className="text-slate-400 text-xs mb-0.5">Subtotal ítem</p>
-                      <p className="text-blue-400 font-semibold">{fmt(calcItem(item))}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <h2 className="text-lg font-semibold text-white mb-4">Resumen y margen</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label className="label">Margen de ganancia: {margen}%</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={margen}
-                onChange={(e) => setMargen(Number(e.target.value))}
-                className="w-full accent-blue-500"
-              />
-              <div className="flex justify-between text-xs text-slate-500 mt-1">
-                <span>0%</span><span>50%</span><span>100%</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Costo base</span>
-                <span className="text-slate-200 font-medium">{fmt(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Margen ({margen}%)</span>
-                <span className="text-slate-200 font-medium">{fmt(margenMonto)}</span>
-              </div>
-              <div className="border-t border-slate-600 pt-2 flex justify-between">
-                <span className="text-white font-semibold">Total</span>
-                <span className="text-blue-400 font-bold text-lg">{fmt(total)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button type="button" className="btn-secondary">Vista previa PDF</button>
-          <button type="submit" className="btn-primary">Guardar cotización</button>
-        </div>
-      </form>
+      )}
     </DashboardLayout>
   )
 }
