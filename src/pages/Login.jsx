@@ -34,10 +34,10 @@ export default function Login() {
     setLoading(true)
     try {
       await loginWithGoogle()
-      // signInWithRedirect no retorna — la página se redirige a Google
+      navigate('/dashboard')
     } catch (err) {
-      console.error('Auth error:', err.code, err.message)
       setError(getFirebaseError(err.code))
+    } finally {
       setLoading(false)
     }
   }
