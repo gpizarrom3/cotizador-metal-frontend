@@ -49,6 +49,13 @@ export const actualizarEstado = async (uid, cotId, estado) => {
   await updateDoc(doc(db, 'usuarios', uid, 'cotizaciones', cotId), { estado })
 }
 
+export const actualizarCotizacion = async (uid, cotId, datos) => {
+  await updateDoc(doc(db, 'usuarios', uid, 'cotizaciones', cotId), {
+    ...datos,
+    fechaActualizacion: serverTimestamp(),
+  })
+}
+
 export const eliminarCotizacion = async (uid, cotId) => {
   await deleteDoc(doc(db, 'usuarios', uid, 'cotizaciones', cotId))
 }

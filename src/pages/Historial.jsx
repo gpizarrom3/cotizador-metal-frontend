@@ -53,6 +53,29 @@ export default function Historial() {
     } catch { setError('Error al eliminar.') }
   }
 
+  const handleAbrir = (cot) => {
+    const clienteObj = typeof cot.cliente === 'object' && cot.cliente !== null
+      ? cot.cliente
+      : { nombre: cot.cliente || '', rut: '', email: '', telefono: '' }
+
+    const draft = {
+      cotizacionId:    cot.id,
+      numeroCot:       cot.numero || '',
+      cliente:         clienteObj,
+      estado:          cot.estado || 'Borrador',
+      materiales:      cot.materiales      || [],
+      roles:           cot.roles           || [],
+      servicios:       cot.servicios       || {},
+      bases:           cot.bases           || [],
+      cantidadLotes:   cot.cantidadLotes   || 1,
+      unidadesPorLote: cot.unidadesPorLote || 1,
+      config:          cot.config          || {},
+      embalaje:        cot.embalaje        || {},
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    navigate('/cotizador')
+  }
+
   const handleDuplicar = (cot) => {
     const clienteRaw = cot.cliente
     const clienteObj = typeof clienteRaw === 'object' && clienteRaw !== null
@@ -178,8 +201,14 @@ export default function Historial() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => handleAbrir(c)}
+                          className="text-slate-400 hover:text-green-400 transition-colors" title="Abrir y editar">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
                         <button onClick={() => handleDuplicar(c)}
-                          className="text-slate-400 hover:text-blue-400 transition-colors" title="Duplicar en nuevo cotizador">
+                          className="text-slate-400 hover:text-blue-400 transition-colors" title="Duplicar">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>

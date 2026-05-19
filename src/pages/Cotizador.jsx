@@ -8,7 +8,7 @@ import TabEmbalaje from '../components/cotizador/TabEmbalaje'
 import TabResumen from '../components/cotizador/TabResumen'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import { useAuth } from '../hooks/useAuth'
-import { guardarCotizacion } from '../firebase/firestore'
+import { guardarCotizacion, actualizarCotizacion } from '../firebase/firestore'
 import { getEmpresa } from '../utils/empresa'
 import { exportPDF } from '../utils/exportPDF'
 
@@ -105,7 +105,8 @@ export default function Cotizador() {
       ? { ...DEFAULT_EMBALAJE, ...d, materiales: d.materiales ?? DEFAULT_EMBALAJE_MATERIALES, materialesPallet: d.materialesPallet ?? [] }
       : DEFAULT_EMBALAJE
   })
-  const [numeroCot, setNumeroCot] = useState(() => getDraft().numeroCot ?? '')
+  const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
+  const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
 
   const [saving,      setSaving]      = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -125,9 +126,9 @@ export default function Cotizador() {
   useEffect(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       cliente, estado, materiales, roles, servicios, bases,
-      cantidadLotes, unidadesPorLote, config, embalaje, numeroCot,
+      cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
     }))
-  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot])
+  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId])
 
   const clearDraft = () => {
     localStorage.removeItem(DRAFT_KEY)
@@ -135,7 +136,7 @@ export default function Cotizador() {
     setEstado('Borrador')
     setMateriales([]);  setRoles(DEFAULT_ROLES); setServicios(DEFAULT_SERVICIOS)
     setBases(DEFAULT_BASES); setCantidadLotes(1); setUnidadesPorLote(1)
-    setConfig(DEFAULT_CONFIG); setEmbalaje(DEFAULT_EMBALAJE); setNumeroCot('')
+    setConfig(DEFAULT_CONFIG); setEmbalaje(DEFAULT_EMBALAJE); setNumeroCot(''); setCotizacionId('')
     setSaveSuccess(false); setSaveError('')
   }
 
@@ -214,8 +215,13 @@ export default function Cotizador() {
     if (!user) return
     setSaving(true); setSaveError(''); setSaveSuccess(false)
     try {
-      const { numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa: getEmpresa() })
-      setNumeroCot(numero)
+      if (cotizacionId) {
+        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa: getEmpresa() })
+      } else {
+        const { numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa: getEmpresa() })
+        setNumeroCot(numero)
+        setCotizacionId('')
+      }
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 5000)
     } catch (err) {
@@ -239,8 +245,12 @@ export default function Cotizador() {
     <DashboardLayout>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Nueva Cotización</h1>
-          <p className="text-slate-400 mt-1 text-sm">El borrador se guarda automáticamente</p>
+          <h1 className="text-2xl font-bold text-white">
+            {cotizacionId ? `Editando ${numeroCot || 'cotización'}` : 'Nueva Cotización'}
+          </h1>
+          <p className="text-slate-400 mt-1 text-sm">
+            {cotizacionId ? 'Guardará los cambios en la cotización existente' : 'El borrador se guarda automáticamente'}
+          </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
           {/* Plantillas */}
