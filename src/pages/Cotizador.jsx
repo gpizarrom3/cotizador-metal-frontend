@@ -187,7 +187,7 @@ export default function Cotizador() {
     (embalaje.materiales     || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (embalaje.materialesPallet || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (Number(embalaje.costoEnvio) || 0)
-  const baseCalculo        = totalMateriales + totalHH
+  const baseCalculo        = totalMateriales + totalHH + totalServicios + totalEmbalaje
   const totalBases         = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
   const costoSinDescuento  = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
   const descuentoMonto     = config.tipoDescuento === 'porcentaje'
