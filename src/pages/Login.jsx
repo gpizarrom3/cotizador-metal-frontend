@@ -30,6 +30,7 @@ export default function Login() {
       await loginWithGoogle()
       navigate('/dashboard')
     } catch (err) {
+      console.error('Auth error:', err.code, err.message)
       setError(getFirebaseError(err.code))
     } finally {
       setLoading(false)
