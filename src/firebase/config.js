@@ -11,6 +11,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
+console.log('Firebase key prefix:', firebaseConfig.apiKey?.substring(0, 10))
+
 const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
