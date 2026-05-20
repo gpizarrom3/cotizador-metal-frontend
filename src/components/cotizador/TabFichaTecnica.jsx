@@ -285,7 +285,7 @@ export default function TabFichaTecnica({ ficha, setFicha }) {
             </Field>
           </div>
           <Field label="Detalle de Rosca / Unión">
-            <input className="input-field text-sm" value={ficha.detalleRosca} onChange={e => set('detalleRosca', e.target.value)} placeholder="Ej: Roscado 5/8"-11 UNC-2A derecho, según ASME B1.1" />
+            <input className="input-field text-sm" value={ficha.detalleRosca} onChange={e => set('detalleRosca', e.target.value)} placeholder={'Ej: Roscado 5/8"-11 UNC-2A derecho, según ASME B1.1'} />
           </Field>
           <Field label="Eliminación de Rebabas">
             <input className="input-field text-sm" value={ficha.eliminacionRebabas} onChange={e => set('eliminacionRebabas', e.target.value)} placeholder="Ej: Obligatorio. Todas las aristas deben ser eliminadas." />
