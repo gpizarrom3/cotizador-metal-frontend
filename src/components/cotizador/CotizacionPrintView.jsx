@@ -207,7 +207,7 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
           <CostRow label="Horas Hombre"   value={fmtM(totalHH)} />
           {activeServicios.length > 0 && <CostRow label="Servicios" value={fmtM(totalServicios)} />}
           {bases.filter(b => b.porcentaje > 0).map(b => (
-            <CostRow key={b.id} label={`${b.nombre} (${b.porcentaje}%)`} value={fmtM((totalMateriales + totalHH) * b.porcentaje / 100)} indent />
+            <CostRow key={b.id} label={`${b.nombre} (${b.porcentaje}%)`} value={fmtM((totalMateriales + totalHH + totalServicios + totalEmbalaje) * b.porcentaje / 100)} indent />
           ))}
           {totalBases > 0 && <CostRow label="Subtotal % bases" value={fmtM(totalBases)} />}
           {tieneEmbalaje && <CostRow label="Embalaje y Envío" value={fmtM(totalEmbalaje)} />}
