@@ -93,6 +93,12 @@ export default function Login() {
             </button>
           </form>
 
+          <div className="text-right mt-2">
+            <Link to="/forgot-password" className="text-slate-400 hover:text-blue-400 text-xs transition-colors">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-600" />

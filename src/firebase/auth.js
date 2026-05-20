@@ -4,6 +4,7 @@ import {
   signInWithPopup,
   signOut,
   updateProfile,
+  sendPasswordResetEmail,
 } from 'firebase/auth'
 import { auth, googleProvider } from './config'
 
@@ -22,5 +23,7 @@ export const loginWithGoogle = async () => {
   const credential = await signInWithPopup(auth, googleProvider)
   return credential.user
 }
+
+export const resetPassword = (email) => sendPasswordResetEmail(auth, email)
 
 export const logout = () => signOut(auth)
