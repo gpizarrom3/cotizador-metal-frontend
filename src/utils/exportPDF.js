@@ -38,8 +38,8 @@ export const exportPDF = async (elementId, filename = 'cotizacion.pdf') => {
   const pageH = pdf.internal.pageSize.getHeight()  // 297 mm
   const pxPerMm = canvas.width / pageW
   const pageHpx = Math.floor(pageH * pxPerMm)
-  // Search up to 6% of page height backwards for a safe row
-  const searchPx = Math.floor(pageHpx * 0.06)
+  // Search up to 18% of page height backwards for a safe row
+  const searchPx = Math.floor(pageHpx * 0.18)
 
   let srcY = 0
   let isFirst = true
