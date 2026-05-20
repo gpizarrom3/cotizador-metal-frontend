@@ -8,6 +8,8 @@ import TabEmbalaje from '../components/cotizador/TabEmbalaje'
 import TabResumen from '../components/cotizador/TabResumen'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
+import TabFichaTecnica, { DEFAULT_FICHA_TECNICA } from '../components/cotizador/TabFichaTecnica'
+import FichaTecnicaPrintView from '../components/cotizador/FichaTecnicaPrintView'
 import { useAuth } from '../hooks/useAuth'
 import { guardarCotizacion, actualizarCotizacion } from '../firebase/firestore'
 import { getEmpresa } from '../utils/empresa'
@@ -15,11 +17,12 @@ import { exportPDF } from '../utils/exportPDF'
 
 const TABS = [
   { id: 'materiales', label: 'Materiales' },
-  { id: 'hh', label: 'Horas Hombre' },
+  { id: 'hh',        label: 'Horas Hombre' },
   { id: 'servicios', label: 'Servicios' },
-  { id: 'bases', label: '% Bases' },
-  { id: 'embalaje', label: 'Embalaje y Envío' },
-  { id: 'resumen', label: 'Resumen' },
+  { id: 'bases',     label: '% Bases' },
+  { id: 'embalaje',  label: 'Embalaje y Envío' },
+  { id: 'ficha',     label: 'Ficha Técnica' },
+  { id: 'resumen',   label: 'Resumen' },
 ]
 
 const DEFAULT_ROLES = [
@@ -108,14 +111,17 @@ export default function Cotizador() {
   })
   const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
   const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
+  const [fichaTecnica,   setFichaTecnica]   = useState(() => ({ ...DEFAULT_FICHA_TECNICA, ...(getDraft().fichaTecnica ?? {}) }))
 
   const [saving,         setSaving]         = useState(false)
   const [saveSuccess,    setSaveSuccess]    = useState(false)
   const [saveError,      setSaveError]      = useState('')
   const [exportando,     setExportando]     = useState(false)
   const [showPrint,      setShowPrint]      = useState(false)
-  const [exportandoFicha,setExportandoFicha]= useState(false)
-  const [showFicha,      setShowFicha]      = useState(false)
+  const [exportandoFicha,    setExportandoFicha]    = useState(false)
+  const [showFicha,          setShowFicha]          = useState(false)
+  const [exportandoFichaTec, setExportandoFichaTec] = useState(false)
+  const [showFichaTec,       setShowFichaTec]       = useState(false)
 
   // Plantillas
   const [plantillas,          setPlantillas]          = useState(getPlantillas)
@@ -129,9 +135,9 @@ export default function Cotizador() {
   useEffect(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       cliente, estado, materiales, roles, servicios, bases,
-      cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
+      cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, fichaTecnica,
     }))
-  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId])
+  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, fichaTecnica])
 
   const clearDraft = () => {
     localStorage.removeItem(DRAFT_KEY)
@@ -140,6 +146,7 @@ export default function Cotizador() {
     setMateriales([]);  setRoles(DEFAULT_ROLES); setServicios(DEFAULT_SERVICIOS)
     setBases(DEFAULT_BASES); setCantidadLotes(1); setUnidadesPorLote(1)
     setConfig(DEFAULT_CONFIG); setEmbalaje(DEFAULT_EMBALAJE); setNumeroCot(''); setCotizacionId('')
+    setFichaTecnica({ ...DEFAULT_FICHA_TECNICA })
     setSaveSuccess(false); setSaveError('')
   }
 
@@ -242,6 +249,16 @@ export default function Cotizador() {
     await exportPDF('cotizacion-print', filename)
     setShowPrint(false)
     setExportando(false)
+  }
+
+  const handleExportFichaTecnica = async () => {
+    setExportandoFichaTec(true)
+    setShowFichaTec(true)
+    await new Promise((r) => setTimeout(r, 300))
+    const filename = `ficha_tecnica_${fichaTecnica.nombreProducto || 'producto'}_${numeroCot || 'borrador'}.pdf`
+    await exportPDF('ficha-tecnica-print', filename)
+    setShowFichaTec(false)
+    setExportandoFichaTec(false)
   }
 
   const handleExportFicha = async () => {
@@ -367,6 +384,16 @@ export default function Cotizador() {
       {activeTab === 'servicios'  && <TabServicios servicios={servicios} setServicios={setServicios} />}
       {activeTab === 'bases'      && <TabBases bases={bases} setBases={setBases} totalMateriales={totalMateriales} totalHH={totalHH} />}
       {activeTab === 'embalaje'   && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} />}
+      {activeTab === 'ficha'      && (
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <button onClick={handleExportFichaTecnica} className="btn-secondary text-sm" disabled={exportandoFichaTec}>
+              {exportandoFichaTec ? 'Generando...' : 'Descargar Ficha Técnica PDF'}
+            </button>
+          </div>
+          <TabFichaTecnica ficha={fichaTecnica} setFicha={setFichaTecnica} />
+        </div>
+      )}
       {activeTab === 'resumen'    && (
         <TabResumen
           cliente={cliente} setCliente={setCliente}
@@ -394,6 +421,11 @@ export default function Cotizador() {
       {showFicha && (
         <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
           <FichaCostosPrintView empresa={getEmpresa()} cot={cotizacionData} />
+        </div>
+      )}
+      {showFichaTec && (
+        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+          <FichaTecnicaPrintView empresa={getEmpresa()} ficha={fichaTecnica} numeroCot={numeroCot} />
         </div>
       )}
     </DashboardLayout>
