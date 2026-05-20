@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 const emptyProp  = () => ({ id: Date.now() + Math.random(), propiedad: '', valor: '', norma: '' })
 const emptyComp  = () => ({
@@ -18,24 +18,15 @@ const emptyComp  = () => ({
 })
 
 export const DEFAULT_FICHA_TECNICA = {
-  // 1. Identificación
   nombreProducto: '', tagReferencia: '', numeroMaterial: '',
   numeroPlano: '', revisionPlano: '', cantidad: '', criterioDiseno: '',
-  // 2. Descripción General
   tipoComponente: '', denominacionCompleta: '', usoDesignado: '', funcionPrincipal: '',
-  // 3. Componentes / Materiales
   componentes: [],
-  // 4. Condiciones de Servicio
   aplicacion: '', carga: '', ambiente: '', temperaturaServicio: '',
-  // 5. Dimensiones y Tolerancias
   geometria: '', dimensiones: '', normaTolerancia: '',
-  // 6. Fabricación y Acabado
   procesoFabricacion: '', detalleRosca: '', eliminacionRebabas: '', terminacionAcabado: '',
-  // 7. Control de Calidad
   inspeccionDimensional: '', inspeccionVisual: '', controlEspecial: '', trazabilidad: '',
-  // 8. Observaciones
   observaciones: '',
-  // 9. Figura
   imagenReferencial: '', notaImagen: '',
 }
 
@@ -61,10 +52,13 @@ function Field({ label, hint, children }) {
 
 export default function TabFichaTecnica({ ficha, setFicha }) {
   const imgRef = useRef(null)
+  const [descripcionIA, setDescripcionIA] = useState('')
+  const [generando, setGenerando] = useState(false)
+  const [generado, setGenerado] = useState(false)
+  const [errorIA, setErrorIA] = useState('')
 
   const set = (field, value) => setFicha(f => ({ ...f, [field]: value }))
 
-  // Componentes
   const addComp = () => setFicha(f => ({ ...f, componentes: [...f.componentes, emptyComp()] }))
   const removeComp = (id) => setFicha(f => ({ ...f, componentes: f.componentes.filter(c => c.id !== id) }))
   const updateComp = (id, field, val) => setFicha(f => ({
@@ -72,7 +66,6 @@ export default function TabFichaTecnica({ ficha, setFicha }) {
     componentes: f.componentes.map(c => c.id === id ? { ...c, [field]: val } : c),
   }))
 
-  // Propiedades mecánicas
   const addProp = (compId) => setFicha(f => ({
     ...f,
     componentes: f.componentes.map(c => c.id === compId
@@ -92,7 +85,6 @@ export default function TabFichaTecnica({ ficha, setFicha }) {
       : c),
   }))
 
-  // Imagen
   const handleImagen = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -101,10 +93,109 @@ export default function TabFichaTecnica({ ficha, setFicha }) {
     reader.readAsDataURL(file)
   }
 
+  const handleGenerar = async () => {
+    if (!ficha.nombreProducto.trim()) {
+      setErrorIA('Ingresa el nombre del producto antes de generar.')
+      return
+    }
+    setGenerando(true)
+    setErrorIA('')
+    setGenerado(false)
+    try {
+      const res = await fetch('/api/generate-ficha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombreProducto: ficha.nombreProducto, descripcion: descripcionIA }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error desconocido')
+      setFicha(f => ({
+        ...DEFAULT_FICHA_TECNICA,
+        ...data,
+        imagenReferencial: f.imagenReferencial,
+        notaImagen: f.notaImagen,
+      }))
+      setGenerado(true)
+    } catch (err) {
+      setErrorIA(err.message || 'Error al conectar con la IA')
+    } finally {
+      setGenerando(false)
+    }
+  }
+
   const ta = 'input-field text-sm resize-none'
 
   return (
     <div className="space-y-6">
+
+      {/* IA Generator */}
+      <div className="card border border-blue-500/30 bg-blue-950/20">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">Generar con IA</h3>
+            <p className="text-xs text-slate-400">Ingresa el producto y una descripción — la IA completa toda la ficha técnica automáticamente.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
+          <Field label="Nombre del Producto">
+            <input
+              className="input-field"
+              value={ficha.nombreProducto}
+              onChange={e => set('nombreProducto', e.target.value)}
+              placeholder="Ej: Cáncamo tipo C3, Brida DN100, Eje de transmisión..."
+            />
+          </Field>
+          <Field label="Descripción para la IA" hint="cuanto más detalle, mejor resultado">
+            <textarea
+              className={ta}
+              rows={3}
+              value={descripcionIA}
+              onChange={e => setDescripcionIA(e.target.value)}
+              placeholder="Ej: Acero al carbono, rosca 5/8, uso en minería, ambiente corrosivo, carga axial de 10 ton, temperatura hasta 200°C..."
+            />
+          </Field>
+        </div>
+
+        {errorIA && (
+          <div className="mt-3 text-xs text-red-400 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-2">{errorIA}</div>
+        )}
+
+        {generado && (
+          <div className="mt-3 text-xs text-green-400 bg-green-900/20 border border-green-800/40 rounded-lg px-3 py-2 flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            Ficha generada correctamente. Puedes editar los campos a continuación.
+          </div>
+        )}
+
+        <button
+          onClick={handleGenerar}
+          disabled={generando}
+          className="mt-4 btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {generando ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              Generando ficha técnica...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              {generado ? 'Regenerar Ficha' : 'Generar Ficha Técnica con IA'}
+            </>
+          )}
+        </button>
+      </div>
 
       {/* 1. Identificación */}
       <div className="card">
@@ -182,7 +273,7 @@ export default function TabFichaTecnica({ ficha, setFicha }) {
                 </Field>
                 <div className="sm:col-span-2">
                   <Field label="Descripción del Material">
-                    <textarea className={ta} rows={2} value={comp.descripcion} onChange={e => updateComp(comp.id, 'descripcion', e.target.value)} placeholder="Descripción técnica del material, propiedades generales..." />
+                    <textarea className={ta} rows={2} value={comp.descripcion} onChange={e => updateComp(comp.id, 'descripcion', e.target.value)} placeholder="Descripción técnica del material..." />
                   </Field>
                 </div>
                 <div className="sm:col-span-2">
@@ -192,7 +283,6 @@ export default function TabFichaTecnica({ ficha, setFicha }) {
                 </div>
               </div>
 
-              {/* Propiedades mecánicas */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label mb-0">Propiedades Mecánicas</label>
