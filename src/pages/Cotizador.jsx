@@ -7,6 +7,7 @@ import TabBases from '../components/cotizador/TabBases'
 import TabEmbalaje from '../components/cotizador/TabEmbalaje'
 import TabResumen from '../components/cotizador/TabResumen'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
+import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import { useAuth } from '../hooks/useAuth'
 import { guardarCotizacion, actualizarCotizacion } from '../firebase/firestore'
 import { getEmpresa } from '../utils/empresa'
@@ -108,11 +109,13 @@ export default function Cotizador() {
   const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
   const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
 
-  const [saving,      setSaving]      = useState(false)
-  const [saveSuccess, setSaveSuccess] = useState(false)
-  const [saveError,   setSaveError]   = useState('')
-  const [exportando,  setExportando]  = useState(false)
-  const [showPrint,   setShowPrint]   = useState(false)
+  const [saving,         setSaving]         = useState(false)
+  const [saveSuccess,    setSaveSuccess]    = useState(false)
+  const [saveError,      setSaveError]      = useState('')
+  const [exportando,     setExportando]     = useState(false)
+  const [showPrint,      setShowPrint]      = useState(false)
+  const [exportandoFicha,setExportandoFicha]= useState(false)
+  const [showFicha,      setShowFicha]      = useState(false)
 
   // Plantillas
   const [plantillas,          setPlantillas]          = useState(getPlantillas)
@@ -239,6 +242,16 @@ export default function Cotizador() {
     await exportPDF('cotizacion-print', filename)
     setShowPrint(false)
     setExportando(false)
+  }
+
+  const handleExportFicha = async () => {
+    setExportandoFicha(true)
+    setShowFicha(true)
+    await new Promise((r) => setTimeout(r, 300))
+    const filename = `ficha_costos_${numeroCot || 'borrador'}_${cliente.nombre || 'interno'}.pdf`
+    await exportPDF('ficha-costos-print', filename)
+    setShowFicha(false)
+    setExportandoFicha(false)
   }
 
   return (
@@ -368,13 +381,19 @@ export default function Cotizador() {
           numeroCot={numeroCot}
           saving={saving} saveSuccess={saveSuccess} saveError={saveError}
           onGuardar={handleGuardar} onExportPDF={handleExportPDF} exportando={exportando}
+          onExportFicha={handleExportFicha} exportandoFicha={exportandoFicha}
         />
       )}
 
-      {/* Hidden PDF template */}
+      {/* Hidden PDF templates */}
       {showPrint && (
         <div ref={printRef} style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
           <CotizacionPrintView empresa={getEmpresa()} cot={cotizacionData} />
+        </div>
+      )}
+      {showFicha && (
+        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+          <FichaCostosPrintView empresa={getEmpresa()} cot={cotizacionData} />
         </div>
       )}
     </DashboardLayout>

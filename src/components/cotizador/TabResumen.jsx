@@ -25,6 +25,7 @@ export default function TabResumen({
   numeroCot,
   saving, saveSuccess, saveError,
   onGuardar, onExportPDF, exportando,
+  onExportFicha, exportandoFicha,
 }) {
   const {
     flete = 0, incluyeIVA = false, validezDias = 30,
@@ -348,7 +349,11 @@ export default function TabResumen({
         <div className="bg-red-900/30 border border-red-500/50 text-red-400 text-sm rounded-lg px-4 py-3">{saveError}</div>
       )}
 
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 flex-wrap">
+        <button onClick={onExportFicha} className="btn-secondary" disabled={exportandoFicha}
+          title="Documento interno con desglose completo de costos">
+          {exportandoFicha ? 'Generando...' : 'Ficha de costos interna'}
+        </button>
         <button onClick={onExportPDF} className="btn-secondary" disabled={exportando}>
           {exportando ? 'Generando PDF...' : 'Exportar PDF'}
         </button>
