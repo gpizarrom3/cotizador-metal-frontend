@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
-import { obtenerCotizaciones, actualizarEstado, eliminarCotizacion, migrarCotizacionesPersonales } from '../firebase/firestore'
+import { suscribirCotizaciones, actualizarEstado, eliminarCotizacion, migrarCotizacionesPersonales, SHARED_DOMAIN } from '../firebase/firestore'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -29,14 +29,24 @@ export default function Historial() {
   const [statusFilter, setStatusFilter] = useState('Todos')
   const [error, setError]       = useState('')
 
+  const isInstitutional = user?.email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
+
   useEffect(() => {
     if (!user) return
     setLoading(true)
+    let unsub = () => {}
     migrarCotizacionesPersonales(user.uid, user.email)
-      .then(() => obtenerCotizaciones(user.uid, user.email))
-      .then(setCotizaciones)
-      .catch(() => setError('No se pudieron cargar las cotizaciones.'))
-      .finally(() => setLoading(false))
+      .then(() => {
+        unsub = suscribirCotizaciones(user.uid, user.email, (data) => {
+          setCotizaciones(data)
+          setLoading(false)
+        })
+      })
+      .catch(() => {
+        setError('No se pudieron cargar las cotizaciones.')
+        setLoading(false)
+      })
+    return () => unsub()
   }, [user])
 
   const handleEstado = async (cotId, estado) => {
@@ -166,6 +176,7 @@ export default function Historial() {
                   <th className="text-left px-4 py-3 rounded-l-lg">N°</th>
                   <th className="text-left px-4 py-3">Cliente</th>
                   <th className="text-left px-4 py-3">Fecha</th>
+                  {isInstitutional && <th className="text-left px-4 py-3">Creado por</th>}
                   <th className="text-right px-4 py-3">Total</th>
                   <th className="text-center px-4 py-3">Estado</th>
                   <th className="text-center px-4 py-3 rounded-r-lg">Acciones</th>
@@ -174,7 +185,7 @@ export default function Historial() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500">
+                    <td colSpan={isInstitutional ? 7 : 6} className="text-center py-12 text-slate-500">
                       {cotizaciones.length === 0 ? 'Aún no tienes cotizaciones guardadas. Ve al Cotizador y guarda una.' : 'No se encontraron cotizaciones.'}
                     </td>
                   </tr>
@@ -188,6 +199,9 @@ export default function Historial() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-400">{c.fecha}</td>
+                    {isInstitutional && (
+                      <td className="px-4 py-3 text-slate-400 text-xs">{c.creadoPor || '—'}</td>
+                    )}
                     <td className="px-4 py-3 text-slate-200 text-right font-medium">
                       {fmt(c.totalFinal || c.costoTotal || 0)}
                     </td>

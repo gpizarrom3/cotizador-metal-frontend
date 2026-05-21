@@ -21,6 +21,16 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor':    ['react', 'react-dom', 'react-router-dom'],
+            'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          },
+        },
+      },
+    },
     plugins: [
       react(),
       tailwindcss(),
