@@ -14,7 +14,7 @@ const CONDICIONES_OPCIONES = [
 const ESTADOS_COT = ['Borrador', 'Enviada', 'En revisión', 'Aprobada', 'Rechazada', 'En producción', 'Entregada']
 
 export default function TabResumen({
-  cliente, setCliente,
+  cliente, setCliente, clientes = [],
   estado, setEstado,
   totalMateriales, totalHH, totalServicios, totalBases, totalEmbalaje = 0,
   bases,
@@ -68,6 +68,26 @@ export default function TabResumen({
             </span>
           )}
         </div>
+
+        {/* Selector de cliente guardado */}
+        {clientes.length > 0 && (
+          <div className="mb-4">
+            <label className="label">Seleccionar cliente guardado</label>
+            <select
+              className="input-field"
+              value=""
+              onChange={(e) => {
+                const c = clientes.find((cl) => cl.id === e.target.value)
+                if (c) setCliente({ nombre: c.nombre || '', rut: c.rut || '', email: c.email || '', telefono: c.telefono || '' })
+              }}
+            >
+              <option value="">— Elige un cliente —</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}{c.rut ? ` · ${c.rut}` : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Cliente */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">

@@ -11,7 +11,7 @@ import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import TabFichaTecnica, { DEFAULT_FICHA_TECNICA } from '../components/cotizador/TabFichaTecnica'
 import FichaTecnicaPrintView from '../components/cotizador/FichaTecnicaPrintView'
 import { useAuth } from '../hooks/useAuth'
-import { guardarCotizacion, actualizarCotizacion } from '../firebase/firestore'
+import { guardarCotizacion, actualizarCotizacion, obtenerClientes } from '../firebase/firestore'
 import { getEmpresa } from '../utils/empresa'
 import { exportPDF } from '../utils/exportPDF'
 
@@ -112,6 +112,13 @@ export default function Cotizador() {
   const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
   const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
   const [fichaTecnica,   setFichaTecnica]   = useState(() => ({ ...DEFAULT_FICHA_TECNICA, ...(getDraft().fichaTecnica ?? {}) }))
+
+  const [clientes,       setClientes]       = useState([])
+
+  useEffect(() => {
+    if (!user) return
+    obtenerClientes(user.uid, user.email).then(setClientes).catch(() => {})
+  }, [user])
 
   const [saving,         setSaving]         = useState(false)
   const [saveSuccess,    setSaveSuccess]    = useState(false)
@@ -396,7 +403,7 @@ export default function Cotizador() {
       )}
       {activeTab === 'resumen'    && (
         <TabResumen
-          cliente={cliente} setCliente={setCliente}
+          cliente={cliente} setCliente={setCliente} clientes={clientes}
           estado={estado} setEstado={setEstado}
           totalMateriales={totalMateriales} totalHH={totalHH}
           totalServicios={totalServicios} totalBases={totalBases} totalEmbalaje={totalEmbalaje}
