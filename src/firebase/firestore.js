@@ -9,6 +9,8 @@ export const SHARED_DOMAIN = 'innovattech.org'
 
 const isShared = (email) => email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
 
+// ── Collection helpers ────────────────────────────────────────────────────────
+
 const cotizacionesRef = (uid, email) =>
   isShared(email)
     ? collection(db, 'empresas', SHARED_DOMAIN, 'cotizaciones')
@@ -34,12 +36,34 @@ const clienteDocRef = (uid, email, clienteId) =>
     ? doc(db, 'empresas', SHARED_DOMAIN, 'clientes', clienteId)
     : doc(db, 'usuarios', uid, 'clientes', clienteId)
 
+const catalogoRef = (uid, email) =>
+  isShared(email)
+    ? collection(db, 'empresas', SHARED_DOMAIN, 'catalogo')
+    : collection(db, 'usuarios', uid, 'catalogo')
+
+const catalogoDocRef = (uid, email, itemId) =>
+  isShared(email)
+    ? doc(db, 'empresas', SHARED_DOMAIN, 'catalogo', itemId)
+    : doc(db, 'usuarios', uid, 'catalogo', itemId)
+
+const plantillasRef = (uid, email) =>
+  isShared(email)
+    ? collection(db, 'empresas', SHARED_DOMAIN, 'plantillas')
+    : collection(db, 'usuarios', uid, 'plantillas')
+
+const plantillaDocRef = (uid, email, plantillaId) =>
+  isShared(email)
+    ? doc(db, 'empresas', SHARED_DOMAIN, 'plantillas', plantillaId)
+    : doc(db, 'usuarios', uid, 'plantillas', plantillaId)
+
 const mapCotizacion = (d) => {
   const data = d.data()
+  const fechaDate = data.fecha?.toDate?.() ?? null
   return {
     id: d.id,
     ...data,
-    fecha: data.fecha?.toDate?.()?.toLocaleDateString('es-CL') ?? '—',
+    fecha: fechaDate?.toLocaleDateString('es-CL') ?? '—',
+    fechaDate,
   }
 }
 
@@ -110,7 +134,6 @@ export const migrarCotizacionesPersonales = async (uid, email) => {
     await deleteDoc(d.ref)
   }
 
-  // Fix shared counter to avoid duplicate numbers
   const maxNum = snap.docs.reduce((max, d) => {
     const match = (d.data().numero || '').match(/COT-\d{4}-(\d+)/)
     return Math.max(max, match ? parseInt(match[1]) : 0)
@@ -133,10 +156,7 @@ export const migrarCotizacionesPersonales = async (uid, email) => {
 // ── Clientes ─────────────────────────────────────────────────────────────────
 
 export const guardarCliente = async (uid, datos, email) => {
-  const ref = await addDoc(clientesRef(uid, email), {
-    ...datos,
-    creadoEn: serverTimestamp(),
-  })
+  const ref = await addDoc(clientesRef(uid, email), { ...datos, creadoEn: serverTimestamp() })
   return ref.id
 }
 
@@ -152,4 +172,42 @@ export const actualizarCliente = async (uid, clienteId, datos, email) => {
 
 export const eliminarCliente = async (uid, clienteId, email) => {
   await deleteDoc(clienteDocRef(uid, email, clienteId))
+}
+
+// ── Catálogo de materiales ───────────────────────────────────────────────────
+
+export const guardarItemCatalogo = async (uid, datos, email) => {
+  const ref = await addDoc(catalogoRef(uid, email), { ...datos, creadoEn: serverTimestamp() })
+  return ref.id
+}
+
+export const obtenerCatalogo = async (uid, email) => {
+  const q = query(catalogoRef(uid, email), orderBy('nombre', 'asc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+export const actualizarItemCatalogo = async (uid, itemId, datos, email) => {
+  await updateDoc(catalogoDocRef(uid, email, itemId), datos)
+}
+
+export const eliminarItemCatalogo = async (uid, itemId, email) => {
+  await deleteDoc(catalogoDocRef(uid, email, itemId))
+}
+
+// ── Plantillas ────────────────────────────────────────────────────────────────
+
+export const guardarPlantilla = async (uid, datos, email) => {
+  const ref = await addDoc(plantillasRef(uid, email), { ...datos, creadoEn: serverTimestamp() })
+  return ref.id
+}
+
+export const obtenerPlantillas = async (uid, email) => {
+  const q = query(plantillasRef(uid, email), orderBy('creadoEn', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+export const eliminarPlantilla = async (uid, plantillaId, email) => {
+  await deleteDoc(plantillaDocRef(uid, email, plantillaId))
 }

@@ -11,7 +11,12 @@ import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import TabFichaTecnica, { DEFAULT_FICHA_TECNICA } from '../components/cotizador/TabFichaTecnica'
 import FichaTecnicaPrintView from '../components/cotizador/FichaTecnicaPrintView'
 import { useAuth } from '../hooks/useAuth'
-import { guardarCotizacion, actualizarCotizacion, obtenerClientes } from '../firebase/firestore'
+import {
+  guardarCotizacion, actualizarCotizacion, obtenerClientes,
+  guardarPlantilla as guardarPlantillaFS,
+  obtenerPlantillas as obtenerPlantillasFS,
+  eliminarPlantilla as eliminarPlantillaFS,
+} from '../firebase/firestore'
 import { getEmpresa } from '../utils/empresa'
 import { exportPDF } from '../utils/exportPDF'
 
@@ -131,10 +136,15 @@ export default function Cotizador() {
   const [showFichaTec,       setShowFichaTec]       = useState(false)
 
   // Plantillas
-  const [plantillas,          setPlantillas]          = useState(getPlantillas)
+  const [plantillas,          setPlantillas]          = useState([])
   const [showPlantillas,      setShowPlantillas]      = useState(false)
   const [showGuardarPlantilla,setShowGuardarPlantilla]= useState(false)
   const [nombrePlantilla,     setNombrePlantilla]     = useState('')
+
+  useEffect(() => {
+    if (!user) return
+    obtenerPlantillasFS(user.uid, user.email).then(setPlantillas).catch(() => {})
+  }, [user])
 
   const setConfigField = (field, value) => setConfig((c) => ({ ...c, [field]: value }))
 
@@ -158,18 +168,18 @@ export default function Cotizador() {
   }
 
   // Plantillas handlers
-  const handleGuardarPlantilla = () => {
-    if (!nombrePlantilla.trim()) return
-    const nueva = {
-      id: Date.now(),
+  const handleGuardarPlantilla = async () => {
+    if (!nombrePlantilla.trim() || !user) return
+    const datos = {
       nombre: nombrePlantilla.trim(),
       materiales, roles, servicios, bases,
       config: { ...config, flete: 0, condicionesPago: '', plazoEntrega: '', notas: '' },
       cantidadLotes, unidadesPorLote,
     }
-    const actualizadas = [...plantillas, nueva]
-    localStorage.setItem(PLANTILLAS_KEY, JSON.stringify(actualizadas))
-    setPlantillas(actualizadas)
+    try {
+      const id = await guardarPlantillaFS(user.uid, datos, user.email)
+      setPlantillas((prev) => [{ id, ...datos }, ...prev])
+    } catch { /* silently ignore */ }
     setNombrePlantilla('')
     setShowGuardarPlantilla(false)
   }
@@ -186,10 +196,12 @@ export default function Cotizador() {
     setShowGuardarPlantilla(false)
   }
 
-  const handleEliminarPlantilla = (id) => {
-    const actualizadas = plantillas.filter(p => p.id !== id)
-    localStorage.setItem(PLANTILLAS_KEY, JSON.stringify(actualizadas))
-    setPlantillas(actualizadas)
+  const handleEliminarPlantilla = async (id) => {
+    if (!user) return
+    try {
+      await eliminarPlantillaFS(user.uid, id, user.email)
+      setPlantillas((prev) => prev.filter((p) => p.id !== id))
+    } catch { /* silently ignore */ }
   }
 
   // Calculations

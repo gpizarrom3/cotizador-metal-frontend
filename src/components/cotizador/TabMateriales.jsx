@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../../hooks/useAuth'
+import { obtenerCatalogo } from '../../firebase/firestore'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -157,10 +159,18 @@ function PesoCalculadora({ onAgregar }) {
 }
 
 export default function TabMateriales({ materiales, setMateriales }) {
+  const { user } = useAuth()
   const [searchTerm, setSearchTerm]   = useState('')
   const [searching, setSearching]     = useState(false)
   const [results, setResults]         = useState([])
   const [searchError, setSearchError] = useState('')
+  const [catalogo, setCatalogo]       = useState([])
+  const [catSearch, setCatSearch]     = useState('')
+
+  useEffect(() => {
+    if (!user) return
+    obtenerCatalogo(user.uid, user.email).then(setCatalogo).catch(() => {})
+  }, [user])
 
   const addRow    = ()             => setMateriales([...materiales, emptyMaterial()])
   const removeRow = (id)           => setMateriales(materiales.filter((m) => m.id !== id))
@@ -191,6 +201,42 @@ export default function TabMateriales({ materiales, setMateriales }) {
 
       {/* Calculadora de peso */}
       <PesoCalculadora onAgregar={handleAddFromWeight} />
+
+      {/* Catálogo guardado */}
+      {catalogo.length > 0 && (
+        <div className="card border-violet-500/30 bg-slate-800">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 bg-violet-600/30 border border-violet-500/30 rounded flex items-center justify-center flex-shrink-0">
+              <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-violet-400">Desde catálogo</h3>
+          </div>
+          <input
+            type="text"
+            className="input-field mb-3"
+            placeholder="Filtrar catálogo..."
+            value={catSearch}
+            onChange={(e) => setCatSearch(e.target.value)}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+            {catalogo
+              .filter((i) => i.nombre?.toLowerCase().includes(catSearch.toLowerCase()) || i.proveedor?.toLowerCase().includes(catSearch.toLowerCase()))
+              .map((i) => (
+                <button
+                  key={i.id}
+                  onClick={() => setMateriales([...materiales, { id: Date.now() + Math.random(), nombre: i.nombre, proveedor: i.proveedor || '', formato: i.formato || '', cantidad: 1, precio_unitario: i.precio_unitario || 0 }])}
+                  className="text-left bg-slate-950 border border-slate-600 hover:border-violet-500/50 rounded-lg p-3 transition-colors"
+                >
+                  <p className="text-white font-medium text-sm leading-tight">{i.nombre}</p>
+                  {i.proveedor && <p className="text-slate-400 text-xs mt-0.5">{i.proveedor}</p>}
+                  <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(i.precio_unitario)}{i.unidad ? ` / ${i.unidad}` : ''}</p>
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* AI Search */}
       <div className="card border-blue-500/30 bg-slate-800">

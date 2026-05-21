@@ -7,6 +7,7 @@ import Cotizador from './pages/Cotizador'
 import Historial from './pages/Historial'
 import Clientes from './pages/Clientes'
 import Configuracion from './pages/Configuracion'
+import Catalogo from './pages/Catalogo'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -31,6 +32,10 @@ function App() {
         <Route
           path="/clientes"
           element={<PrivateRoute><Clientes /></PrivateRoute>}
+        />
+        <Route
+          path="/catalogo"
+          element={<PrivateRoute><Catalogo /></PrivateRoute>}
         />
         <Route
           path="/configuracion"
