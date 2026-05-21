@@ -88,6 +88,7 @@ const DEFAULT_EMBALAJE_MATERIALES = [
 ]
 
 const DEFAULT_EMBALAJE = {
+  activo: true,
   palletId: '', cargaKg: '', largoCm: '', anchoCm: '', alturaCm: '',
   materiales: DEFAULT_EMBALAJE_MATERIALES, materialesPallet: [],
   costoEnvio: '', ciudadOrigen: '', ciudadDestino: '', notas: '',
@@ -224,7 +225,7 @@ export default function Cotizador() {
     return acc + hh + col
   }, 0)
   const totalServicios = Object.values(servicios).reduce((acc, s) => acc + (s.activo ? Number(s.precio) || 0 : 0), 0)
-  const totalEmbalaje  =
+  const totalEmbalaje = (embalaje.activo === false) ? 0 :
     (embalaje.materiales     || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (embalaje.materialesPallet || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (Number(embalaje.costoEnvio) || 0)
