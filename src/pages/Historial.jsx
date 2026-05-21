@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
-import { obtenerCotizaciones, actualizarEstado, eliminarCotizacion } from '../firebase/firestore'
+import { obtenerCotizaciones, actualizarEstado, eliminarCotizacion, migrarCotizacionesPersonales } from '../firebase/firestore'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -32,7 +32,8 @@ export default function Historial() {
   useEffect(() => {
     if (!user) return
     setLoading(true)
-    obtenerCotizaciones(user.uid)
+    migrarCotizacionesPersonales(user.uid, user.email)
+      .then(() => obtenerCotizaciones(user.uid, user.email))
       .then(setCotizaciones)
       .catch(() => setError('No se pudieron cargar las cotizaciones.'))
       .finally(() => setLoading(false))
@@ -40,7 +41,7 @@ export default function Historial() {
 
   const handleEstado = async (cotId, estado) => {
     try {
-      await actualizarEstado(user.uid, cotId, estado)
+      await actualizarEstado(user.uid, cotId, estado, user.email)
       setCotizaciones((prev) => prev.map((c) => c.id === cotId ? { ...c, estado } : c))
     } catch { setError('Error al actualizar estado.') }
   }
@@ -48,7 +49,7 @@ export default function Historial() {
   const handleEliminar = async (cotId) => {
     if (!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return
     try {
-      await eliminarCotizacion(user.uid, cotId)
+      await eliminarCotizacion(user.uid, cotId, user.email)
       setCotizaciones((prev) => prev.filter((c) => c.id !== cotId))
     } catch { setError('Error al eliminar.') }
   }

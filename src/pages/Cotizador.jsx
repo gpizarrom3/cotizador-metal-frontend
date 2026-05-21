@@ -226,9 +226,9 @@ export default function Cotizador() {
     setSaving(true); setSaveError(''); setSaveSuccess(false)
     try {
       if (cotizacionId) {
-        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa: getEmpresa() })
+        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa: getEmpresa() }, user.email)
       } else {
-        const { numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa: getEmpresa() })
+        const { numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa: getEmpresa() }, user.email)
         setNumeroCot(numero)
         setCotizacionId('')
       }
