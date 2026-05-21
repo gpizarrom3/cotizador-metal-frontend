@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { getEmpresa, saveEmpresa } from '../utils/empresa'
+import { getConfigDefaults, saveConfigDefaults } from '../utils/configDefaults'
+
+const SERVICIOS_LABELS = {
+  corte_plasma: 'Corte Plasma',
+  corte_laser:  'Corte Láser',
+  oxicorte:     'Oxicorte',
+  plegado:      'Servicio de Plegado',
+  cilindrado:   'Servicio de Cilindrado',
+}
 
 export default function Configuracion() {
   const [form, setForm] = useState(() => ({
@@ -8,6 +17,32 @@ export default function Configuracion() {
     ...getEmpresa(),
   }))
   const [success, setSuccess] = useState(false)
+
+  const [configDef, setConfigDef] = useState(() => getConfigDefaults())
+  const [defSuccess, setDefSuccess] = useState(false)
+
+  const updateRole = (i, field, value) =>
+    setConfigDef((d) => ({ ...d, roles: d.roles.map((r, idx) => idx === i ? { ...r, [field]: value } : r) }))
+  const addRole = () =>
+    setConfigDef((d) => ({ ...d, roles: [...d.roles, { nombre: '', precio_hora: 0 }] }))
+  const removeRole = (i) =>
+    setConfigDef((d) => ({ ...d, roles: d.roles.filter((_, idx) => idx !== i) }))
+
+  const updateServicio = (key, field, value) =>
+    setConfigDef((d) => ({ ...d, servicios: { ...d.servicios, [key]: { ...d.servicios[key], [field]: value } } }))
+
+  const updateBase = (i, field, value) =>
+    setConfigDef((d) => ({ ...d, bases: d.bases.map((b, idx) => idx === i ? { ...b, [field]: value } : b) }))
+  const addBase = () =>
+    setConfigDef((d) => ({ ...d, bases: [...d.bases, { nombre: '', porcentaje: 0 }] }))
+  const removeBase = (i) =>
+    setConfigDef((d) => ({ ...d, bases: d.bases.filter((_, idx) => idx !== i) }))
+
+  const handleSaveDefaults = () => {
+    saveConfigDefaults(configDef)
+    setDefSuccess(true)
+    setTimeout(() => setDefSuccess(false), 3000)
+  }
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }))
 
@@ -103,6 +138,139 @@ export default function Configuracion() {
 
         <div className="flex justify-end">
           <button onClick={handleSave} className="btn-primary">Guardar configuración</button>
+        </div>
+      </div>
+
+      {/* Valores predeterminados */}
+      <div className="max-w-2xl mt-10 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Valores predeterminados</h1>
+          <p className="text-slate-400 mt-1 text-sm">Precios y porcentajes que se usarán como base al crear nuevas cotizaciones</p>
+        </div>
+
+        {/* Roles / Horas Hombre */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">Cargos (Horas Hombre)</h2>
+            <button onClick={addRole} className="btn-secondary text-sm py-2">+ Agregar</button>
+          </div>
+          <div className="space-y-2">
+            {configDef.roles.map((r, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <input
+                  type="text"
+                  className="input-field text-sm py-2 flex-1"
+                  placeholder="Nombre del cargo"
+                  value={r.nombre}
+                  onChange={(e) => updateRole(i, 'nombre', e.target.value)}
+                />
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-xs whitespace-nowrap">$/hora</span>
+                  <input
+                    type="number"
+                    min="0"
+                    className="input-field text-sm py-2 w-32 text-right"
+                    placeholder="0"
+                    value={r.precio_hora || ''}
+                    onChange={(e) => updateRole(i, 'precio_hora', Number(e.target.value))}
+                  />
+                </div>
+                <button
+                  onClick={() => removeRole(i)}
+                  className="text-slate-500 hover:text-red-400 transition-colors flex-shrink-0"
+                  title="Eliminar"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Servicios */}
+        <div className="card">
+          <h2 className="text-lg font-semibold text-white mb-4">Servicios (precios de referencia)</h2>
+          <div className="space-y-3">
+            {Object.entries(configDef.servicios).map(([key, s]) => (
+              <div key={key} className="flex items-center gap-3">
+                <span className="text-slate-300 text-sm flex-1">{SERVICIOS_LABELS[key] ?? key}</span>
+                <input
+                  type="number"
+                  min="0"
+                  className="input-field text-sm py-2 w-32 text-right"
+                  placeholder="0"
+                  value={s.precio_ref || ''}
+                  onChange={(e) => updateServicio(key, 'precio_ref', Number(e.target.value))}
+                />
+                <input
+                  type="text"
+                  className="input-field text-sm py-2 w-24"
+                  placeholder="unidad"
+                  value={s.unidad}
+                  onChange={(e) => updateServicio(key, 'unidad', e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-500 text-xs mt-3">La unidad se muestra junto al campo de cantidad (ej: kg, pliegue)</p>
+        </div>
+
+        {/* Bases */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">% Bases</h2>
+            <button onClick={addBase} className="btn-secondary text-sm py-2">+ Agregar</button>
+          </div>
+          <div className="space-y-2">
+            {configDef.bases.map((b, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <input
+                  type="text"
+                  className="input-field text-sm py-2 flex-1"
+                  placeholder="Nombre (ej: Utilidades)"
+                  value={b.nombre}
+                  onChange={(e) => updateBase(i, 'nombre', e.target.value)}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    className="input-field text-sm py-2 w-24 text-right"
+                    placeholder="0"
+                    value={b.porcentaje || ''}
+                    onChange={(e) => updateBase(i, 'porcentaje', Number(e.target.value))}
+                  />
+                  <span className="text-slate-400 text-sm">%</span>
+                </div>
+                <button
+                  onClick={() => removeBase(i)}
+                  className="text-slate-500 hover:text-red-400 transition-colors flex-shrink-0"
+                  title="Eliminar"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {defSuccess && (
+          <div className="bg-green-900/30 border border-green-500/50 text-green-400 text-sm rounded-lg px-4 py-3 flex items-center gap-2">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Valores predeterminados guardados. Se aplicarán en la próxima cotización nueva.
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <button onClick={handleSaveDefaults} className="btn-primary">Guardar valores predeterminados</button>
         </div>
       </div>
     </DashboardLayout>

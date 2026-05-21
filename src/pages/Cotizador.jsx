@@ -19,6 +19,7 @@ import {
 } from '../firebase/firestore'
 import { getEmpresa } from '../utils/empresa'
 import { exportPDF } from '../utils/exportPDF'
+import { getConfigDefaults } from '../utils/configDefaults'
 
 const TABS = [
   { id: 'materiales', label: 'Materiales' },
@@ -30,29 +31,39 @@ const TABS = [
   { id: 'resumen',   label: 'Resumen' },
 ]
 
-const DEFAULT_ROLES = [
-  { id: 1, nombre: 'Soldador',   precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
-  { id: 2, nombre: 'Ayudante',   precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
-  { id: 3, nombre: 'Fresador',   precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
-  { id: 4, nombre: 'Tornero',    precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
-  { id: 5, nombre: 'Ingeniero',  precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
-]
+const makeDefaultRoles = (cfg) =>
+  cfg.roles.map((r, i) => ({
+    id: i + 1, nombre: r.nombre, precio_hora: r.precio_hora,
+    cantidad: 1, horas: 0, colacion: false, valor_colacion: 0,
+  }))
 
-const DEFAULT_SERVICIOS = {
-  corte_plasma:        { activo: false, precio: 0 },
-  corte_laser:         { activo: false, precio: 0 },
-  oxicorte:            { activo: false, precio: 0 },
+const makeDefaultServicios = (cfg) => ({
+  corte_plasma:        { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.corte_plasma.precio_ref, unidad: cfg.servicios.corte_plasma.unidad },
+  corte_laser:         { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.corte_laser.precio_ref,  unidad: cfg.servicios.corte_laser.unidad  },
+  oxicorte:            { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.oxicorte.precio_ref,     unidad: cfg.servicios.oxicorte.unidad     },
   tratamiento_termico: { activo: false, tipo: '', precio: 0 },
-  plegado:             { activo: false, precio: 0 },
-  cilindrado:          { activo: false, precio: 0 },
-}
+  plegado:             { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.plegado.precio_ref,      unidad: cfg.servicios.plegado.unidad      },
+  cilindrado:          { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.cilindrado.precio_ref,   unidad: cfg.servicios.cilindrado.unidad   },
+})
 
-const DEFAULT_BASES = [
-  { id: 1, nombre: 'Gastos Generales',   porcentaje: 20 },
-  { id: 2, nombre: 'Utilidades',         porcentaje: 0 },
-  { id: 3, nombre: 'Costos Financieros', porcentaje: 0 },
-  { id: 4, nombre: 'Imprevistos',        porcentaje: 0 },
-]
+const makeDefaultBases = (cfg) =>
+  cfg.bases.map((b, i) => ({ id: i + 1, nombre: b.nombre, porcentaje: b.porcentaje }))
+
+const mergeServicios = (saved, defaults) => {
+  const result = { ...defaults }
+  if (!saved) return result
+  Object.keys(saved).forEach((key) => {
+    if (!result[key]) return
+    result[key] = {
+      ...result[key],
+      ...saved[key],
+      precio_ref: saved[key].precio_ref || result[key].precio_ref,
+      unidad:     saved[key].unidad     || result[key].unidad,
+      cantidad:   saved[key].cantidad   ?? 0,
+    }
+  })
+  return result
+}
 
 const DEFAULT_CONFIG = {
   flete: 0, incluyeIVA: false, validezDias: 30,
@@ -102,9 +113,9 @@ export default function Cotizador() {
   const [cliente,        setCliente]        = useState(() => normCliente(getDraft().cliente))
   const [estado,         setEstado]         = useState(() => getDraft().estado ?? 'Borrador')
   const [materiales,     setMateriales]     = useState(() => getDraft().materiales ?? [])
-  const [roles,          setRoles]          = useState(() => getDraft().roles ?? DEFAULT_ROLES)
-  const [servicios,      setServicios]      = useState(() => getDraft().servicios ?? DEFAULT_SERVICIOS)
-  const [bases,          setBases]          = useState(() => getDraft().bases ?? DEFAULT_BASES)
+  const [roles,          setRoles]          = useState(() => getDraft().roles          ?? makeDefaultRoles(getConfigDefaults()))
+  const [servicios,      setServicios]      = useState(() => mergeServicios(getDraft().servicios, makeDefaultServicios(getConfigDefaults())))
+  const [bases,          setBases]          = useState(() => getDraft().bases          ?? makeDefaultBases(getConfigDefaults()))
   const [cantidadLotes,  setCantidadLotes]  = useState(() => getDraft().cantidadLotes ?? 1)
   const [unidadesPorLote,setUnidadesPorLote]= useState(() => getDraft().unidadesPorLote ?? 1)
   const [config,         setConfig]         = useState(() => ({ ...DEFAULT_CONFIG, ...(getDraft().config ?? {}) }))
@@ -157,11 +168,12 @@ export default function Cotizador() {
   }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, fichaTecnica])
 
   const clearDraft = () => {
+    const cfg = getConfigDefaults()
     localStorage.removeItem(DRAFT_KEY)
     setCliente({ ...DEFAULT_CLIENTE })
     setEstado('Borrador')
-    setMateriales([]);  setRoles(DEFAULT_ROLES); setServicios(DEFAULT_SERVICIOS)
-    setBases(DEFAULT_BASES); setCantidadLotes(1); setUnidadesPorLote(1)
+    setMateriales([]);  setRoles(makeDefaultRoles(cfg)); setServicios(makeDefaultServicios(cfg))
+    setBases(makeDefaultBases(cfg)); setCantidadLotes(1); setUnidadesPorLote(1)
     setConfig(DEFAULT_CONFIG); setEmbalaje(DEFAULT_EMBALAJE); setNumeroCot(''); setCotizacionId('')
     setFichaTecnica({ ...DEFAULT_FICHA_TECNICA })
     setSaveSuccess(false); setSaveError('')
@@ -399,7 +411,7 @@ export default function Cotizador() {
       </div>
 
       {activeTab === 'materiales' && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
-      {activeTab === 'hh'         && <TabHorasHombre roles={roles} setRoles={setRoles} />}
+      {activeTab === 'hh'         && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={getConfigDefaults().roles} />}
       {activeTab === 'servicios'  && <TabServicios servicios={servicios} setServicios={setServicios} />}
       {activeTab === 'bases'      && <TabBases bases={bases} setBases={setBases} totalMateriales={totalMateriales} totalHH={totalHH} />}
       {activeTab === 'embalaje'   && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} />}

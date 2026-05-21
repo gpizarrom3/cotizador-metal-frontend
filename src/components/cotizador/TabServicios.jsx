@@ -25,8 +25,14 @@ const SERVICIOS_SIMPLES = [
 ]
 
 export default function TabServicios({ servicios, setServicios }) {
-  const update = (key, field, value) =>
-    setServicios({ ...servicios, [key]: { ...servicios[key], [field]: value } })
+  const update = (key, field, value) => {
+    const current = servicios[key]
+    const updated = { ...current, [field]: value }
+    if (field === 'cantidad' || field === 'precio_ref') {
+      updated.precio = (Number(updated.cantidad) || 0) * (Number(updated.precio_ref) || 0)
+    }
+    setServicios({ ...servicios, [key]: updated })
+  }
 
   const handleTratamiento = (tipo) => {
     const t = TRATAMIENTOS.find((t) => t.value === tipo)
@@ -56,8 +62,11 @@ export default function TabServicios({ servicios, setServicios }) {
             label={label}
             activo={servicios[key].activo}
             precio={servicios[key].precio}
+            cantidad={servicios[key].cantidad ?? 0}
+            precioRef={servicios[key].precio_ref ?? 0}
+            unidad={servicios[key].unidad ?? ''}
             onToggle={() => update(key, 'activo', !servicios[key].activo)}
-            onPrecio={(v) => update(key, 'precio', v)}
+            onUpdate={(field, value) => update(key, field, value)}
           />
         ))}
 
@@ -123,30 +132,46 @@ export default function TabServicios({ servicios, setServicios }) {
   )
 }
 
-function ServiceRow({ label, activo, precio, onToggle, onPrecio }) {
+function ServiceRow({ label, activo, precio, cantidad, precioRef, unidad, onToggle, onUpdate }) {
   return (
     <div
       className={`border rounded-lg p-4 transition-colors ${
         activo ? 'border-blue-500/40 bg-slate-900' : 'border-slate-700 bg-slate-900/40'
       }`}
     >
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3 min-w-52">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 min-w-52 mt-0.5">
           <Toggle value={activo} onChange={onToggle} />
           <span className={`font-medium text-sm ${activo ? 'text-white' : 'text-slate-400'}`}>{label}</span>
         </div>
         {activo && (
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min="0"
-              className="input-field text-sm py-2 w-36 text-right"
-              placeholder="Precio total"
-              value={precio || ''}
-              onChange={(e) => onPrecio(Number(e.target.value))}
-            />
+          <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-xs whitespace-nowrap">Cantidad</span>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                className="input-field text-sm py-2 w-24 text-right"
+                placeholder="0"
+                value={cantidad || ''}
+                onChange={(e) => onUpdate('cantidad', Number(e.target.value))}
+              />
+              <span className="text-slate-500 text-xs w-8">{unidad}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-xs whitespace-nowrap">Precio ref.</span>
+              <input
+                type="number"
+                min="0"
+                className="input-field text-sm py-2 w-28 text-right"
+                value={precioRef || ''}
+                onChange={(e) => onUpdate('precio_ref', Number(e.target.value))}
+              />
+              <span className="text-slate-500 text-xs w-8">/{unidad}</span>
+            </div>
             <span className="text-blue-400 font-semibold text-sm w-28 text-right">
-              {(Number(precio) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })}
+              {fmt(precio)}
             </span>
           </div>
         )}

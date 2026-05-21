@@ -8,16 +8,18 @@ const calcRoleTotal = (r) => {
   return hh + col
 }
 
-export default function TabHorasHombre({ roles, setRoles }) {
+export default function TabHorasHombre({ roles, setRoles, configRoles = [] }) {
   const addRole = () =>
     setRoles([
       ...roles,
-      { id: Date.now(), nombre: 'Nuevo cargo', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
+      { id: Date.now(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
     ])
 
   const removeRole = (id) => setRoles(roles.filter((r) => r.id !== id))
   const update = (id, field, value) =>
     setRoles(roles.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
+  const updateMulti = (id, fields) =>
+    setRoles(roles.map((r) => (r.id === id ? { ...r, ...fields } : r)))
 
   const total = roles.reduce((acc, r) => acc + calcRoleTotal(r), 0)
 
@@ -35,12 +37,44 @@ export default function TabHorasHombre({ roles, setRoles }) {
               {/* Cargo */}
               <div className="col-span-2 sm:col-span-1">
                 <label className="label">Cargo</label>
-                <input
-                  type="text"
-                  className="input-field text-sm py-2"
-                  value={r.nombre}
-                  onChange={(e) => update(r.id, 'nombre', e.target.value)}
-                />
+                {configRoles.length > 0 ? (
+                  <>
+                    <select
+                      className="input-field text-sm py-2"
+                      value={configRoles.find((cr) => cr.nombre === r.nombre) ? r.nombre : '__custom__'}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '__custom__') {
+                          update(r.id, 'nombre', '')
+                        } else {
+                          const preset = configRoles.find((cr) => cr.nombre === val)
+                          updateMulti(r.id, { nombre: val, ...(preset ? { precio_hora: preset.precio_hora } : {}) })
+                        }
+                      }}
+                    >
+                      {configRoles.map((cr) => (
+                        <option key={cr.nombre} value={cr.nombre}>{cr.nombre}</option>
+                      ))}
+                      <option value="__custom__">Personalizado...</option>
+                    </select>
+                    {!configRoles.find((cr) => cr.nombre === r.nombre) && (
+                      <input
+                        type="text"
+                        className="input-field text-sm py-2 mt-1"
+                        placeholder="Nombre del cargo"
+                        value={r.nombre}
+                        onChange={(e) => update(r.id, 'nombre', e.target.value)}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <input
+                    type="text"
+                    className="input-field text-sm py-2"
+                    value={r.nombre}
+                    onChange={(e) => update(r.id, 'nombre', e.target.value)}
+                  />
+                )}
               </div>
 
               {/* Precio/hora */}
