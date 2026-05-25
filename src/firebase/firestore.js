@@ -9,6 +9,19 @@ export const SHARED_DOMAIN = 'innovattech.org'
 
 const isShared = (email) => email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
 
+// Strips undefined values recursively so Firestore never receives them
+const clean = (obj) => {
+  if (Array.isArray(obj)) return obj.map(clean)
+  if (obj !== null && typeof obj === 'object' && obj.constructor === Object) {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, clean(v)])
+    )
+  }
+  return obj
+}
+
 // ── Collection helpers ────────────────────────────────────────────────────────
 
 const cotizacionesRef = (uid, email) =>
@@ -84,13 +97,13 @@ export const guardarCotizacion = async (uid, datos, email, displayName) => {
   const numero = `COT-${new Date().getFullYear()}-${String(num).padStart(3, '0')}`
   const extra = isShared(email) ? { creadoPorUid: uid, creadoPor: displayName || email } : {}
 
-  const ref = await addDoc(cotizacionesRef(uid, email), {
+  const ref = await addDoc(cotizacionesRef(uid, email), clean({
     ...datos,
     ...extra,
     numero,
     fecha: serverTimestamp(),
     estado: 'Pendiente',
-  })
+  }))
 
   return { id: ref.id, numero }
 }
@@ -111,10 +124,10 @@ export const actualizarEstado = async (uid, cotId, estado, email) => {
 }
 
 export const actualizarCotizacion = async (uid, cotId, datos, email) => {
-  await updateDoc(cotizacionDocRef(uid, email, cotId), {
+  await updateDoc(cotizacionDocRef(uid, email, cotId), clean({
     ...datos,
     fechaActualizacion: serverTimestamp(),
-  })
+  }))
 }
 
 export const eliminarCotizacion = async (uid, cotId, email) => {

@@ -140,7 +140,11 @@ export default function Historial() {
 
   const filtered = cotizaciones.filter((c) => {
     const nombre = getNombreCliente(c).toLowerCase()
-    const matchSearch  = nombre.includes(search.toLowerCase()) || (c.numero || '').toLowerCase().includes(search.toLowerCase())
+    const s = search.toLowerCase()
+    const matchSearch  = nombre.includes(s)
+      || (c.numero || '').toLowerCase().includes(s)
+      || (c.config?.numeroReferencia || '').toLowerCase().includes(s)
+      || (c.config?.descripcion || '').toLowerCase().includes(s)
     const matchStatus  = statusFilter === 'Todos' || c.estado === statusFilter
     return matchSearch && matchStatus
   })
@@ -214,10 +218,18 @@ export default function Historial() {
                   </tr>
                 ) : filtered.map((c) => (
                   <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-3 text-blue-400 font-mono font-medium">{c.numero}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-blue-400 font-mono font-medium">{c.numero}</p>
+                      {c.config?.numeroReferencia && (
+                        <p className="text-slate-500 text-xs mt-0.5">{c.config.numeroReferencia}</p>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="text-slate-200">{getNombreCliente(c)}</p>
-                      {typeof c.cliente === 'object' && c.cliente?.rut && (
+                      {c.config?.descripcion && (
+                        <p className="text-slate-400 text-xs mt-0.5 max-w-xs truncate">{c.config.descripcion}</p>
+                      )}
+                      {!c.config?.descripcion && typeof c.cliente === 'object' && c.cliente?.rut && (
                         <p className="text-slate-500 text-xs">{c.cliente.rut}</p>
                       )}
                     </td>

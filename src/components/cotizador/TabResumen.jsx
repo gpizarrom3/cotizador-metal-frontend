@@ -32,6 +32,7 @@ export default function TabResumen({
     condicionesPago = '', plazoEntrega = '', notas = '',
     descuento = 0, tipoDescuento = 'porcentaje',
     moneda = 'CLP', tipoCambio = 1,
+    descripcion = '', numeroReferencia = '',
   } = config
 
   const tc = Number(tipoCambio) || 1
@@ -114,6 +115,21 @@ export default function TabResumen({
             <input type="text" className="input-field" placeholder="+56 9 1234 5678"
               value={cliente.telefono || ''}
               onChange={(e) => setCliente({ ...cliente, telefono: e.target.value })} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="label">Descripción</label>
+            <input type="text" className="input-field" placeholder="Ej: Fabricación estructura metálica..."
+              value={descripcion}
+              onChange={(e) => setConfigField('descripcion', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">N° Referencia cliente</label>
+            <input type="text" className="input-field" placeholder="Ej: OC-2025-1234, Licitación N°..."
+              value={numeroReferencia}
+              onChange={(e) => setConfigField('numeroReferencia', e.target.value)} />
           </div>
         </div>
 

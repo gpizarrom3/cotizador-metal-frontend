@@ -54,12 +54,13 @@ const mergeServicios = (saved, defaults) => {
   if (!saved) return result
   Object.keys(saved).forEach((key) => {
     if (!result[key]) return
+    const base = result[key]
     result[key] = {
-      ...result[key],
+      ...base,
       ...saved[key],
-      precio_ref: saved[key].precio_ref || result[key].precio_ref,
-      unidad:     saved[key].unidad     || result[key].unidad,
-      cantidad:   saved[key].cantidad   ?? 0,
+      ...('precio_ref' in base && { precio_ref: saved[key].precio_ref || base.precio_ref }),
+      ...('unidad'     in base && { unidad:     saved[key].unidad     || base.unidad     }),
+      ...('cantidad'   in base && { cantidad:   saved[key].cantidad   ?? 0               }),
     }
   })
   return result
@@ -70,6 +71,7 @@ const DEFAULT_CONFIG = {
   condicionesPago: '', plazoEntrega: '', notas: '',
   descuento: 0, tipoDescuento: 'porcentaje',
   moneda: 'CLP', tipoCambio: 1,
+  descripcion: '', numeroReferencia: '',
 }
 
 const DEFAULT_CLIENTE = { nombre: '', rut: '', email: '', telefono: '' }
