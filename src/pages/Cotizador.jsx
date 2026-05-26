@@ -154,7 +154,7 @@ export default function Cotizador() {
 
   const [activeTab,      setActiveTab]      = useState('materiales')
   const [cliente,        setCliente]        = useState(() => normCliente(getDraft().cliente))
-  const [estado,         setEstado]         = useState(() => getDraft().estado ?? 'Borrador')
+  const [estado,         setEstado]         = useState(() => getDraft().estado ?? 'Pendiente')
   const [materiales,     setMateriales]     = useState(() => migrarMateriales(getDraft().materiales ?? []))
   const [roles,          setRoles]          = useState(() => getDraft().roles          ?? makeDefaultRoles(getConfigDefaults()))
   const [servicios,      setServicios]      = useState(() => mergeServicios(getDraft().servicios, makeDefaultServicios(getConfigDefaults())))
@@ -206,7 +206,7 @@ export default function Cotizador() {
     const cfg = getConfigDefaults()
     localStorage.removeItem(DRAFT_KEY)
     setCliente({ ...DEFAULT_CLIENTE })
-    setEstado('Borrador')
+    setEstado('Pendiente')
     setMateriales([])
     setRoles(makeDefaultRoles(cfg))
     setServicios(makeDefaultServicios(cfg))

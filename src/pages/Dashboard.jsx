@@ -7,14 +7,9 @@ import { suscribirCotizaciones } from '../firebase/firestore'
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
 const STATUS_STYLE = {
-  'Borrador':       'bg-slate-700/60 text-slate-300 border-slate-600',
-  'Pendiente':      'bg-slate-700/60 text-slate-300 border-slate-600',
-  'Enviada':        'bg-blue-900/40 text-blue-300 border-blue-500/30',
-  'En revisión':    'bg-yellow-900/40 text-yellow-300 border-yellow-500/30',
-  'Aprobada':       'bg-green-900/40 text-green-400 border-green-500/30',
-  'Rechazada':      'bg-red-900/40 text-red-400 border-red-500/30',
-  'En producción':  'bg-purple-900/40 text-purple-300 border-purple-500/30',
-  'Entregada':      'bg-emerald-900/40 text-emerald-300 border-emerald-500/30',
+  'Pendiente':  'bg-slate-700/60 text-slate-300 border-slate-600',
+  'Aprobada':   'bg-green-900/40 text-green-400 border-green-500/30',
+  'Entregada':  'bg-emerald-900/40 text-emerald-300 border-emerald-500/30',
 }
 
 export default function Dashboard() {
@@ -40,10 +35,9 @@ export default function Dashboard() {
 
   const thisMes    = cotizaciones.filter(esMes)
   const montoMes   = thisMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
-  const aprobadas  = cotizaciones.filter((c) => c.estado === 'Aprobada').length
-  const rechazadas = cotizaciones.filter((c) => c.estado === 'Rechazada').length
-  const tasaCierre = (aprobadas + rechazadas) > 0
-    ? `${Math.round(aprobadas / (aprobadas + rechazadas) * 100)}%`
+  const entregadas = cotizaciones.filter((c) => c.estado === 'Entregada').length
+  const tasaCierre = cotizaciones.length > 0
+    ? `${Math.round(entregadas / cotizaciones.length * 100)}%`
     : '—'
   const clientesUnicos = new Set(
     cotizaciones.map((c) => (typeof c.cliente === 'object' ? c.cliente?.nombre : c.cliente)).filter(Boolean)
@@ -56,7 +50,7 @@ export default function Dashboard() {
     { label: 'Tasa de cierre',        value: loading ? '—' : tasaCierre },
   ]
 
-  const ESTADOS_ORDER = ['Enviada', 'En revisión', 'Aprobada', 'En producción', 'Rechazada', 'Entregada', 'Borrador', 'Pendiente']
+  const ESTADOS_ORDER = ['Pendiente', 'Aprobada', 'Entregada']
   const porEstado = ESTADOS_ORDER
     .map((estado) => ({ estado, count: cotizaciones.filter((c) => c.estado === estado).length }))
     .filter((e) => e.count > 0)

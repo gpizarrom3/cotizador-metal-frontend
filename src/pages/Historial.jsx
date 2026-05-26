@@ -10,16 +10,12 @@ import { getEmpresa } from '../utils/empresa'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
-const ESTADOS = ['Borrador', 'Enviada', 'En revisión', 'Aprobada', 'Rechazada', 'En producción', 'Entregada']
+const ESTADOS = ['Pendiente', 'Aprobada', 'Entregada']
 
 const STATUS_STYLE = {
-  'Borrador':       'bg-slate-700/60 text-slate-300 border-slate-600',
-  'Enviada':        'bg-blue-900/40 text-blue-300 border-blue-500/30',
-  'En revisión':    'bg-yellow-900/40 text-yellow-300 border-yellow-500/30',
-  'Aprobada':       'bg-green-900/40 text-green-400 border-green-500/30',
-  'Rechazada':      'bg-red-900/40 text-red-400 border-red-500/30',
-  'En producción':  'bg-purple-900/40 text-purple-300 border-purple-500/30',
-  'Entregada':      'bg-emerald-900/40 text-emerald-300 border-emerald-500/30',
+  'Pendiente':  'bg-slate-700/60 text-slate-300 border-slate-600',
+  'Aprobada':   'bg-green-900/40 text-green-400 border-green-500/30',
+  'Entregada':  'bg-emerald-900/40 text-emerald-300 border-emerald-500/30',
 }
 
 const DRAFT_KEY = 'cotizador_draft'
@@ -96,7 +92,7 @@ export default function Historial() {
       cotizacionId:    cot.id,
       numeroCot:       cot.numero || '',
       cliente:         clienteObj,
-      estado:          cot.estado || 'Borrador',
+      estado:          cot.estado || 'Pendiente',
       materiales:      cot.materiales      || [],
       roles:           cot.roles           || [],
       servicios:       cot.servicios       || {},
@@ -128,7 +124,7 @@ export default function Historial() {
       config:          { ...(cot.config || {}), flete: 0 },
       embalaje:        cot.embalaje        || {},
       numeroCot:       '',
-      estado:          'Borrador',
+      estado:          'Pendiente',
     }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
     navigate('/cotizador')
@@ -243,9 +239,9 @@ export default function Historial() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <select
-                        value={c.estado || 'Borrador'}
+                        value={c.estado || 'Pendiente'}
                         onChange={(e) => handleEstado(c.id, e.target.value)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer appearance-none text-center ${STATUS_STYLE[c.estado] || STATUS_STYLE['Borrador']}`}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer appearance-none text-center ${STATUS_STYLE[c.estado] || STATUS_STYLE['Pendiente']}`}
                       >
                         {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>

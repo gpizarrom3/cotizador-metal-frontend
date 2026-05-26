@@ -11,7 +11,7 @@ const CONDICIONES_OPCIONES = [
   '30 días factura', '60 días factura', 'Contado', '50% anticipo — 50% contra entrega', '100% anticipo', 'A convenir',
 ]
 
-const ESTADOS_COT = ['Borrador', 'Enviada', 'En revisión', 'Aprobada', 'Rechazada', 'En producción', 'Entregada']
+const ESTADOS_COT = ['Pendiente', 'Aprobada', 'Entregada']
 
 export default function TabResumen({
   cliente, setCliente, clientes = [],
@@ -150,7 +150,7 @@ export default function TabResumen({
           </div>
           <div>
             <label className="label">Estado</label>
-            <select className="input-field" value={estado || 'Borrador'}
+            <select className="input-field" value={estado || 'Pendiente'}
               onChange={(e) => setEstado(e.target.value)}>
               {ESTADOS_COT.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
