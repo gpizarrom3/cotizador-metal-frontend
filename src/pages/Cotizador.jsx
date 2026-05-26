@@ -278,7 +278,7 @@ export default function Cotizador() {
   const handleExportPDF = async () => {
     setExportando(true)
     setShowPrint(true)
-    await new Promise((r) => setTimeout(r, 300))
+    await new Promise((r) => setTimeout(r, 600))
     const filename = `${numeroCot || 'cotizacion'}_${cliente.nombre || 'cliente'}.pdf`
     await exportPDF('cotizacion-print', filename)
     setShowPrint(false)
@@ -288,7 +288,7 @@ export default function Cotizador() {
   const handleExportFichaTecnica = async () => {
     setExportandoFichaTec(true)
     setShowFichaTec(true)
-    await new Promise((r) => setTimeout(r, 300))
+    await new Promise((r) => setTimeout(r, 600))
     const filename = `ficha_tecnica_${fichaTecnica.nombreProducto || 'producto'}_${numeroCot || 'borrador'}.pdf`
     await exportPDF('ficha-tecnica-print', filename)
     setShowFichaTec(false)
@@ -298,7 +298,7 @@ export default function Cotizador() {
   const handleExportFicha = async () => {
     setExportandoFicha(true)
     setShowFicha(true)
-    await new Promise((r) => setTimeout(r, 300))
+    await new Promise((r) => setTimeout(r, 600))
     const filename = `ficha_costos_${numeroCot || 'borrador'}_${cliente.nombre || 'interno'}.pdf`
     await exportPDF('ficha-costos-print', filename)
     setShowFicha(false)
@@ -448,17 +448,17 @@ export default function Cotizador() {
 
       {/* Hidden PDF templates */}
       {showPrint && (
-        <div ref={printRef} style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+        <div ref={printRef} style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1 }}>
           <CotizacionPrintView empresa={getEmpresa()} cot={cotizacionData} />
         </div>
       )}
       {showFicha && (
-        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+        <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1 }}>
           <FichaCostosPrintView empresa={getEmpresa()} cot={cotizacionData} />
         </div>
       )}
       {showFichaTec && (
-        <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+        <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1 }}>
           <FichaTecnicaPrintView empresa={getEmpresa()} ficha={fichaTecnica} numeroCot={numeroCot} />
         </div>
       )}

@@ -26,12 +26,36 @@ export const exportPDF = async (elementId, filename = 'cotizacion.pdf') => {
   const el = document.getElementById(elementId)
   if (!el) return
 
-  const canvas = await html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    logging: false,
+  // Clone to body to avoid overflow clipping (overflow-y-auto parents) and
+  // off-screen positioning issues (position:fixed with left:-9999px).
+  const clone = el.cloneNode(true)
+  clone.removeAttribute('id')
+  Object.assign(clone.style, {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    zIndex: '-9999',
+    pointerEvents: 'none',
   })
+  document.body.appendChild(clone)
+
+  let canvas
+  try {
+    canvas = await html2canvas(clone, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      width: clone.scrollWidth,
+      height: clone.scrollHeight,
+      windowWidth: clone.scrollWidth,
+      windowHeight: clone.scrollHeight,
+    })
+  } finally {
+    document.body.removeChild(clone)
+  }
 
   const pdf = new jsPDF('p', 'mm', 'a4')
   const pageW = pdf.internal.pageSize.getWidth()   // 210 mm
