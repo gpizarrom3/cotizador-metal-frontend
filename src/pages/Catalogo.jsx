@@ -2,20 +2,22 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { guardarItemCatalogo, obtenerCatalogo, actualizarItemCatalogo, eliminarItemCatalogo } from '../firebase/firestore'
+import ConfirmModal from '../components/ui/ConfirmModal'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 const EMPTY_FORM = { nombre: '', proveedor: '', formato: '', precio_unitario: '', unidad: '' }
 
 export default function Catalogo() {
   const { user } = useAuth()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
+  const [items, setItems]       = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState('')
+  const [search, setSearch]     = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [editando, setEditando] = useState(null)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [saving, setSaving] = useState(false)
+  const [editando, setEditando]   = useState(null)
+  const [form, setForm]           = useState(EMPTY_FORM)
+  const [saving, setSaving]       = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
 
   useEffect(() => {
     if (!user) return
@@ -58,8 +60,11 @@ export default function Catalogo() {
     }
   }
 
-  const handleEliminar = async (id) => {
-    if (!confirm('¿Eliminar este material del catálogo?')) return
+  const handleEliminar = (id) => setConfirmDelete({ open: true, id })
+
+  const ejecutarEliminar = async () => {
+    const id = confirmDelete.id
+    setConfirmDelete({ open: false, id: null })
     try {
       await eliminarItemCatalogo(user.uid, id, user.email)
       setItems((prev) => prev.filter((i) => i.id !== id))
@@ -198,6 +203,14 @@ export default function Catalogo() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar material"
+        message="Este material será eliminado del catálogo permanentemente."
+        onConfirm={ejecutarEliminar}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
     </DashboardLayout>
   )
 }

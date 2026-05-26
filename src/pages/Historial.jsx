@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { suscribirCotizaciones, actualizarEstado, eliminarCotizacion, migrarCotizacionesPersonales, SHARED_DOMAIN } from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
+import ConfirmModal from '../components/ui/ConfirmModal'
 import { exportPDF } from '../utils/exportPDF'
 import { getEmpresa } from '../utils/empresa'
 
@@ -21,17 +22,22 @@ const STATUS_STYLE = {
 const DRAFT_KEY = 'cotizador_draft'
 
 export default function Historial() {
-  const { user }  = useAuth()
-  const navigate  = useNavigate()
+  const { user }   = useAuth()
+  const navigate   = useNavigate()
+  const location   = useLocation()
+
   const [cotizaciones, setCotizaciones] = useState([])
   const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
+  const [search, setSearch]     = useState(() => location.state?.search || '')
   const [statusFilter, setStatusFilter] = useState('Todos')
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
   const [error, setError]       = useState('')
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
 
   const isInstitutional = user?.email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
 
-  const [preview, setPreview]         = useState(null) // { cot, tipo: 'cotizacion'|'ficha' }
+  const [preview, setPreview]         = useState(null)
   const [exportandoPDF, setExportandoPDF] = useState(false)
   const previewRef = useRef(null)
 
@@ -75,11 +81,14 @@ export default function Historial() {
     } catch { setError('Error al actualizar estado.') }
   }
 
-  const handleEliminar = async (cotId) => {
-    if (!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return
+  const handleEliminar = (cotId) => setConfirmDelete({ open: true, id: cotId })
+
+  const ejecutarEliminar = async () => {
+    const id = confirmDelete.id
+    setConfirmDelete({ open: false, id: null })
     try {
-      await eliminarCotizacion(user.uid, cotId, user.email)
-      setCotizaciones((prev) => prev.filter((c) => c.id !== cotId))
+      await eliminarCotizacion(user.uid, id, user.email)
+      setCotizaciones((prev) => prev.filter((c) => c.id !== id))
     } catch { setError('Error al eliminar.') }
   }
 
@@ -135,15 +144,28 @@ export default function Historial() {
     return c.cliente || '—'
   }
 
+  const limpiarFiltros = () => {
+    setSearch('')
+    setStatusFilter('Todos')
+    setFechaDesde('')
+    setFechaHasta('')
+  }
+
+  const desde = fechaDesde ? new Date(fechaDesde + 'T00:00:00') : null
+  const hasta = fechaHasta ? new Date(fechaHasta + 'T23:59:59') : null
+  const hayFiltros = search || statusFilter !== 'Todos' || fechaDesde || fechaHasta
+
   const filtered = cotizaciones.filter((c) => {
     const nombre = getNombreCliente(c).toLowerCase()
     const s = search.toLowerCase()
-    const matchSearch  = nombre.includes(s)
+    const matchSearch = nombre.includes(s)
       || (c.numero || '').toLowerCase().includes(s)
       || (c.config?.numeroReferencia || '').toLowerCase().includes(s)
       || (c.config?.descripcion || '').toLowerCase().includes(s)
-    const matchStatus  = statusFilter === 'Todos' || c.estado === statusFilter
-    return matchSearch && matchStatus
+    const matchStatus = statusFilter === 'Todos' || c.estado === statusFilter
+    const matchDesde = !desde || (c.fechaDate && c.fechaDate >= desde)
+    const matchHasta = !hasta || (c.fechaDate && c.fechaDate <= hasta)
+    return matchSearch && matchStatus && matchDesde && matchHasta
   })
 
   const conteo = ESTADOS.reduce((acc, e) => {
@@ -164,27 +186,49 @@ export default function Historial() {
 
       <div className="card">
         {/* Barra de búsqueda y filtros */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <div className="flex-1 relative">
-            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input type="text" className="input-field pl-9" placeholder="Buscar por cliente o número..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-col gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
+              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input type="text" className="input-field pl-9" placeholder="Buscar por cliente, número, referencia..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center gap-1.5">
+                <label className="text-slate-400 text-xs whitespace-nowrap">Desde</label>
+                <input type="date" className="input-field text-sm py-2 w-36" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-slate-400 text-xs whitespace-nowrap">Hasta</label>
+                <input type="date" className="input-field text-sm py-2 w-36" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} />
+              </div>
+              {hayFiltros && (
+                <button onClick={limpiarFiltros} className="text-slate-400 hover:text-slate-200 text-xs border border-slate-700 hover:border-slate-500 rounded-lg px-2.5 py-2 transition-colors whitespace-nowrap">
+                  Limpiar
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Chips de estado */}
-        <div className="flex gap-2 flex-wrap mb-5">
-          <button onClick={() => setStatusFilter('Todos')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${statusFilter === 'Todos' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
-            Todos ({cotizaciones.length})
-          </button>
-          {ESTADOS.map((s) => conteo[s] > 0 && (
-            <button key={s} onClick={() => setStatusFilter(s === statusFilter ? 'Todos' : s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${statusFilter === s ? 'bg-blue-600 text-white border-blue-500' : `${STATUS_STYLE[s] || 'bg-slate-700 text-slate-300 border-slate-600'} hover:opacity-80`}`}>
-              {s} ({conteo[s]})
+          {/* Chips de estado */}
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => setStatusFilter('Todos')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${statusFilter === 'Todos' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+              Todos ({cotizaciones.length})
             </button>
-          ))}
+            {ESTADOS.map((s) => conteo[s] > 0 && (
+              <button key={s} onClick={() => setStatusFilter(s === statusFilter ? 'Todos' : s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${statusFilter === s ? 'bg-blue-600 text-white border-blue-500' : `${STATUS_STYLE[s] || 'bg-slate-700 text-slate-300 border-slate-600'} hover:opacity-80`}`}>
+                {s} ({conteo[s]})
+              </button>
+            ))}
+            {filtered.length !== cotizaciones.length && (
+              <span className="text-slate-500 text-xs self-center ml-1">
+                Mostrando {filtered.length} de {cotizaciones.length}
+              </span>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -210,7 +254,9 @@ export default function Historial() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={isInstitutional ? 7 : 6} className="text-center py-12 text-slate-500">
-                      {cotizaciones.length === 0 ? 'Aún no tienes cotizaciones guardadas. Ve al Cotizador y guarda una.' : 'No se encontraron cotizaciones.'}
+                      {cotizaciones.length === 0
+                        ? 'Aún no tienes cotizaciones guardadas. Ve al Cotizador y guarda una.'
+                        : 'No se encontraron cotizaciones con esos filtros.'}
                     </td>
                   </tr>
                 ) : filtered.map((c) => (
@@ -288,10 +334,10 @@ export default function Historial() {
           </div>
         )}
       </div>
+
       {/* Modal de preview */}
       {preview && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col">
-          {/* Header */}
           <div className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-700 flex-shrink-0">
             <div className="flex items-center gap-3">
               <span className="text-white font-semibold text-sm">
@@ -319,8 +365,6 @@ export default function Historial() {
               </button>
             </div>
           </div>
-
-          {/* Contenido scrollable */}
           <div className="flex-1 overflow-y-auto bg-slate-200 p-6 flex justify-center" ref={previewRef}>
             <div id="historial-preview-content" className="w-full max-w-4xl">
               {preview.tipo === 'cotizacion' ? (
@@ -332,6 +376,14 @@ export default function Historial() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar cotización"
+        message="Esta acción no se puede deshacer. La cotización será eliminada permanentemente."
+        onConfirm={ejecutarEliminar}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
     </DashboardLayout>
   )
 }

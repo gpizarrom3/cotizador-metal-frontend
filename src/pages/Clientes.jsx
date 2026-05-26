@@ -1,20 +1,27 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
-import { guardarCliente, obtenerClientes, actualizarCliente, eliminarCliente } from '../firebase/firestore'
+import { guardarCliente, obtenerClientes, actualizarCliente, eliminarCliente, obtenerCotizaciones } from '../firebase/firestore'
+import ConfirmModal from '../components/ui/ConfirmModal'
+
+const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
 const EMPTY_FORM = { nombre: '', rut: '', email: '', telefono: '' }
 
 export default function Clientes() {
-  const { user } = useAuth()
+  const { user }   = useAuth()
+  const navigate   = useNavigate()
   const [clientes, setClientes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState('')
+  const [search, setSearch]     = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [editando, setEditando] = useState(null)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [saving, setSaving] = useState(false)
+  const [editando, setEditando]   = useState(null)
+  const [form, setForm]           = useState(EMPTY_FORM)
+  const [saving, setSaving]       = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
+  const [cotStats, setCotStats]   = useState({})
 
   useEffect(() => {
     if (!user) return
@@ -22,6 +29,21 @@ export default function Clientes() {
       .then(setClientes)
       .catch(() => setError('No se pudieron cargar los clientes.'))
       .finally(() => setLoading(false))
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    obtenerCotizaciones(user.uid, user.email).then((cots) => {
+      const stats = {}
+      cots.forEach((c) => {
+        const nombre = (typeof c.cliente === 'object' ? c.cliente?.nombre : c.cliente) || ''
+        if (!nombre) return
+        if (!stats[nombre]) stats[nombre] = { count: 0, total: 0 }
+        stats[nombre].count++
+        stats[nombre].total += Number(c.totalFinal ?? c.costoTotal) || 0
+      })
+      setCotStats(stats)
+    }).catch(() => {})
   }, [user])
 
   const filtered = clientes.filter((c) =>
@@ -67,14 +89,21 @@ export default function Clientes() {
     }
   }
 
-  const handleEliminar = async (id) => {
-    if (!confirm('¿Eliminar este cliente?')) return
+  const handleEliminar = (id) => setConfirmDelete({ open: true, id })
+
+  const ejecutarEliminar = async () => {
+    const id = confirmDelete.id
+    setConfirmDelete({ open: false, id: null })
     try {
       await eliminarCliente(user.uid, id, user.email)
       setClientes((prev) => prev.filter((c) => c.id !== id))
     } catch {
       setError('Error al eliminar el cliente.')
     }
+  }
+
+  const verCotizaciones = (nombre) => {
+    navigate('/historial', { state: { search: nombre } })
   }
 
   return (
@@ -122,47 +151,69 @@ export default function Clientes() {
                   <th className="text-left px-4 py-3 rounded-l-lg">Cliente</th>
                   <th className="text-left px-4 py-3">RUT</th>
                   <th className="text-left px-4 py-3">Contacto</th>
+                  <th className="text-right px-4 py-3">Cotizaciones</th>
                   <th className="text-center px-4 py-3 rounded-r-lg">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-10 text-slate-500">
+                    <td colSpan={5} className="text-center py-10 text-slate-500">
                       {clientes.length === 0 ? 'Aún no hay clientes registrados.' : 'No se encontraron clientes.'}
                     </td>
                   </tr>
-                ) : filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          {c.nombre?.[0]?.toUpperCase() ?? '?'}
+                ) : filtered.map((c) => {
+                  const stats = cotStats[c.nombre] || { count: 0, total: 0 }
+                  return (
+                    <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            {c.nombre?.[0]?.toUpperCase() ?? '?'}
+                          </div>
+                          <span className="text-slate-200 font-medium">{c.nombre}</span>
                         </div>
-                        <span className="text-slate-200 font-medium">{c.nombre}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.rut || '—'}</td>
-                    <td className="px-4 py-3">
-                      <p className="text-slate-300 text-xs">{c.email || '—'}</p>
-                      <p className="text-slate-500 text-xs">{c.telefono || ''}</p>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => abrirEditar(c)} className="text-slate-400 hover:text-yellow-400 transition-colors" title="Editar">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button onClick={() => handleEliminar(c.id)} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.rut || '—'}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-slate-300 text-xs">{c.email || '—'}</p>
+                        <p className="text-slate-500 text-xs">{c.telefono || ''}</p>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {stats.count > 0 ? (
+                          <div>
+                            <p className="text-slate-200 font-medium">{stats.count} cot.</p>
+                            <p className="text-slate-500 text-xs">{fmt(stats.total)}</p>
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 text-xs">Sin cotizaciones</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {stats.count > 0 && (
+                            <button onClick={() => verCotizaciones(c.nombre)}
+                              className="text-slate-400 hover:text-blue-400 transition-colors" title="Ver cotizaciones">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                            </button>
+                          )}
+                          <button onClick={() => abrirEditar(c)} className="text-slate-400 hover:text-yellow-400 transition-colors" title="Editar">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button onClick={() => handleEliminar(c.id)} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -211,6 +262,14 @@ export default function Clientes() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar cliente"
+        message="Esta acción no se puede deshacer."
+        onConfirm={ejecutarEliminar}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
     </DashboardLayout>
   )
 }
