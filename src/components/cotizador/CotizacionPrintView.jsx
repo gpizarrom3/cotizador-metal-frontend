@@ -54,9 +54,17 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
     const d = new Date(); d.setDate(d.getDate() + Number(validezDias)); return d.toLocaleDateString('es-CL')
   })()
 
-  const embalajeMatActivos   = (embalaje.materiales      || []).filter(m => Number(m.cantidad) > 0)
-  const embalajePalletActivos = (embalaje.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
+  const embalajeMatActivos = (embalaje.materiales || []).filter(m => Number(m.cantidad) > 0)
+  // Backward compat: support both old format (materialesPallet directly) and new (pallets array)
+  const isMultiPallets = Array.isArray(embalaje.pallets)
+  const embalajePallets = isMultiPallets ? embalaje.pallets : null
+  const embalajePalletActivos = isMultiPallets
+    ? embalaje.pallets.flatMap(p => (p.materialesPallet || []).filter(m => Number(m.cantidad) > 0))
+    : (embalaje.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
   const tieneEmbalaje = totalEmbalaje > 0
+  // Sub-products detection
+  const isSubprod = materiales.length > 0 && Array.isArray(materiales[0]?.items)
+  const flatMateriales = isSubprod ? materiales.flatMap(sp => sp.items || []) : materiales
 
   return (
     <div id="cotizacion-print" style={{ background: '#fff', color: '#1e293b', fontFamily: 'Arial, sans-serif', fontSize: '11px', width: '794px', padding: '40px', boxSizing: 'border-box' }}>
@@ -94,20 +102,55 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
       </div>
 
       {/* Materiales */}
-      {materiales.length > 0 && (
+      {flatMateriales.length > 0 && (
         <Section title="Materiales">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><Th cols={['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unit.', 'Total']} /></thead>
-            <tbody>
-              {materiales.map((m, i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                  <Td>{m.nombre}</Td><Td>{m.proveedor}</Td><Td>{m.formato}</Td>
-                  <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
-                  <Td right bold>{fmtM(m.cantidad * m.precio_unitario)}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {isSubprod ? (
+            materiales.map((sp, si) => {
+              const items = sp.items || []
+              if (items.length === 0) return null
+              const spTotal = items.reduce((a, m) => a + Number(m.cantidad) * Number(m.precio_unitario), 0)
+              return (
+                <div key={sp.id || si} style={{ marginBottom: materiales.length > 1 ? '8px' : '0' }}>
+                  {materiales.length > 1 && (
+                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#475569', padding: '3px 8px', background: '#f1f5f9', borderRadius: '3px', marginBottom: '3px' }}>
+                      {sp.nombre}
+                    </div>
+                  )}
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead><Th cols={['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unit.', 'Total']} /></thead>
+                    <tbody>
+                      {items.map((m, i) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
+                          <Td>{m.nombre}</Td><Td>{m.proveedor}</Td><Td>{m.formato}</Td>
+                          <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
+                          <Td right bold>{fmtM(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {materiales.length > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '2px 8px', fontSize: '10px', color: '#64748b', borderTop: '1px dashed #e2e8f0' }}>
+                      <span>Subtotal {sp.nombre}:</span>
+                      <strong>{fmtM(spTotal)}</strong>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><Th cols={['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unit.', 'Total']} /></thead>
+              <tbody>
+                {materiales.map((m, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
+                    <Td>{m.nombre}</Td><Td>{m.proveedor}</Td><Td>{m.formato}</Td>
+                    <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
+                    <Td right bold>{fmtM(m.cantidad * m.precio_unitario)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           <TotalRow label="Subtotal materiales" value={fmtM(totalMateriales)} />
         </Section>
       )}
@@ -156,7 +199,29 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
       {/* Embalaje y Envío */}
       {tieneEmbalaje && (
         <Section title="Embalaje y Envío">
-          {embalajePalletActivos.length > 0 && (
+          {isMultiPallets && embalajePallets.length > 1 ? (
+            embalajePallets.map((p, pi) => {
+              const pMats = (p.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
+              if (pMats.length === 0) return null
+              return (
+                <div key={p.id || pi} style={{ marginBottom: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>Pallet {pi + 1} — Fabricación</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
+                    <thead><Th cols={['Material', 'Unid.', 'Cant.', 'P. Unit.', 'Total']} /></thead>
+                    <tbody>
+                      {pMats.map((m, i) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
+                          <Td>{m.nombre}</Td><Td>{m.unidad}</Td>
+                          <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
+                          <Td right bold>{fmtM(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })
+          ) : embalajePalletActivos.length > 0 && (
             <>
               <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>Fabricación de pallet</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px' }}>

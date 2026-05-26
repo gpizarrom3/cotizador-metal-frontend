@@ -35,10 +35,16 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
   const costoUnitario      = totalUnidades > 0 ? totalFinal / totalUnidades : 0
   const costoPorLote       = cantidadLotes > 1 ? totalFinal / cantidadLotes : 0
 
-  const activeServicios       = Object.entries(servicios).filter(([, s]) => s.activo)
-  const embalajeMatActivos    = (embalaje.materiales      || []).filter(m => Number(m.cantidad) > 0)
-  const embalajePalletActivos = (embalaje.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
-  const tieneEmbalaje         = totalEmbalaje > 0
+  const activeServicios    = Object.entries(servicios).filter(([, s]) => s.activo)
+  const embalajeMatActivos = (embalaje.materiales || []).filter(m => Number(m.cantidad) > 0)
+  const isMultiPallets = Array.isArray(embalaje.pallets)
+  const embalajePallets = isMultiPallets ? embalaje.pallets : null
+  const embalajePalletActivos = isMultiPallets
+    ? embalaje.pallets.flatMap(p => (p.materialesPallet || []).filter(m => Number(m.cantidad) > 0))
+    : (embalaje.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
+  const tieneEmbalaje = totalEmbalaje > 0
+  const isSubprod = materiales.length > 0 && Array.isArray(materiales[0]?.items)
+  const flatMateriales = isSubprod ? materiales.flatMap(sp => sp.items || []) : materiales
 
   const rolesActivos = roles.filter(r => Number(r.horas) > 0 || Number(r.precio_hora) > 0)
 
@@ -88,29 +94,73 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
       </div>
 
       {/* Materiales */}
-      {materiales.length > 0 && (
+      {flatMateriales.length > 0 && (
         <Section title="1. Materiales" color="#1e3a5f">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#1e3a5f' }}>
-                {['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unitario', 'Total'].map((c, i) => (
-                  <th key={i} style={{ color: '#fff', fontSize: '10px', padding: '5px 8px', textAlign: i >= 3 ? 'right' : 'left' }}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {materiales.map((m, i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                  <Td>{m.nombre || '—'}</Td>
-                  <Td>{m.proveedor || '—'}</Td>
-                  <Td>{m.formato || '—'}</Td>
-                  <Td right>{m.cantidad}</Td>
-                  <Td right>{fmt(m.precio_unitario)}</Td>
-                  <Td right bold>{fmt(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
+          {isSubprod ? (
+            materiales.map((sp, si) => {
+              const items = sp.items || []
+              if (items.length === 0) return null
+              const spTotal = items.reduce((a, m) => a + Number(m.cantidad) * Number(m.precio_unitario), 0)
+              return (
+                <div key={sp.id || si} style={{ marginBottom: materiales.length > 1 ? '8px' : '0' }}>
+                  {materiales.length > 1 && (
+                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e3a5f', padding: '4px 8px', background: '#f1f5f9', borderLeft: '3px solid #1e3a5f', marginBottom: '3px' }}>
+                      {sp.nombre}
+                    </div>
+                  )}
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#1e3a5f' }}>
+                        {['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unitario', 'Total'].map((c, i) => (
+                          <th key={i} style={{ color: '#fff', fontSize: '10px', padding: '5px 8px', textAlign: i >= 3 ? 'right' : 'left' }}>{c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((m, i) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
+                          <Td>{m.nombre || '—'}</Td>
+                          <Td>{m.proveedor || '—'}</Td>
+                          <Td>{m.formato || '—'}</Td>
+                          <Td right>{m.cantidad}</Td>
+                          <Td right>{fmt(m.precio_unitario)}</Td>
+                          <Td right bold>{fmt(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {materiales.length > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '2px 8px', fontSize: '10px', color: '#64748b', borderTop: '1px dashed #e2e8f0' }}>
+                      <span>Subtotal {sp.nombre}:</span>
+                      <strong>{fmt(spTotal)}</strong>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#1e3a5f' }}>
+                  {['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unitario', 'Total'].map((c, i) => (
+                    <th key={i} style={{ color: '#fff', fontSize: '10px', padding: '5px 8px', textAlign: i >= 3 ? 'right' : 'left' }}>{c}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {materiales.map((m, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
+                    <Td>{m.nombre || '—'}</Td>
+                    <Td>{m.proveedor || '—'}</Td>
+                    <Td>{m.formato || '—'}</Td>
+                    <Td right>{m.cantidad}</Td>
+                    <Td right>{fmt(m.precio_unitario)}</Td>
+                    <Td right bold>{fmt(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           <SubtotalRow label="SUBTOTAL MATERIALES" value={fmt(totalMateriales)} />
         </Section>
       )}
@@ -175,7 +225,18 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
       {/* Embalaje */}
       {tieneEmbalaje && (
         <Section title="4. Embalaje y Envío" color="#1e3a5f">
-          {embalajePalletActivos.length > 0 && (
+          {isMultiPallets && embalajePallets.length > 1 ? (
+            embalajePallets.map((p, pi) => {
+              const pMats = (p.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
+              if (pMats.length === 0) return null
+              return (
+                <div key={p.id || pi} style={{ marginBottom: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>Pallet {pi + 1} — Fabricación</div>
+                  <EmbalajeTable items={pMats} />
+                </div>
+              )
+            })
+          ) : embalajePalletActivos.length > 0 && (
             <>
               <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>Fabricación de pallet</div>
               <EmbalajeTable items={embalajePalletActivos} />

@@ -8,8 +8,6 @@ import TabEmbalaje from '../components/cotizador/TabEmbalaje'
 import TabResumen from '../components/cotizador/TabResumen'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
-import TabFichaTecnica, { DEFAULT_FICHA_TECNICA } from '../components/cotizador/TabFichaTecnica'
-import FichaTecnicaPrintView from '../components/cotizador/FichaTecnicaPrintView'
 import { useAuth } from '../hooks/useAuth'
 import {
   guardarCotizacion, actualizarCotizacion, obtenerClientes,
@@ -27,7 +25,6 @@ const TABS = [
   { id: 'servicios', label: 'Servicios' },
   { id: 'bases',     label: '% Bases' },
   { id: 'embalaje',  label: 'Embalaje y Envío' },
-  { id: 'ficha',     label: 'Ficha Técnica' },
   { id: 'resumen',   label: 'Resumen' },
 ]
 
@@ -91,8 +88,8 @@ const DEFAULT_EMBALAJE_MATERIALES = [
 
 const DEFAULT_EMBALAJE = {
   activo: true,
-  palletId: '', cargaKg: '', largoCm: '', anchoCm: '', alturaCm: '',
-  materiales: DEFAULT_EMBALAJE_MATERIALES, materialesPallet: [],
+  pallets: [],
+  materiales: DEFAULT_EMBALAJE_MATERIALES,
   costoEnvio: '', ciudadOrigen: '', ciudadDestino: '', notas: '',
 }
 
@@ -108,52 +105,87 @@ const normCliente = (raw) => {
   return raw
 }
 
+// Migrate old flat materials array → sub-products format
+const migrarMateriales = (mats) => {
+  if (!mats || mats.length === 0) return []
+  if (Array.isArray(mats[0]?.items)) return mats  // already new format
+  return [{ id: Date.now() + Math.random(), nombre: 'MATERIALES', items: mats }]
+}
+
+// Migrate old single-pallet embalaje → pallets array format
+const migrarEmbalaje = (emb) => {
+  if (!emb) return { ...DEFAULT_EMBALAJE }
+  if (Array.isArray(emb.pallets)) {
+    return { ...DEFAULT_EMBALAJE, ...emb, materiales: emb.materiales ?? DEFAULT_EMBALAJE_MATERIALES }
+  }
+  const { palletId, cargaKg, largoCm, anchoCm, alturaCm, largo, ancho, alto_max, carga_max, materialesPallet, ...rest } = emb
+  const hasPallet = palletId || cargaKg || largoCm || anchoCm || alturaCm
+  return {
+    ...DEFAULT_EMBALAJE,
+    ...rest,
+    materiales: emb.materiales ?? DEFAULT_EMBALAJE_MATERIALES,
+    pallets: hasPallet ? [{
+      id: Date.now() + Math.random(),
+      palletId: palletId || '', cargaKg: cargaKg || '',
+      largoCm: largoCm || '', anchoCm: anchoCm || '', alturaCm: alturaCm || '',
+      largo: largo || '', ancho: ancho || '', alto_max: alto_max || '', carga_max: carga_max || '',
+      materialesPallet: materialesPallet || [],
+    }] : [],
+  }
+}
+
 export default function Cotizador() {
   const { user } = useAuth()
   const printRef  = useRef(null)
 
+  // Landing / version comparison state
+  const [cotizadorIniciado, setCotizadorIniciado] = useState(() => {
+    const d = getDraft()
+    return !!(d.cotizacionId || (d.materiales && d.materiales.length > 0) || (d.cliente && d.cliente.nombre))
+  })
+  const [versionGuardada, setVersionGuardada] = useState(() => {
+    try {
+      const v = localStorage.getItem('cotizador_original')
+      if (v) { localStorage.removeItem('cotizador_original'); return JSON.parse(v) }
+      return null
+    } catch { return null }
+  })
+  const [showVersionGuardada, setShowVersionGuardada] = useState(false)
+
   const [activeTab,      setActiveTab]      = useState('materiales')
   const [cliente,        setCliente]        = useState(() => normCliente(getDraft().cliente))
   const [estado,         setEstado]         = useState(() => getDraft().estado ?? 'Borrador')
-  const [materiales,     setMateriales]     = useState(() => getDraft().materiales ?? [])
+  const [materiales,     setMateriales]     = useState(() => migrarMateriales(getDraft().materiales ?? []))
   const [roles,          setRoles]          = useState(() => getDraft().roles          ?? makeDefaultRoles(getConfigDefaults()))
   const [servicios,      setServicios]      = useState(() => mergeServicios(getDraft().servicios, makeDefaultServicios(getConfigDefaults())))
   const [bases,          setBases]          = useState(() => getDraft().bases          ?? makeDefaultBases(getConfigDefaults()))
   const [cantidadLotes,  setCantidadLotes]  = useState(() => getDraft().cantidadLotes ?? 1)
   const [unidadesPorLote,setUnidadesPorLote]= useState(() => getDraft().unidadesPorLote ?? 1)
   const [config,         setConfig]         = useState(() => ({ ...DEFAULT_CONFIG, ...(getDraft().config ?? {}) }))
-  const [embalaje,       setEmbalaje]       = useState(() => {
-    const d = getDraft().embalaje
-    return d
-      ? { ...DEFAULT_EMBALAJE, ...d, materiales: d.materiales ?? DEFAULT_EMBALAJE_MATERIALES, materialesPallet: d.materialesPallet ?? [] }
-      : DEFAULT_EMBALAJE
-  })
+  const [embalaje,       setEmbalaje]       = useState(() => migrarEmbalaje(getDraft().embalaje))
   const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
   const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
-  const [fichaTecnica,   setFichaTecnica]   = useState(() => ({ ...DEFAULT_FICHA_TECNICA, ...(getDraft().fichaTecnica ?? {}) }))
 
-  const [clientes,       setClientes]       = useState([])
+  const [clientes, setClientes] = useState([])
 
   useEffect(() => {
     if (!user) return
     obtenerClientes(user.uid, user.email).then(setClientes).catch(() => {})
   }, [user])
 
-  const [saving,         setSaving]         = useState(false)
-  const [saveSuccess,    setSaveSuccess]    = useState(false)
-  const [saveError,      setSaveError]      = useState('')
-  const [exportando,     setExportando]     = useState(false)
-  const [showPrint,      setShowPrint]      = useState(false)
-  const [exportandoFicha,    setExportandoFicha]    = useState(false)
-  const [showFicha,          setShowFicha]          = useState(false)
-  const [exportandoFichaTec, setExportandoFichaTec] = useState(false)
-  const [showFichaTec,       setShowFichaTec]       = useState(false)
+  const [saving,      setSaving]      = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError,   setSaveError]   = useState('')
+  const [exportando,  setExportando]  = useState(false)
+  const [showPrint,   setShowPrint]   = useState(false)
+  const [exportandoFicha, setExportandoFicha] = useState(false)
+  const [showFicha,       setShowFicha]       = useState(false)
 
   // Plantillas
-  const [plantillas,          setPlantillas]          = useState([])
-  const [showPlantillas,      setShowPlantillas]      = useState(false)
-  const [showGuardarPlantilla,setShowGuardarPlantilla]= useState(false)
-  const [nombrePlantilla,     setNombrePlantilla]     = useState('')
+  const [plantillas,           setPlantillas]           = useState([])
+  const [showPlantillas,       setShowPlantillas]       = useState(false)
+  const [showGuardarPlantilla, setShowGuardarPlantilla] = useState(false)
+  const [nombrePlantilla,      setNombrePlantilla]      = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -166,20 +198,27 @@ export default function Cotizador() {
   useEffect(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       cliente, estado, materiales, roles, servicios, bases,
-      cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, fichaTecnica,
+      cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
     }))
-  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, fichaTecnica])
+  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId])
 
   const clearDraft = () => {
     const cfg = getConfigDefaults()
     localStorage.removeItem(DRAFT_KEY)
     setCliente({ ...DEFAULT_CLIENTE })
     setEstado('Borrador')
-    setMateriales([]);  setRoles(makeDefaultRoles(cfg)); setServicios(makeDefaultServicios(cfg))
-    setBases(makeDefaultBases(cfg)); setCantidadLotes(1); setUnidadesPorLote(1)
-    setConfig(DEFAULT_CONFIG); setEmbalaje(DEFAULT_EMBALAJE); setNumeroCot(''); setCotizacionId('')
-    setFichaTecnica({ ...DEFAULT_FICHA_TECNICA })
-    setSaveSuccess(false); setSaveError('')
+    setMateriales([])
+    setRoles(makeDefaultRoles(cfg))
+    setServicios(makeDefaultServicios(cfg))
+    setBases(makeDefaultBases(cfg))
+    setCantidadLotes(1)
+    setUnidadesPorLote(1)
+    setConfig(DEFAULT_CONFIG)
+    setEmbalaje({ ...DEFAULT_EMBALAJE })
+    setNumeroCot('')
+    setCotizacionId('')
+    setSaveSuccess(false)
+    setSaveError('')
   }
 
   // Plantillas handlers
@@ -200,10 +239,10 @@ export default function Cotizador() {
   }
 
   const handleCargarPlantilla = (p) => {
-    setMateriales(p.materiales || [])
-    setRoles(p.roles || DEFAULT_ROLES)
-    setServicios(p.servicios || DEFAULT_SERVICIOS)
-    setBases(p.bases || DEFAULT_BASES)
+    setMateriales(migrarMateriales(p.materiales || []))
+    setRoles(p.roles || makeDefaultRoles(getConfigDefaults()))
+    setServicios(p.servicios || makeDefaultServicios(getConfigDefaults()))
+    setBases(p.bases || makeDefaultBases(getConfigDefaults()))
     setConfig((c) => ({ ...c, ...(p.config || {}) }))
     setCantidadLotes(p.cantidadLotes || 1)
     setUnidadesPorLote(p.unidadesPorLote || 1)
@@ -220,21 +259,24 @@ export default function Cotizador() {
   }
 
   // Calculations
-  const totalMateriales = materiales.reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const flatMateriales = materiales.flatMap(sp => sp.items || [])
+  const totalMateriales = flatMateriales.reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
   const totalHH = roles.reduce((acc, r) => {
     const hh  = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
     const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
     return acc + hh + col
   }, 0)
   const totalServicios = Object.values(servicios).reduce((acc, s) => acc + (s.activo ? Number(s.precio) || 0 : 0), 0)
-  const totalEmbalaje = (embalaje.activo === false) ? 0 :
-    (embalaje.materiales     || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
-    (embalaje.materialesPallet || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
+  const totalEmbalaje = (embalaje.activo === false) ? 0 : (
+    (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
+    (embalaje.pallets || []).reduce((accP, p) =>
+      accP + (p.materialesPallet || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0), 0) +
     (Number(embalaje.costoEnvio) || 0)
-  const baseCalculo        = totalMateriales + totalHH + totalServicios + totalEmbalaje
-  const totalBases         = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
-  const costoSinDescuento  = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
-  const descuentoMonto     = config.tipoDescuento === 'porcentaje'
+  )
+  const baseCalculo       = totalMateriales + totalHH + totalServicios + totalEmbalaje
+  const totalBases        = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
+  const costoSinDescuento = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
+  const descuentoMonto    = config.tipoDescuento === 'porcentaje'
     ? costoSinDescuento * (Number(config.descuento) || 0) / 100
     : Number(config.descuento) || 0
   const costoTotal = costoSinDescuento - descuentoMonto
@@ -285,16 +327,6 @@ export default function Cotizador() {
     setExportando(false)
   }
 
-  const handleExportFichaTecnica = async () => {
-    setExportandoFichaTec(true)
-    setShowFichaTec(true)
-    await new Promise((r) => setTimeout(r, 600))
-    const filename = `ficha_tecnica_${fichaTecnica.nombreProducto || 'producto'}_${numeroCot || 'borrador'}.pdf`
-    await exportPDF('ficha-tecnica-print', filename)
-    setShowFichaTec(false)
-    setExportandoFichaTec(false)
-  }
-
   const handleExportFicha = async () => {
     setExportandoFicha(true)
     setShowFicha(true)
@@ -305,6 +337,63 @@ export default function Cotizador() {
     setExportandoFicha(false)
   }
 
+  // ── Landing screen ──────────────────────────────────────────────────────────
+  if (!cotizadorIniciado) {
+    const hasDraft = !!(getDraft().cotizacionId ||
+      (getDraft().materiales && getDraft().materiales.length > 0) ||
+      (getDraft().cliente && getDraft().cliente.nombre))
+
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[65vh] gap-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-600/20 border border-blue-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-2">Cotizador</h1>
+            <p className="text-slate-400 text-sm max-w-sm">
+              Crea cotizaciones profesionales con materiales, mano de obra, servicios y embalaje.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <button
+              onClick={() => { clearDraft(); setCotizadorIniciado(true) }}
+              className="btn-primary px-10 py-3.5 text-base font-semibold flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nueva Cotización
+            </button>
+
+            {hasDraft && (
+              <button
+                onClick={() => setCotizadorIniciado(true)}
+                className="btn-secondary px-8 py-3.5 text-base flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Continuar borrador
+              </button>
+            )}
+          </div>
+
+          {hasDraft && (
+            <p className="text-slate-600 text-xs">
+              Tienes un borrador guardado.
+              {getDraft().numeroCot && <span className="text-slate-500 ml-1">{getDraft().numeroCot}</span>}
+            </p>
+          )}
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // ── Full cotizador ──────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -317,6 +406,20 @@ export default function Cotizador() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
+
+          {/* Ver versión guardada */}
+          {versionGuardada && (
+            <button
+              onClick={() => setShowVersionGuardada(true)}
+              className="text-amber-400 hover:text-amber-300 text-xs border border-amber-500/30 hover:border-amber-500/60 px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Ver versión guardada
+            </button>
+          )}
+
           {/* Plantillas */}
           <div className="relative">
             <button
@@ -391,7 +494,7 @@ export default function Cotizador() {
             </div>
           )}
           <button
-            onClick={clearDraft}
+            onClick={() => { clearDraft(); setCotizadorIniciado(false) }}
             className="text-slate-500 hover:text-red-400 text-xs transition-colors border border-slate-700 hover:border-red-500/40 px-3 py-2 rounded-lg"
           >
             Limpiar borrador
@@ -418,16 +521,6 @@ export default function Cotizador() {
       {activeTab === 'servicios'  && <TabServicios servicios={servicios} setServicios={setServicios} />}
       {activeTab === 'bases'      && <TabBases bases={bases} setBases={setBases} totalMateriales={totalMateriales} totalHH={totalHH} />}
       {activeTab === 'embalaje'   && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} />}
-      {activeTab === 'ficha'      && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button onClick={handleExportFichaTecnica} className="btn-secondary text-sm" disabled={exportandoFichaTec}>
-              {exportandoFichaTec ? 'Generando...' : 'Descargar Ficha Técnica PDF'}
-            </button>
-          </div>
-          <TabFichaTecnica ficha={fichaTecnica} setFicha={setFichaTecnica} />
-        </div>
-      )}
       {activeTab === 'resumen'    && (
         <TabResumen
           cliente={cliente} setCliente={setCliente} clientes={clientes}
@@ -457,9 +550,32 @@ export default function Cotizador() {
           <FichaCostosPrintView empresa={getEmpresa()} cot={cotizacionData} />
         </div>
       )}
-      {showFichaTec && (
-        <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1 }}>
-          <FichaTecnicaPrintView empresa={getEmpresa()} ficha={fichaTecnica} numeroCot={numeroCot} />
+
+      {/* Modal: versión guardada */}
+      {showVersionGuardada && versionGuardada && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col">
+          <div className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-700 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-white font-semibold text-sm">
+                Versión guardada —{' '}
+                <span className="text-amber-400 font-mono">{versionGuardada.numero || 'BORRADOR'}</span>
+              </span>
+              <span className="text-slate-500 text-xs">(antes de editar)</span>
+            </div>
+            <button onClick={() => setShowVersionGuardada(false)} className="text-slate-400 hover:text-white transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-slate-200 p-6 flex justify-center">
+            <div className="w-full max-w-4xl">
+              <CotizacionPrintView empresa={versionGuardada.empresa || getEmpresa()} cot={versionGuardada} />
+            </div>
+          </div>
         </div>
       )}
     </DashboardLayout>

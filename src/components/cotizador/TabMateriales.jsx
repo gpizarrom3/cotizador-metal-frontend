@@ -9,6 +9,12 @@ const emptyMaterial = () => ({
   nombre: '', proveedor: '', formato: '', cantidad: 1, precio_unitario: 0,
 })
 
+export const emptySubproducto = (nombre = 'MATERIALES') => ({
+  id: Date.now() + Math.random(),
+  nombre,
+  items: [],
+})
+
 // ── Calculadora de peso ───────────────────────────────────────────────────────
 const MATERIALES_PESO = [
   { label: 'Acero A36',        densidad: 7850 },
@@ -42,7 +48,7 @@ const CAMPO_LABELS = {
 
 function calcPesoKg(geomId, dims, densidad) {
   const d = (k) => Number(dims[k]) || 0
-  const rho = densidad / 1e9 // kg/mm³
+  const rho = densidad / 1e9
   let vol = 0
   if (geomId === 'plancha')       vol = d('largo') * d('ancho') * d('espesor')
   if (geomId === 'barra_redonda') vol = Math.PI / 4 * d('diametro') ** 2 * d('largo')
@@ -74,11 +80,7 @@ function PesoCalculadora({ onAgregar }) {
 
   const handleAgregar = () => {
     if (pesoTotal <= 0) return
-    onAgregar({
-      nombre: `${mat.label} — ${geom.label}`,
-      formato: `${pesoTotal.toFixed(2)} kg`,
-      cantidad: Number(cantidad) || 1,
-    })
+    onAgregar({ nombre: `${mat.label} — ${geom.label}`, formato: `${pesoTotal.toFixed(2)} kg`, cantidad: Number(cantidad) || 1 })
     setDims({})
     setCantidad(1)
   }
@@ -115,42 +117,33 @@ function PesoCalculadora({ onAgregar }) {
               </select>
             </div>
           </div>
-
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {geom.campos.map(campo => (
               <div key={campo}>
                 <label className="label">{CAMPO_LABELS[campo] || campo}</label>
-                <input type="number" min="0" className="input-field text-sm"
-                  placeholder="0"
+                <input type="number" min="0" className="input-field text-sm" placeholder="0"
                   value={dims[campo] || ''}
                   onChange={e => setDims(d => ({ ...d, [campo]: e.target.value }))} />
               </div>
             ))}
             <div>
               <label className="label">Cantidad (piezas)</label>
-              <input type="number" min="1" className="input-field text-sm"
-                value={cantidad}
-                onChange={e => setCantidad(e.target.value)} />
+              <input type="number" min="1" className="input-field text-sm" value={cantidad} onChange={e => setCantidad(e.target.value)} />
             </div>
           </div>
-
           {pesoUnit > 0 && (
             <div className="flex items-center justify-between p-3 bg-emerald-900/20 border border-emerald-500/20 rounded-lg">
               <div>
                 <p className="text-emerald-300 text-sm font-semibold">
                   Peso unitario: <span className="text-white">{pesoUnit.toFixed(3)} kg</span>
-                  {Number(cantidad) > 1 && <span className="text-slate-400"> × {cantidad} piezas = <span className="text-white">{pesoTotal.toFixed(3)} kg total</span></span>}
+                  {Number(cantidad) > 1 && <span className="text-slate-400"> × {cantidad} = <span className="text-white">{pesoTotal.toFixed(3)} kg total</span></span>}
                 </p>
                 <p className="text-slate-500 text-xs mt-0.5">{mat.label} · {mat.densidad} kg/m³</p>
               </div>
-              <button onClick={handleAgregar}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <button onClick={handleAgregar} className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                 + Agregar
               </button>
             </div>
-          )}
-          {pesoUnit <= 0 && geom.campos.every(c => dims[c]) && (
-            <p className="text-slate-500 text-xs">Ingresa todas las dimensiones para calcular el peso.</p>
           )}
         </div>
       )}
@@ -158,6 +151,81 @@ function PesoCalculadora({ onAgregar }) {
   )
 }
 
+// ── Tarjeta de sub-producto ───────────────────────────────────────────────────
+function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem }) {
+  const total = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-6 bg-blue-500 rounded-full flex-shrink-0" />
+        <input
+          type="text"
+          className="input-field py-1.5 font-semibold flex-1"
+          placeholder="Nombre del grupo (ej: Material Base, Pintura, EPP...)"
+          value={sp.nombre}
+          onChange={e => onUpdateNombre(e.target.value)}
+        />
+        {!isOnly && (
+          <button onClick={onRemove} className="text-slate-500 hover:text-red-400 text-xs border border-slate-700 hover:border-red-500/40 px-2 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+            Eliminar grupo
+          </button>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="table-header">
+              <th className="text-left px-3 py-3 rounded-l-lg">Material</th>
+              <th className="text-left px-3 py-3">Proveedor</th>
+              <th className="text-left px-3 py-3">Formato</th>
+              <th className="text-right px-3 py-3">Cant.</th>
+              <th className="text-right px-3 py-3">P. Unit.</th>
+              <th className="text-right px-3 py-3">Total</th>
+              <th className="px-3 py-3 rounded-r-lg w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {(sp.items || []).length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-8 text-slate-500 text-sm">
+                  Sin materiales. Agrega una fila o usa las herramientas de arriba.
+                </td>
+              </tr>
+            ) : (
+              (sp.items || []).map((m) => (
+                <tr key={m.id} className="border-b border-slate-700">
+                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-36" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} /></td>
+                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-28" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
+                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-24" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
+                  <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-20" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
+                  <td className="px-3 py-2"><input type="number" min="0" className="input-field py-1.5 text-sm text-right w-28" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} /></td>
+                  <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
+                  <td className="px-3 py-2">
+                    <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-600">
+              <td colSpan={5} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
+              <td className="px-3 py-2 text-right text-blue-400 font-semibold">{fmt(total)}</td>
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <button onClick={onAddItem} className="btn-secondary text-sm py-1.5">+ Agregar fila</button>
+    </div>
+  )
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function TabMateriales({ materiales, setMateriales }) {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm]   = useState('')
@@ -166,18 +234,56 @@ export default function TabMateriales({ materiales, setMateriales }) {
   const [searchError, setSearchError] = useState('')
   const [catalogo, setCatalogo]       = useState([])
   const [catSearch, setCatSearch]     = useState('')
+  const [targetSpId, setTargetSpId]   = useState(() => materiales[0]?.id ?? null)
 
   useEffect(() => {
     if (!user) return
     obtenerCatalogo(user.uid, user.email).then(setCatalogo).catch(() => {})
   }, [user])
 
-  const addRow    = ()             => setMateriales([...materiales, emptyMaterial()])
-  const removeRow = (id)           => setMateriales(materiales.filter((m) => m.id !== id))
-  const updateRow = (id, field, v) => setMateriales(materiales.map((m) => (m.id === id ? { ...m, [field]: v } : m)))
+  useEffect(() => {
+    if (!targetSpId && materiales.length > 0) setTargetSpId(materiales[0].id)
+  }, [materiales, targetSpId])
 
-  const handleAddFromWeight = ({ nombre, formato, cantidad }) => {
-    setMateriales([...materiales, { ...emptyMaterial(), nombre, formato, cantidad }])
+  // ── Sub-producto ops ──────────────────────────────────────────────────────
+  const addSubproducto = () => {
+    const sp = emptySubproducto('NUEVO GRUPO')
+    setMateriales(prev => [...prev, sp])
+    setTargetSpId(sp.id)
+  }
+
+  const removeSubproducto = (id) => {
+    setMateriales(prev => {
+      const next = prev.filter(sp => sp.id !== id)
+      return next.length === 0 ? [emptySubproducto('MATERIALES')] : next
+    })
+    setTargetSpId(prev => {
+      if (prev !== id) return prev
+      const remaining = materiales.filter(sp => sp.id !== id)
+      return remaining[0]?.id ?? null
+    })
+  }
+
+  const updateSpNombre = (id, nombre) =>
+    setMateriales(prev => prev.map(sp => sp.id === id ? { ...sp, nombre } : sp))
+
+  // ── Item ops ──────────────────────────────────────────────────────────────
+  const addItem = (spId) =>
+    setMateriales(prev => prev.map(sp => sp.id === spId ? { ...sp, items: [...(sp.items || []), emptyMaterial()] } : sp))
+
+  const removeItem = (spId, itemId) =>
+    setMateriales(prev => prev.map(sp => sp.id === spId ? { ...sp, items: sp.items.filter(m => m.id !== itemId) } : sp))
+
+  const updateItem = (spId, itemId, field, value) =>
+    setMateriales(prev => prev.map(sp => sp.id === spId ? { ...sp, items: sp.items.map(m => m.id === itemId ? { ...m, [field]: value } : m) } : sp))
+
+  // ── Add from tools (calculadora / IA / catálogo) ──────────────────────────
+  const addFromTool = (item) => {
+    const spId = targetSpId || materiales[0]?.id
+    if (!spId) return
+    setMateriales(prev => prev.map(sp =>
+      sp.id === spId ? { ...sp, items: [...(sp.items || []), { ...emptyMaterial(), ...item }] } : sp
+    ))
   }
 
   const searchWithAI = async () => {
@@ -192,15 +298,13 @@ export default function TabMateriales({ materiales, setMateriales }) {
     finally { setSearching(false) }
   }
 
-  const addFromResult = (r) => setMateriales([...materiales, { id: Date.now() + Math.random(), nombre: r.nombre, proveedor: r.proveedor, formato: r.formato, cantidad: 1, precio_unitario: r.precio_unitario }])
-
-  const total = materiales.reduce((acc, m) => acc + (m.cantidad * m.precio_unitario || 0), 0)
+  const totalGeneral = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
 
   return (
     <div className="space-y-6">
 
       {/* Calculadora de peso */}
-      <PesoCalculadora onAgregar={handleAddFromWeight} />
+      <PesoCalculadora onAgregar={addFromTool} />
 
       {/* Catálogo guardado */}
       {catalogo.length > 0 && (
@@ -213,22 +317,13 @@ export default function TabMateriales({ materiales, setMateriales }) {
             </div>
             <h3 className="text-sm font-semibold text-violet-400">Desde catálogo</h3>
           </div>
-          <input
-            type="text"
-            className="input-field mb-3"
-            placeholder="Filtrar catálogo..."
-            value={catSearch}
-            onChange={(e) => setCatSearch(e.target.value)}
-          />
+          <input type="text" className="input-field mb-3" placeholder="Filtrar catálogo..." value={catSearch} onChange={e => setCatSearch(e.target.value)} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
             {catalogo
-              .filter((i) => i.nombre?.toLowerCase().includes(catSearch.toLowerCase()) || i.proveedor?.toLowerCase().includes(catSearch.toLowerCase()))
-              .map((i) => (
-                <button
-                  key={i.id}
-                  onClick={() => setMateriales([...materiales, { id: Date.now() + Math.random(), nombre: i.nombre, proveedor: i.proveedor || '', formato: i.formato || '', cantidad: 1, precio_unitario: i.precio_unitario || 0 }])}
-                  className="text-left bg-slate-950 border border-slate-600 hover:border-violet-500/50 rounded-lg p-3 transition-colors"
-                >
+              .filter(i => i.nombre?.toLowerCase().includes(catSearch.toLowerCase()) || i.proveedor?.toLowerCase().includes(catSearch.toLowerCase()))
+              .map(i => (
+                <button key={i.id} onClick={() => addFromTool({ nombre: i.nombre, proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || 0 })}
+                  className="text-left bg-slate-950 border border-slate-600 hover:border-violet-500/50 rounded-lg p-3 transition-colors">
                   <p className="text-white font-medium text-sm leading-tight">{i.nombre}</p>
                   {i.proveedor && <p className="text-slate-400 text-xs mt-0.5">{i.proveedor}</p>}
                   <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(i.precio_unitario)}{i.unidad ? ` / ${i.unidad}` : ''}</p>
@@ -238,7 +333,7 @@ export default function TabMateriales({ materiales, setMateriales }) {
         </div>
       )}
 
-      {/* AI Search */}
+      {/* Búsqueda IA */}
       <div className="card border-blue-500/30 bg-slate-800">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
@@ -249,11 +344,8 @@ export default function TabMateriales({ materiales, setMateriales }) {
           <h3 className="text-sm font-semibold text-blue-400">Buscar material con IA (Claude)</h3>
         </div>
         <div className="flex gap-2">
-          <input type="text" className="input-field flex-1"
-            placeholder="Ej: acero A36, tubo cuadrado 40x40, plancha inoxidable 304..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && searchWithAI()} />
+          <input type="text" className="input-field flex-1" placeholder="Ej: acero A36, tubo cuadrado 40x40..."
+            value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchWithAI()} />
           <button onClick={searchWithAI} className="btn-primary px-5 whitespace-nowrap" disabled={searching}>
             {searching ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Buscando...</span> : 'Buscar'}
           </button>
@@ -268,7 +360,8 @@ export default function TabMateriales({ materiales, setMateriales }) {
                 <p className="text-slate-500 text-xs">Formato: {r.formato}</p>
                 <div className="flex items-center justify-between mt-2.5">
                   <span className="text-blue-400 font-semibold text-sm">{fmt(r.precio_unitario)}</span>
-                  <button onClick={() => addFromResult(r)} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded transition-colors">+ Agregar</button>
+                  <button onClick={() => addFromTool({ nombre: r.nombre, proveedor: r.proveedor, formato: r.formato, precio_unitario: r.precio_unitario })}
+                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded transition-colors">+ Agregar</button>
                 </div>
               </div>
             ))}
@@ -276,59 +369,50 @@ export default function TabMateriales({ materiales, setMateriales }) {
         )}
       </div>
 
-      {/* Tabla de materiales */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Lista de materiales</h2>
-          <button onClick={addRow} className="btn-secondary text-sm py-2">+ Agregar fila</button>
+      {/* Selector de grupo destino (solo si hay múltiples sub-productos) */}
+      {materiales.length > 1 && (
+        <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5">
+          <span className="text-slate-400 text-sm whitespace-nowrap">Agregar herramientas al grupo:</span>
+          <select className="input-field py-1.5 flex-1 max-w-xs text-sm" value={targetSpId || ''} onChange={e => setTargetSpId(e.target.value)}>
+            {materiales.map(sp => (
+              <option key={sp.id} value={sp.id}>{sp.nombre || 'Sin nombre'}</option>
+            ))}
+          </select>
         </div>
+      )}
 
-        {materiales.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
-            <p className="text-sm">Sin materiales. Agrega uno manualmente, usa la calculadora de peso o el buscador IA.</p>
+      {/* Sub-productos */}
+      {materiales.map(sp => (
+        <SubproductoCard
+          key={sp.id}
+          sp={sp}
+          isOnly={materiales.length === 1}
+          onUpdateNombre={nombre => updateSpNombre(sp.id, nombre)}
+          onRemove={() => removeSubproducto(sp.id)}
+          onAddItem={() => addItem(sp.id)}
+          onRemoveItem={itemId => removeItem(sp.id, itemId)}
+          onUpdateItem={(itemId, field, value) => updateItem(sp.id, itemId, field, value)}
+        />
+      ))}
+
+      {/* Agregar sub-producto */}
+      <button onClick={addSubproducto}
+        className="w-full border-2 border-dashed border-slate-700 hover:border-blue-500/50 text-slate-500 hover:text-blue-400 rounded-xl py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        Agregar Sub-Producto (Material Base, Pintura, EPP, etc.)
+      </button>
+
+      {/* Total general (solo si hay múltiples sub-productos) */}
+      {materiales.length > 1 && (
+        <div className="flex justify-end">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg px-5 py-3">
+            <span className="text-slate-400 text-sm mr-3">Total materiales:</span>
+            <span className="text-blue-400 font-bold text-lg">{fmt(totalGeneral)}</span>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="table-header">
-                  <th className="text-left px-3 py-3 rounded-l-lg">Material</th>
-                  <th className="text-left px-3 py-3">Proveedor</th>
-                  <th className="text-left px-3 py-3">Formato de venta</th>
-                  <th className="text-right px-3 py-3">Cantidad</th>
-                  <th className="text-right px-3 py-3">Precio unit.</th>
-                  <th className="text-right px-3 py-3">Precio total</th>
-                  <th className="px-3 py-3 rounded-r-lg w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {materiales.map((m) => (
-                  <tr key={m.id} className="border-b border-slate-700">
-                    <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-36" placeholder="Nombre del material" value={m.nombre} onChange={(e) => updateRow(m.id, 'nombre', e.target.value)} /></td>
-                    <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-28" placeholder="Proveedor" value={m.proveedor} onChange={(e) => updateRow(m.id, 'proveedor', e.target.value)} /></td>
-                    <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-24" placeholder="Ej: Kg, Barra 6m" value={m.formato} onChange={(e) => updateRow(m.id, 'formato', e.target.value)} /></td>
-                    <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-20" value={m.cantidad} onChange={(e) => updateRow(m.id, 'cantidad', Number(e.target.value))} /></td>
-                    <td className="px-3 py-2"><input type="number" min="0" className="input-field py-1.5 text-sm text-right w-28" placeholder="0" value={m.precio_unitario || ''} onChange={(e) => updateRow(m.id, 'precio_unitario', Number(e.target.value))} /></td>
-                    <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
-                    <td className="px-3 py-2">
-                      <button onClick={() => removeRow(m.id)} className="text-slate-500 hover:text-red-400 transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-slate-600">
-                  <td colSpan={5} className="px-3 py-3 text-right text-slate-400 font-medium">Total materiales:</td>
-                  <td className="px-3 py-3 text-right text-blue-400 font-bold text-base">{fmt(total)}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

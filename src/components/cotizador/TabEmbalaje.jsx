@@ -17,7 +17,6 @@ const CIUDADES_CHILE = [
   'Coyhaique', 'Punta Arenas',
 ]
 
-// Distancias aproximadas por carretera desde Santiago (km)
 const KM_DESDE_STG = {
   'Arica': 2050, 'Iquique': 1850, 'Antofagasta': 1370, 'Calama': 1530,
   'Copiapó': 810, 'La Serena': 470, 'Coquimbo': 480,
@@ -40,7 +39,6 @@ const RECOMENDACIONES = [
   { titulo: 'Documentación', detalle: 'Packing list en sobre plástico pegado en cara exterior. Incluir n° cotización/guía de despacho.' },
 ]
 
-// ── Recomendación de pallet ───────────────────────────────────────────────────
 function recomendarPallet(largoCm, anchoCm, pesoKg, altoCm) {
   const L = Number(largoCm) || 0
   const A = Number(anchoCm) || 0
@@ -59,7 +57,6 @@ function recomendarPallet(largoCm, anchoCm, pesoKg, altoCm) {
   return { palletId: 'custom', razon: 'Dimensiones o peso superan los estándares disponibles — se recomienda pallet a medida' }
 }
 
-// ── Madera para fabricar el pallet (según dimensiones del pallet en mm) ───────
 function calcMaderaPallet(palletId, customLargoMm, customAnchoMm) {
   let largoMm, anchoMm
   if (palletId === 'custom') {
@@ -73,48 +70,24 @@ function calcMaderaPallet(palletId, customLargoMm, customAnchoMm) {
   }
   if (!largoMm || !anchoMm) return []
 
-  // Tablones de cubierta: 22×145mm corriendo a lo ancho, separados ~140mm a lo largo
   const nTableros = Math.ceil(largoMm / 140)
   const piezasPorTabla = Math.max(1, Math.floor(2400 / anchoMm))
   const tablasNecesarias = Math.ceil(nTableros / piezasPorTabla)
 
-  // Largueros: 3 cuartones 75×100mm del largo completo del pallet
   const piezasPorCuarton = Math.max(1, Math.floor(2400 / largoMm))
   const cuartonesNecesarios = Math.ceil(3 / piezasPorCuarton)
 
   return [
-    {
-      id: 'pw1',
-      nombre: 'Tabla pino sin cepillar 22×145mm × 2.4m',
-      unidad: 'unid.',
-      cantidad: Math.max(1, tablasNecesarias),
-      precio_unitario: 3800,
-      nota: `${nTableros} tablones de ${anchoMm} mm (cubierta superior/inferior)`,
-    },
-    {
-      id: 'pw2',
-      nombre: 'Cuartón pino 75×100mm × 2.4m',
-      unidad: 'unid.',
-      cantidad: Math.max(1, cuartonesNecesarios),
-      precio_unitario: 6500,
-      nota: `3 largueros de ${largoMm} mm`,
-    },
-    {
-      id: 'pw3',
-      nombre: 'Clavos construcción 3" (75mm)',
-      unidad: 'kg',
-      cantidad: 0.3,
-      precio_unitario: 2800,
-      nota: 'Fijación tablones',
-    },
+    { id: 'pw1', nombre: 'Tabla pino sin cepillar 22×145mm × 2.4m', unidad: 'unid.', cantidad: Math.max(1, tablasNecesarias), precio_unitario: 3800, nota: `${nTableros} tablones de ${anchoMm} mm` },
+    { id: 'pw2', nombre: 'Cuartón pino 75×100mm × 2.4m',             unidad: 'unid.', cantidad: Math.max(1, cuartonesNecesarios), precio_unitario: 6500, nota: `3 largueros de ${largoMm} mm` },
+    { id: 'pw3', nombre: 'Clavos construcción 3" (75mm)',              unidad: 'kg',    cantidad: 0.3, precio_unitario: 2800, nota: 'Fijación tablones' },
   ]
 }
 
-// ── Cantidades automáticas de materiales de embalaje ─────────────────────────
 function calcCantidadesEmbalaje(palletId, palletLargoMm, palletAnchoMm, altoCm, pesoKg) {
   let Lm, Am
   if (palletId === 'custom') {
-    Lm = (Number(palletLargoMm) || 0) / 1000   // mm → metros
+    Lm = (Number(palletLargoMm) || 0) / 1000
     Am = (Number(palletAnchoMm) || 0) / 1000
   } else {
     const p = PALLETS_STD.find((p) => p.id === palletId)
@@ -127,12 +100,8 @@ function calcCantidadesEmbalaje(palletId, palletLargoMm, palletAnchoMm, altoCm, 
   if (!Lm || !Am || !Hm) return null
 
   const perimetro = 2 * (Lm + Am)
-
-  // Stretch film 500mm×300m: 3 capas, 50% solape → paso efectivo 0.25 m
   const vueltas = Math.ceil(Hm / 0.25) * 3 + 2
   const rollosFilm = Math.max(1, Math.ceil((vueltas * perimetro) / 300))
-
-  // Zuncho: >500 kg → metálico; 2 horizontales + 2 diagonales
   const metrosZuncho = perimetro * 2 + (perimetro + Hm * 2) * 2
   const usaMetal = W > 500
   const rollosZunchoPlastico = usaMetal ? 0 : Math.max(1, Math.ceil(metrosZuncho / 200))
@@ -141,7 +110,6 @@ function calcCantidadesEmbalaje(palletId, palletLargoMm, palletAnchoMm, altoCm, 
   return { rollosFilm, rollosZunchoPlastico, rollosZunchoMetal, cantoneras: 1, usaMetal }
 }
 
-// ── Estimación de precio de envío (tarifas referenciales mayo 2026) ───────────
 function calcPrecioEnvio(origen, destino, pesoRealKg, largoCm, anchoCm, altoCm) {
   if (!origen || !destino || origen === destino) return null
   const kmO = KM_DESDE_STG[origen]
@@ -149,17 +117,14 @@ function calcPrecioEnvio(origen, destino, pesoRealKg, largoCm, anchoCm, altoCm) 
   if (kmO === undefined || kmD === undefined) return null
 
   const distKm = Math.abs(kmO - kmD)
-
-  // Peso volumétrico terrestre Chile: L×A×H (cm) / 6000
   const L = Number(largoCm) || 0
   const A = Number(anchoCm) || 0
   const H = Number(altoCm) || 0
-  const pesoVol      = L && A && H ? Math.ceil((L * A * H) / 6000) : 0
-  const pesoReal     = Number(pesoRealKg) || 0
+  const pesoVol  = L && A && H ? Math.ceil((L * A * H) / 6000) : 0
+  const pesoReal = Number(pesoRealKg) || 0
   const pesoFacturado = Math.max(pesoReal, pesoVol)
   if (!pesoFacturado) return null
 
-  // Tarifas referenciales por tramo (Pullman Cargo / Starken, carga general, servicio normal)
   let precioPorKg, minimo, zona
   if      (distKm <= 100)  { precioPorKg = 420;  minimo = 9000;   zona = 'Corta distancia' }
   else if (distKm <= 300)  { precioPorKg = 600;  minimo = 14000;  zona = 'Media distancia' }
@@ -174,48 +139,43 @@ function calcPrecioEnvio(origen, destino, pesoRealKg, largoCm, anchoCm, altoCm) 
   return { pesoReal, pesoVol, pesoFacturado, distKm, zona, precioPorKg, minimo, estimado, usaVolumetrico: pesoVol > pesoReal }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-export default function TabEmbalaje({ embalaje, setEmbalaje }) {
+export const newPallet = () => ({
+  id: Date.now() + Math.random(),
+  palletId: '', cargaKg: '', largoCm: '', anchoCm: '', alturaCm: '',
+  largo: '', ancho: '', alto_max: '', carga_max: '',
+  materialesPallet: [],
+})
+
+// ── PalletCard ────────────────────────────────────────────────────────────────
+function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
   const {
-    activo = true,
     palletId = '', cargaKg = '', largoCm = '', anchoCm = '', alturaCm = '',
-    materiales = [], materialesPallet = [],
-    costoEnvio = '', ciudadOrigen = '', ciudadDestino = '',
-    notas = '',
-  } = embalaje
+    materialesPallet = [],
+  } = pallet
 
-  const set = (field) => (v) => setEmbalaje((e) => ({ ...e, [field]: v }))
+  const set = (field) => (v) => onChange({ ...pallet, [field]: v })
 
-  const updateMaterial    = (id, f, v) => setEmbalaje((e) => ({ ...e, materiales:       e.materiales.map((m)       => (m.id === id ? { ...m, [f]: v } : m)) }))
-  const updateMatPallet   = (id, f, v) => setEmbalaje((e) => ({ ...e, materialesPallet: (e.materialesPallet || []).map((m) => (m.id === id ? { ...m, [f]: v } : m)) }))
-  const addMaterial       = ()         => setEmbalaje((e) => ({ ...e, materiales: [...e.materiales, { id: Date.now(), nombre: '', unidad: 'unid.', cantidad: 1, precio_unitario: 0 }] }))
-  const removeMaterial    = (id)       => setEmbalaje((e) => ({ ...e, materiales: e.materiales.filter((m) => m.id !== id) }))
+  const handlePalletSelect = (pid) => {
+    onChange({ ...pallet, palletId: pid, materialesPallet: calcMaderaPallet(pid, pallet.largo, pallet.ancho) })
+  }
 
-  // Recomendación automática de pallet
-  const recomendacion = useMemo(() => recomendarPallet(largoCm, anchoCm, cargaKg, alturaCm), [largoCm, anchoCm, cargaKg, alturaCm])
+  const handleCustomDim = (field, v) => {
+    const updated = { ...pallet, [field]: v }
+    if (pallet.palletId === 'custom') {
+      updated.materialesPallet = calcMaderaPallet('custom', updated.largo, updated.ancho)
+    }
+    onChange(updated)
+  }
 
-  // Recalcular madera cuando cambia el pallet seleccionado o dimensiones custom
-  useEffect(() => {
-    if (!palletId) return
-    setEmbalaje((e) => ({ ...e, materialesPallet: calcMaderaPallet(palletId, e.largo, e.ancho) }))
-  }, [palletId, embalaje.largo, embalaje.ancho]) // eslint-disable-line react-hooks/exhaustive-deps
+  const updateMatPallet = (id, f, v) => onChange({
+    ...pallet,
+    materialesPallet: materialesPallet.map((m) => (m.id === id ? { ...m, [f]: v } : m)),
+  })
 
-  // Recalcular cantidades de materiales de embalaje
-  useEffect(() => {
-    if (!palletId) return
-    const auto = calcCantidadesEmbalaje(palletId, embalaje.largo, embalaje.ancho, alturaCm, cargaKg)
-    if (!auto) return
-    setEmbalaje((e) => ({
-      ...e,
-      materiales: e.materiales.map((m) => {
-        if (m.id === 3) return { ...m, cantidad: auto.rollosFilm }
-        if (m.id === 4) return { ...m, cantidad: auto.rollosZunchoPlastico }
-        if (m.id === 5) return { ...m, cantidad: auto.cantoneras }
-        if (m.id === 6) return { ...m, cantidad: auto.rollosZunchoMetal }
-        return m
-      }),
-    }))
-  }, [palletId, alturaCm, cargaKg, embalaje.largo, embalaje.ancho]) // eslint-disable-line react-hooks/exhaustive-deps
+  const recomendacion = useMemo(
+    () => recomendarPallet(largoCm, anchoCm, cargaKg, alturaCm),
+    [largoCm, anchoCm, cargaKg, alturaCm],
+  )
 
   const palletSel = PALLETS_STD.find((p) => p.id === palletId)
 
@@ -235,27 +195,254 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
     return a
   }, [palletId, cargaKg, alturaCm, largoCm, anchoCm, palletSel])
 
-  // Peso volumétrico terrestre (÷6000, estándar cargo terrestre Chile)
   const volumenCm3 = largoCm && anchoCm && alturaCm
-    ? Number(largoCm) * Number(anchoCm) * Number(alturaCm)
-    : 0
+    ? Number(largoCm) * Number(anchoCm) * Number(alturaCm) : 0
   const pesoVolTerrestre = volumenCm3 ? Math.ceil(volumenCm3 / 6000) : 0
+  const totalPallet = materialesPallet.reduce((a, m) => a + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
 
-  // Estimación de envío
-  const envioEstimado = useMemo(
-    () => calcPrecioEnvio(ciudadOrigen, ciudadDestino, cargaKg, largoCm, anchoCm, alturaCm),
-    [ciudadOrigen, ciudadDestino, cargaKg, largoCm, anchoCm, alturaCm],
+  return (
+    <div className="border border-slate-700 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60 border-b border-slate-700">
+        <p className="text-white font-semibold text-sm">Pallet {index + 1}</p>
+        {showRemove && (
+          <button onClick={onRemove} className="text-slate-500 hover:text-red-400 text-xs border border-slate-700 hover:border-red-500/40 px-2.5 py-1 rounded-lg transition-colors">
+            × Eliminar
+          </button>
+        )}
+      </div>
+
+      <div className="p-4 space-y-5">
+        {/* Datos de la carga */}
+        <div>
+          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Datos de la carga</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="label">Peso (kg)</label>
+              <input type="number" min="0" className="input-field" placeholder="Ej: 350"
+                value={cargaKg} onChange={(e) => set('cargaKg')(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Largo (cm)</label>
+              <input type="number" min="0" className="input-field" placeholder="Ej: 100"
+                value={largoCm} onChange={(e) => set('largoCm')(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Ancho (cm)</label>
+              <input type="number" min="0" className="input-field" placeholder="Ej: 80"
+                value={anchoCm} onChange={(e) => set('anchoCm')(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Alto total (cm)</label>
+              <input type="number" min="0" className="input-field" placeholder="Ej: 120"
+                value={alturaCm} onChange={(e) => set('alturaCm')(e.target.value)} />
+            </div>
+          </div>
+          {volumenCm3 > 0 && (
+            <p className="text-slate-500 text-xs mt-2">
+              Volumen: <span className="text-slate-300">{(volumenCm3 / 1000000).toFixed(3)} m³</span>
+              {' · '}Peso vol. terrestre: <span className="text-slate-300">{pesoVolTerrestre} kg</span>
+              {cargaKg && (
+                <span className="text-amber-400">
+                  {' · '}Factura por {Number(cargaKg) >= pesoVolTerrestre ? 'peso real' : 'peso vol.'}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* Tipo de pallet */}
+        <div>
+          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Tipo de pallet</p>
+
+          {recomendacion && (
+            <div className="mb-3 flex items-center gap-3 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+              <span className="text-blue-300 text-xl flex-shrink-0">💡</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-blue-300 text-sm font-medium">
+                  Recomendado: {PALLETS_STD.find((p) => p.id === recomendacion.palletId)?.nombre}
+                </p>
+                <p className="text-blue-400/70 text-xs mt-0.5">{recomendacion.razon}</p>
+              </div>
+              {recomendacion.palletId !== palletId ? (
+                <button
+                  onClick={() => handlePalletSelect(recomendacion.palletId)}
+                  className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  Aplicar
+                </button>
+              ) : (
+                <span className="flex-shrink-0 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-1">Aplicado</span>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {PALLETS_STD.map((p) => {
+              const isSelected = palletId === p.id
+              const isRec = recomendacion?.palletId === p.id
+              return (
+                <button key={p.id} onClick={() => handlePalletSelect(p.id)}
+                  className={`text-left p-3 rounded-xl border transition-all ${isSelected ? 'border-blue-500 bg-blue-600/10' : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className={`font-semibold text-xs ${isSelected ? 'text-blue-400' : 'text-slate-200'}`}>{p.nombre}</p>
+                        {isRec && <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded px-1 py-0.5">Rec.</span>}
+                      </div>
+                      {p.id !== 'custom' ? (
+                        <p className="text-slate-400 text-xs mt-0.5">{p.largo}×{p.ancho} mm · máx {p.carga_max} kg</p>
+                      ) : (
+                        <p className="text-slate-400 text-xs mt-0.5">Ingresar dimensiones propias</p>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {palletId === 'custom' && (
+            <div className="mt-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+              <p className="text-slate-400 text-xs mb-2">Dimensiones del pallet (mm)</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { field: 'largo',     label: 'Largo (mm)' },
+                  { field: 'ancho',     label: 'Ancho (mm)' },
+                  { field: 'alto_max',  label: 'Alto máx (mm)' },
+                  { field: 'carga_max', label: 'Carga máx (kg)' },
+                ].map(({ field, label }) => (
+                  <div key={field}>
+                    <label className="label">{label}</label>
+                    <input type="number" min="0" className="input-field text-sm"
+                      value={pallet[field] || ''}
+                      onChange={(e) => handleCustomDim(field, e.target.value)} />
+                  </div>
+                ))}
+              </div>
+              {pallet.largo && pallet.ancho && (
+                <p className="text-emerald-400 text-xs mt-2">✓ Madera recalculada para pallet {pallet.largo}×{pallet.ancho} mm</p>
+              )}
+            </div>
+          )}
+
+          {alertas.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              {alertas.map((a, i) => (
+                <div key={i} className="bg-amber-900/30 border border-amber-500/40 text-amber-400 text-sm rounded-lg px-4 py-2">{a}</div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Fabricación de pallet */}
+        {palletId && materialesPallet.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Fabricación de pallet</p>
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded px-2 py-0.5 flex-shrink-0">
+                Subtotal: {fmt(totalPallet)}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="table-header">
+                    <th className="text-left px-3 py-2 rounded-l-lg">Material</th>
+                    <th className="text-center px-3 py-2 w-20">Unid.</th>
+                    <th className="text-center px-3 py-2 w-20">Cant.</th>
+                    <th className="text-right px-3 py-2 w-32">P. Unit.</th>
+                    <th className="text-right px-3 py-2 rounded-r-lg w-28">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {materialesPallet.map((m) => (
+                    <tr key={m.id} className="border-b border-slate-700">
+                      <td className="px-3 py-2">
+                        <input type="text" className="input-field text-sm py-1.5"
+                          value={m.nombre} onChange={(e) => updateMatPallet(m.id, 'nombre', e.target.value)} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="text" className="input-field text-sm py-1.5 text-center"
+                          value={m.unidad} onChange={(e) => updateMatPallet(m.id, 'unidad', e.target.value)} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="number" min="0" step="0.1" className="input-field text-sm py-1.5 text-center"
+                          value={m.cantidad} onChange={(e) => updateMatPallet(m.id, 'cantidad', e.target.value)} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="number" min="0" className="input-field text-sm py-1.5 text-right"
+                          value={m.precio_unitario} onChange={(e) => updateMatPallet(m.id, 'precio_unitario', e.target.value)} />
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-slate-200">
+                        {fmt(Number(m.cantidad) * Number(m.precio_unitario))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
+}
 
-  const totalMat    = (materiales || []).reduce((a, m) => a + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
-  const totalPallet = (materialesPallet || []).reduce((a, m) => a + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
-  const totalEnvio  = Number(costoEnvio) || 0
-  const totalGral   = totalMat + totalPallet + totalEnvio
+// ─────────────────────────────────────────────────────────────────────────────
+export default function TabEmbalaje({ embalaje, setEmbalaje }) {
+  const {
+    activo = true,
+    pallets = [],
+    materiales = [], costoEnvio = '', ciudadOrigen = '', ciudadDestino = '', notas = '',
+  } = embalaje
+
+  const set = (field) => (v) => setEmbalaje((e) => ({ ...e, [field]: v }))
+
+  const addPallet    = () => setEmbalaje((e) => ({ ...e, pallets: [...(e.pallets || []), newPallet()] }))
+  const removePallet = (id) => setEmbalaje((e) => ({ ...e, pallets: (e.pallets || []).filter((p) => p.id !== id) }))
+  const updatePallet = (id, updated) => setEmbalaje((e) => ({ ...e, pallets: (e.pallets || []).map((p) => (p.id === id ? updated : p)) }))
+
+  const updateMaterial  = (id, f, v) => setEmbalaje((e) => ({ ...e, materiales: (e.materiales || []).map((m) => (m.id === id ? { ...m, [f]: v } : m)) }))
+  const addMaterial     = ()          => setEmbalaje((e) => ({ ...e, materiales: [...(e.materiales || []), { id: Date.now(), nombre: '', unidad: 'unid.', cantidad: 1, precio_unitario: 0 }] }))
+  const removeMaterial  = (id)        => setEmbalaje((e) => ({ ...e, materiales: (e.materiales || []).filter((m) => m.id !== id) }))
+
+  // Auto-calculate packaging material quantities from first pallet
+  const p0 = pallets[0]
+  useEffect(() => {
+    if (!p0?.palletId) return
+    const auto = calcCantidadesEmbalaje(p0.palletId, p0.largo, p0.ancho, p0.alturaCm, p0.cargaKg)
+    if (!auto) return
+    setEmbalaje((e) => ({
+      ...e,
+      materiales: (e.materiales || []).map((m) => {
+        if (m.id === 3) return { ...m, cantidad: auto.rollosFilm }
+        if (m.id === 4) return { ...m, cantidad: auto.rollosZunchoPlastico }
+        if (m.id === 5) return { ...m, cantidad: auto.cantoneras }
+        if (m.id === 6) return { ...m, cantidad: auto.rollosZunchoMetal }
+        return m
+      }),
+    }))
+  }, [p0?.palletId, p0?.alturaCm, p0?.cargaKg, p0?.largo, p0?.ancho]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const envioEstimado = useMemo(() => {
+    if (!p0) return null
+    return calcPrecioEnvio(ciudadOrigen, ciudadDestino, p0.cargaKg, p0.largoCm, p0.anchoCm, p0.alturaCm)
+  }, [ciudadOrigen, ciudadDestino, p0?.cargaKg, p0?.largoCm, p0?.anchoCm, p0?.alturaCm])
+
+  const totalPallets  = pallets.reduce((acc, p) =>
+    acc + (p.materialesPallet || []).reduce((a, m) => a + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0), 0)
+  const totalMat  = (materiales || []).reduce((a, m) => a + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const totalEnvio = Number(costoEnvio) || 0
+  const totalGral  = totalPallets + totalMat + totalEnvio
 
   return (
     <div className="space-y-5">
 
-      {/* Toggle de activación */}
+      {/* Toggle */}
       <div className="card">
         <div className="flex items-center justify-between">
           <div>
@@ -274,215 +461,53 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
           <p className="text-slate-400 text-sm">Esta sección está desactivada y no afecta el costo de la cotización.</p>
-          <p className="text-slate-500 text-xs mt-1">Actívala si el producto requiere embalaje o envío.</p>
         </div>
       )}
 
       {activo && <>
 
-      {/* ── 1. Datos de la carga ── */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Datos de la carga</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div>
-            <label className="label">Peso (kg)</label>
-            <input type="number" min="0" className="input-field" placeholder="Ej: 350"
-              value={cargaKg} onChange={(e) => set('cargaKg')(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Largo (cm)</label>
-            <input type="number" min="0" className="input-field" placeholder="Ej: 100"
-              value={largoCm} onChange={(e) => set('largoCm')(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Ancho (cm)</label>
-            <input type="number" min="0" className="input-field" placeholder="Ej: 80"
-              value={anchoCm} onChange={(e) => set('anchoCm')(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Alto total con embalaje (cm)</label>
-            <input type="number" min="0" className="input-field" placeholder="Ej: 120"
-              value={alturaCm} onChange={(e) => set('alturaCm')(e.target.value)} />
-          </div>
+      {/* ── Pallets ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Pallets</h2>
+          <p className="text-slate-500 text-xs">Normativa Agunsa Chile / ISO 6780 / EPAL · Fabricación propia</p>
         </div>
-        {volumenCm3 > 0 && (
-          <p className="text-slate-500 text-xs mt-3">
-            Volumen: <span className="text-slate-300">{(volumenCm3 / 1000000).toFixed(3)} m³</span>
-            {' · '}Peso volumétrico terrestre (÷6000): <span className="text-slate-300">{pesoVolTerrestre} kg</span>
-            {cargaKg && (
-              <span className="text-amber-400">
-                {' · '}Se factura por {Number(cargaKg) >= pesoVolTerrestre ? 'peso real' : 'peso volumétrico'}
-              </span>
-            )}
-          </p>
+
+        {pallets.length === 0 && (
+          <div className="card border-dashed border-slate-600 bg-slate-800/20 text-center py-8">
+            <p className="text-slate-500 text-sm">No hay pallets configurados.</p>
+            <p className="text-slate-600 text-xs mt-1">Agrega un pallet para configurar embalaje estructural.</p>
+          </div>
         )}
+
+        {pallets.map((p, i) => (
+          <PalletCard
+            key={p.id}
+            pallet={p}
+            index={i}
+            showRemove={pallets.length > 1}
+            onChange={(updated) => updatePallet(p.id, updated)}
+            onRemove={() => removePallet(p.id)}
+          />
+        ))}
+
+        <button
+          onClick={addPallet}
+          className="w-full border-2 border-dashed border-slate-700 hover:border-blue-500/50 text-slate-500 hover:text-blue-400 rounded-xl py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Agregar pallet
+        </button>
       </div>
 
-      {/* ── 2. Selección de pallet ── */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-1">Pallet</h2>
-        <p className="text-slate-500 text-xs mb-3">Normativa Agunsa Chile / ISO 6780 / EPAL · El pallet se fabricará internamente</p>
-
-        {recomendacion && (
-          <div className="mb-4 flex items-center gap-3 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-            <span className="text-blue-300 text-xl flex-shrink-0">💡</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-blue-300 text-sm font-medium">
-                Recomendado: {PALLETS_STD.find((p) => p.id === recomendacion.palletId)?.nombre}
-              </p>
-              <p className="text-blue-400/70 text-xs mt-0.5">{recomendacion.razon}</p>
-            </div>
-            {recomendacion.palletId !== palletId ? (
-              <button onClick={() => setEmbalaje((e) => ({ ...e, palletId: recomendacion.palletId }))}
-                className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-                Aplicar
-              </button>
-            ) : (
-              <span className="flex-shrink-0 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-1">Aplicado</span>
-            )}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {PALLETS_STD.map((p) => {
-            const isSelected = palletId === p.id
-            const isRec = recomendacion?.palletId === p.id
-            return (
-              <button key={p.id} onClick={() => setEmbalaje((e) => ({ ...e, palletId: p.id }))}
-                className={`text-left p-4 rounded-xl border transition-all ${isSelected ? 'border-blue-500 bg-blue-600/10' : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className={`font-semibold text-sm ${isSelected ? 'text-blue-400' : 'text-slate-200'}`}>{p.nombre}</p>
-                      {isRec && <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded px-1.5 py-0.5">Recomendado</span>}
-                    </div>
-                    {p.id !== 'custom' ? (
-                      <>
-                        <p className="text-slate-400 text-xs mt-1">{p.largo} × {p.ancho} mm · hasta {p.alto_max / 10} cm alto</p>
-                        <p className="text-slate-500 text-xs">Carga máx: {p.carga_max} kg</p>
-                        <p className="text-slate-500 text-xs mt-1">{p.uso}</p>
-                      </>
-                    ) : (
-                      <p className="text-slate-400 text-xs mt-1">Ingresar dimensiones — madera calculada automáticamente</p>
-                    )}
-                  </div>
-                  {isSelected && (
-                    <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </div>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Dimensiones pallet a medida */}
-        {palletId === 'custom' && (
-          <div className="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-            <p className="text-slate-400 text-xs mb-3">Ingresa las dimensiones del pallet — los materiales de madera se actualizarán automáticamente</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { field: 'largo',     label: 'Largo (mm)' },
-                { field: 'ancho',     label: 'Ancho (mm)' },
-                { field: 'alto_max',  label: 'Alto máx (mm)' },
-                { field: 'carga_max', label: 'Carga máx (kg)' },
-              ].map(({ field, label }) => (
-                <div key={field}>
-                  <label className="label">{label}</label>
-                  <input type="number" min="0" className="input-field text-sm"
-                    value={embalaje[field] || ''}
-                    onChange={(e) => setEmbalaje((em) => ({ ...em, [field]: e.target.value }))} />
-                </div>
-              ))}
-            </div>
-            {embalaje.largo && embalaje.ancho && (
-              <p className="text-emerald-400 text-xs mt-2">
-                ✓ Pallet {embalaje.largo} × {embalaje.ancho} mm · Materiales de madera recalculados automáticamente
-              </p>
-            )}
-          </div>
-        )}
-
-        {alertas.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {alertas.map((a, i) => (
-              <div key={i} className="bg-amber-900/30 border border-amber-500/40 text-amber-400 text-sm rounded-lg px-4 py-2">{a}</div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── 3. Fabricación de pallet ── */}
-      {palletId && (materialesPallet || []).length > 0 && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-lg font-semibold text-white">Fabricación de pallet</h2>
-              <p className="text-slate-500 text-xs mt-0.5">
-                Madera calculada según normas AGUNSA · Pino sin cepillar · Precios ref. mercado chileno (mayo 2026)
-              </p>
-            </div>
-            <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded px-2 py-1 flex-shrink-0">
-              Fabricación propia
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="table-header">
-                  <th className="text-left px-4 py-3 rounded-l-lg">Material</th>
-                  <th className="text-left px-4 py-3 text-slate-400 text-xs hidden sm:table-cell">Detalle</th>
-                  <th className="text-center px-4 py-3 w-20">Unid.</th>
-                  <th className="text-center px-4 py-3 w-24">Cant.</th>
-                  <th className="text-right px-4 py-3 w-36">Precio unit.</th>
-                  <th className="text-right px-4 py-3 rounded-r-lg w-32">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(materialesPallet || []).map((m) => (
-                  <tr key={m.id} className="border-b border-slate-700">
-                    <td className="px-4 py-2">
-                      <input type="text" className="input-field text-sm py-1.5"
-                        value={m.nombre} onChange={(e) => updateMatPallet(m.id, 'nombre', e.target.value)} />
-                    </td>
-                    <td className="px-4 py-2 text-slate-500 text-xs hidden sm:table-cell">{m.nota || ''}</td>
-                    <td className="px-4 py-2">
-                      <input type="text" className="input-field text-sm py-1.5 text-center"
-                        value={m.unidad} onChange={(e) => updateMatPallet(m.id, 'unidad', e.target.value)} />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input type="number" min="0" step="0.1" className="input-field text-sm py-1.5 text-center"
-                        value={m.cantidad} onChange={(e) => updateMatPallet(m.id, 'cantidad', e.target.value)} />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input type="number" min="0" className="input-field text-sm py-1.5 text-right"
-                        value={m.precio_unitario} onChange={(e) => updateMatPallet(m.id, 'precio_unitario', e.target.value)} />
-                    </td>
-                    <td className="px-4 py-2 text-right font-medium text-slate-200">
-                      {fmt(Number(m.cantidad) * Number(m.precio_unitario))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-slate-600">
-                  <td colSpan={5} className="px-4 py-3 text-slate-400 font-medium">Total fabricación pallet</td>
-                  <td className="px-4 py-3 text-right text-emerald-400 font-bold">{fmt(totalPallet)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── 4. Materiales de embalaje ── */}
+      {/* ── Materiales de embalaje ── */}
       <div className="card">
         <div className="flex items-center justify-between mb-2">
           <div>
             <h2 className="text-lg font-semibold text-white">Materiales de embalaje</h2>
-            {palletId && alturaCm && (
-              <p className="text-xs text-blue-400 mt-0.5">✓ Cantidades calculadas automáticamente según dimensiones y peso</p>
+            {p0?.palletId && p0?.alturaCm && (
+              <p className="text-xs text-blue-400 mt-0.5">✓ Cantidades estimadas automáticamente según pallet 1</p>
             )}
           </div>
           <button onClick={addMaterial} className="btn-secondary text-sm py-2">+ Agregar</button>
@@ -497,7 +522,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
                 <th className="text-center px-4 py-3 w-24">Cantidad</th>
                 <th className="text-right px-4 py-3 w-40">Precio unit. (CLP)</th>
                 <th className="text-right px-4 py-3 w-36">Total</th>
-                <th className="px-4 py-3 rounded-r-lg w-10"></th>
+                <th className="px-4 py-3 rounded-r-lg w-10" />
               </tr>
             </thead>
             <tbody>
@@ -545,7 +570,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
         </div>
       </div>
 
-      {/* ── 5. ENVÍOS ── */}
+      {/* ── Envíos ── */}
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 bg-purple-600/20 border border-purple-500/30 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -555,38 +580,13 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white">Envíos</h2>
-            <p className="text-slate-500 text-xs">Estimación automática + cotizador Pullman Cargo</p>
+            <p className="text-slate-500 text-xs">
+              Estimación automática
+              {pallets.length > 1 && <span className="text-slate-600"> (calculada desde pallet 1)</span>}
+            </p>
           </div>
         </div>
 
-        {/* Resumen de la carga */}
-        {(cargaKg || largoCm || anchoCm || alturaCm) && (
-          <div className="mb-4 p-3 bg-slate-800/60 rounded-lg border border-slate-700">
-            <p className="text-slate-400 text-xs mb-2 font-medium uppercase tracking-wider">Datos de la carga</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-              {[
-                { label: 'Peso real', value: cargaKg ? `${cargaKg} kg` : null },
-                { label: 'Largo',    value: largoCm  ? `${largoCm} cm`  : null },
-                { label: 'Ancho',    value: anchoCm  ? `${anchoCm} cm`  : null },
-                { label: 'Alto',     value: alturaCm ? `${alturaCm} cm` : null },
-              ].map(({ label, value }) => value && (
-                <div key={label} className="bg-slate-800 rounded-lg p-2 text-center">
-                  <p className="text-slate-500 text-xs">{label}</p>
-                  <p className="text-white font-bold text-sm">{value}</p>
-                </div>
-              ))}
-            </div>
-            {pesoVolTerrestre > 0 && cargaKg && (
-              <p className="text-xs text-slate-500">
-                Peso volumétrico terrestre (÷6000): <span className="text-slate-300">{pesoVolTerrestre} kg</span>
-                {' · '}Peso facturado: <span className="text-amber-300 font-medium">{Math.max(Number(cargaKg), pesoVolTerrestre)} kg</span>
-                <span className="text-slate-500"> ({Number(cargaKg) >= pesoVolTerrestre ? 'peso real' : 'peso volumétrico'})</span>
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Origen / Destino */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="label">Ciudad de origen</label>
@@ -604,7 +604,6 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
           </div>
         </div>
 
-        {/* Estimación automática */}
         {envioEstimado && (
           <div className="mb-4 p-4 bg-purple-900/20 border border-purple-500/30 rounded-lg">
             <div className="flex items-start justify-between gap-3 mb-3">
@@ -632,22 +631,19 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
               </div>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-purple-400/60 text-xs">Tarifas referenciales Pullman Cargo / Starken (mayo 2026). Confirmar precio real antes de cotizar.</p>
-              <button
-                onClick={() => set('costoEnvio')(String(envioEstimado.estimado))}
-                className="flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-              >
+              <p className="text-purple-400/60 text-xs">Tarifas referenciales Pullman Cargo / Starken (mayo 2026).</p>
+              <button onClick={() => set('costoEnvio')(String(envioEstimado.estimado))}
+                className="flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
                 Usar este valor
               </button>
             </div>
           </div>
         )}
 
-        {/* Link Pullman Cargo */}
         <div className="flex items-center gap-4 mb-4 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
           <div className="flex-1">
             <p className="text-slate-300 text-sm font-medium">Cotizador oficial Pullman Cargo</p>
-            <p className="text-slate-500 text-xs mt-0.5">Confirma el precio real ingresando los datos en su sitio web</p>
+            <p className="text-slate-500 text-xs mt-0.5">Confirma el precio real en su sitio web</p>
           </div>
           <a href="https://www.pullmancargo.cl" target="_blank" rel="noopener noreferrer"
             className="flex-shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
@@ -655,7 +651,6 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
           </a>
         </div>
 
-        {/* Costo manual */}
         <div>
           <label className="label">
             Costo de envío confirmado (CLP)
@@ -667,13 +662,10 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
             placeholder="Ingresa el valor real de Pullman Cargo"
             value={costoEnvio}
             onChange={(e) => set('costoEnvio')(e.target.value)} />
-          {envioEstimado && !costoEnvio && (
-            <p className="text-slate-500 text-xs mt-1">Estimado: ~{fmt(envioEstimado.estimado)} · Usa el botón "Usar este valor" para pre-rellenar</p>
-          )}
         </div>
       </div>
 
-      {/* ── 6. Recomendaciones Agunsa ── */}
+      {/* ── Recomendaciones ── */}
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 bg-amber-600/20 border border-amber-500/30 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -701,7 +693,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
         </div>
       </div>
 
-      {/* ── 7. Notas ── */}
+      {/* ── Notas ── */}
       <div className="card">
         <h2 className="text-lg font-semibold text-white mb-3">Notas / instrucciones especiales</h2>
         <textarea className="input-field text-sm resize-none w-full" rows={3}
@@ -709,15 +701,15 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
           value={notas} onChange={(e) => set('notas')(e.target.value)} />
       </div>
 
-      {/* ── 8. Resumen de costos ── */}
+      {/* ── Resumen ── */}
       {totalGral > 0 && (
         <div className="card border-amber-500/30 bg-amber-600/5">
           <p className="text-amber-300 font-semibold mb-3">Resumen de embalaje y envío</p>
           <div className="space-y-2 text-sm">
-            {totalPallet > 0 && (
+            {totalPallets > 0 && (
               <div className="flex justify-between text-slate-300">
-                <span>Fabricación de pallet</span>
-                <span className="font-medium">{fmt(totalPallet)}</span>
+                <span>Fabricación de pallets ({pallets.length})</span>
+                <span className="font-medium">{fmt(totalPallets)}</span>
               </div>
             )}
             {totalMat > 0 && (
@@ -728,7 +720,10 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
             )}
             {totalEnvio > 0 && (
               <div className="flex justify-between text-slate-300">
-                <span>Envío{ciudadOrigen && ciudadDestino && <span className="text-slate-500"> ({ciudadOrigen} → {ciudadDestino})</span>}</span>
+                <span>
+                  Envío
+                  {ciudadOrigen && ciudadDestino && <span className="text-slate-500"> ({ciudadOrigen} → {ciudadDestino})</span>}
+                </span>
                 <span className="font-medium">{fmt(totalEnvio)}</span>
               </div>
             )}
@@ -744,7 +739,6 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
       )}
 
       </>}
-
     </div>
   )
 }

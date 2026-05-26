@@ -106,6 +106,7 @@ export default function Historial() {
       config:          cot.config          || {},
       embalaje:        cot.embalaje        || {},
     }
+    localStorage.setItem('cotizador_original', JSON.stringify(cot))
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
     navigate('/cotizador')
   }
