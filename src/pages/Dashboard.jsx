@@ -39,7 +39,7 @@ export default function Dashboard() {
     c.fechaDate.getFullYear() === now.getFullYear()
 
   const thisMes    = cotizaciones.filter(esMes)
-  const montoMes   = thisMes.reduce((s, c) => s + (Number(c.totalFinal) || 0), 0)
+  const montoMes   = thisMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
   const aprobadas  = cotizaciones.filter((c) => c.estado === 'Aprobada').length
   const rechazadas = cotizaciones.filter((c) => c.estado === 'Rechazada').length
   const tasaCierre = (aprobadas + rechazadas) > 0
