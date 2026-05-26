@@ -71,11 +71,20 @@ const plantillaDocRef = (uid, email, plantillaId) =>
 
 const mapCotizacion = (d) => {
   const data = d.data()
-  const fechaDate = data.fecha?.toDate?.() ?? null
+  let fechaDate = null
+  if (data.fecha?.toDate) {
+    fechaDate = data.fecha.toDate()
+  } else if (typeof data.fecha === 'string' && data.fecha.length > 0) {
+    // Legacy: fecha was stored as a formatted string (e.g. "26-05-2026")
+    const m = data.fecha.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
+    if (m) fechaDate = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]))
+  }
   return {
     id: d.id,
     ...data,
-    fecha: fechaDate?.toLocaleDateString('es-CL') ?? '—',
+    fecha: fechaDate
+      ? fechaDate.toLocaleDateString('es-CL')
+      : (typeof data.fecha === 'string' && data.fecha ? data.fecha : '—'),
     fechaDate,
   }
 }
@@ -124,8 +133,10 @@ export const actualizarEstado = async (uid, cotId, estado, email) => {
 }
 
 export const actualizarCotizacion = async (uid, cotId, datos, email) => {
+  // Exclude `fecha` so we never overwrite the original serverTimestamp with a string
+  const { fecha: _fecha, ...datosRest } = datos
   await updateDoc(cotizacionDocRef(uid, email, cotId), clean({
-    ...datos,
+    ...datosRest,
     fechaActualizacion: serverTimestamp(),
   }))
 }
