@@ -8,6 +8,7 @@ import TabEmbalaje from '../components/cotizador/TabEmbalaje'
 import TabResumen from '../components/cotizador/TabResumen'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
+import MecanicoIA from '../components/cotizador/MecanicoIA'
 import { useAuth } from '../hooks/useAuth'
 import { usePresencia } from '../hooks/usePresencia'
 import {
@@ -579,6 +580,15 @@ export default function Cotizador() {
           <FichaCostosPrintView empresa={getEmpresa()} cot={cotizacionData} />
         </div>
       )}
+
+      {/* IA Mecánico Carlos — flotante */}
+      <MecanicoIA
+        contexto={{
+          cliente, numeroCot,
+          materiales, roles, servicios, bases, config,
+          totalMateriales, totalHH, totalServicios, totalBases, totalEmbalaje, totalFinal,
+        }}
+      />
 
       {/* Modal: versión guardada */}
       {showVersionGuardada && versionGuardada && (
