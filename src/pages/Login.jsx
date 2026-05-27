@@ -43,21 +43,23 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-stone-950 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 bg-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7V3H9V7M15 7V3H17V7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V7H21V21H3Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11H10V14H7ZM14 11H17V14H14Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 21V17H14V21" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">CotizaMetal</h1>
-          <p className="text-slate-400 mt-1 text-sm">Sistema de cotización metalmecánica</p>
+          <h1 className="text-2xl font-bold text-stone-100">CotizaMetal</h1>
+          <p className="text-stone-400 mt-1 text-sm">Sistema de cotización metalmecánica</p>
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-semibold text-white mb-6">Iniciar sesión</h2>
+          <h2 className="text-xl font-semibold text-stone-100 mb-6">Iniciar sesión</h2>
 
           {error && (
             <div className="bg-red-900/30 border border-red-500/50 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
@@ -94,17 +96,17 @@ export default function Login() {
           </form>
 
           <div className="text-right mt-2">
-            <Link to="/forgot-password" className="text-slate-400 hover:text-blue-400 text-xs transition-colors">
+            <Link to="/forgot-password" className="text-stone-400 hover:text-amber-500 text-xs transition-colors">
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
 
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-600" />
+              <div className="w-full border-t border-stone-600" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-slate-800 px-3 text-slate-400">o continúa con</span>
+              <span className="bg-stone-800 px-3 text-stone-400">o continúa con</span>
             </div>
           </div>
 
@@ -118,9 +120,9 @@ export default function Login() {
             Continuar con Google
           </button>
 
-          <p className="text-center text-slate-400 text-sm mt-5">
+          <p className="text-center text-stone-400 text-sm mt-5">
             ¿No tienes cuenta?{' '}
-            <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">
+            <Link to="/register" className="text-amber-500 hover:text-amber-400 font-medium">
               Regístrate aquí
             </Link>
           </p>

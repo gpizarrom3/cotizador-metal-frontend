@@ -4,7 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cotizador-metal-frontend</title>
+    <title>CotizaMetal</title>
+    <!-- Anti-flash: aplica el tema antes de que React monte -->
+    <script>
+      try {
+        var t = localStorage.getItem('cotizador_theme')
+        if (t === 'light') document.documentElement.setAttribute('data-theme', 'light')
+      } catch(e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
