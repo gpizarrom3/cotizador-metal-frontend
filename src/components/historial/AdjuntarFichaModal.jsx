@@ -4,7 +4,12 @@ import { subirFichaTecnica, eliminarArchivoStorage } from '../../firebase/storag
 import { actualizarFichasTecnicas } from '../../firebase/firestore'
 import ConfirmModal from '../ui/ConfirmModal'
 
-const TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const TIPOS_PERMITIDOS = [
+  'application/pdf',
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+]
 const MAX_BYTES = 20 * 1024 * 1024 // 20 MB
 
 const fmtTamaño = (bytes) => {
@@ -12,6 +17,10 @@ const fmtTamaño = (bytes) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
+
+const isWord = (tipo) =>
+  tipo === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+  tipo === 'application/msword'
 
 function FileIcon({ tipo }) {
   if (tipo === 'application/pdf') {
@@ -21,10 +30,17 @@ function FileIcon({ tipo }) {
       </div>
     )
   }
-  if (tipo?.startsWith('image/')) {
+  if (isWord(tipo)) {
     return (
       <div className="w-9 h-9 bg-blue-900/40 border border-blue-500/30 rounded-lg flex items-center justify-center flex-shrink-0">
-        <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span className="text-blue-400 font-bold text-xs">DOC</span>
+      </div>
+    )
+  }
+  if (tipo?.startsWith('image/')) {
+    return (
+      <div className="w-9 h-9 bg-violet-900/40 border border-violet-500/30 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </div>
@@ -60,7 +76,7 @@ export default function AdjuntarFichaModal({ cot, onClose, onArchivosUpdate }) {
     const file = files[0]
     if (!file) return
     if (!TIPOS_PERMITIDOS.includes(file.type)) {
-      setUploadError('Tipo no permitido. Usa PDF o imagen (JPG, PNG, WEBP).')
+      setUploadError('Tipo no permitido. Usa PDF, Word (DOCX) o imagen (JPG, PNG).')
       return
     }
     if (file.size > MAX_BYTES) {
@@ -197,12 +213,12 @@ export default function AdjuntarFichaModal({ cot, onClose, onArchivosUpdate }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
             </svg>
             <p className="text-slate-400 text-sm font-medium">Arrastra un archivo o haz clic para seleccionar</p>
-            <p className="text-slate-600 text-xs mt-1">PDF, JPG, PNG · máximo 20 MB</p>
+            <p className="text-slate-600 text-xs mt-1">PDF, Word (DOCX), JPG, PNG · máximo 20 MB</p>
             <input
               ref={fileInputRef}
               type="file"
               className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
               onChange={(e) => handleFiles(e.target.files)}
             />
           </div>
