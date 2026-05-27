@@ -65,10 +65,18 @@ export default function Historial() {
     let unsub = () => {}
     migrarCotizacionesPersonales(user.uid, user.email)
       .then(() => {
-        unsub = suscribirCotizaciones(user.uid, user.email, (data) => {
-          setCotizaciones(data)
-          setLoading(false)
-        })
+        unsub = suscribirCotizaciones(
+          user.uid,
+          user.email,
+          (data) => {
+            setCotizaciones(data)
+            setLoading(false)
+          },
+          () => {
+            // Error de permisos Firestore: mostrar lista vacía sin romper la app
+            setLoading(false)
+          }
+        )
       })
       .catch(() => {
         setError('No se pudieron cargar las cotizaciones.')
