@@ -161,8 +161,8 @@ export default function Historial() {
   }
 
   const getNombreCliente = (c) => {
-    if (typeof c.cliente === 'object' && c.cliente?.nombre) return c.cliente.nombre
-    return c.cliente || '—'
+    if (typeof c.cliente === 'object' && c.cliente !== null) return c.cliente.nombre || '—'
+    return (typeof c.cliente === 'string' ? c.cliente : '') || '—'
   }
 
   const limpiarFiltros = () => {
