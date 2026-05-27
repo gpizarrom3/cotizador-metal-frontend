@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content *)",
+      "Read(//mnt/c/Users/gpiza/Desktop/**)",
+      "Bash(npx vite *)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "PowerShell(vercel *)",
+      "Skill(vercel:env)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "Bash(git commit -m 'fix: apply overhead bases to all direct costs \\(materials + HH + services + embalaje\\) *)",
+      "Bash(git commit -m 'feat: add '\\\\''Ficha de Costos Interna'\\\\'' PDF export *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174)",
+      "Bash(git commit -m 'fix: smart PDF page splitting to avoid cutting content mid-row *)",
+      "Bash(git commit -m 'feat: add Ficha Técnica del Producto tab + PDF export *)",
+      "mcp__claude_ai_Vercel__get_deployment_build_logs",
+      "Bash(git commit *)",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "Bash(vercel *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s http://localhost:5173/src/firebase/config.js)",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('firebase:', p.dependencies.firebase\\)\")",
+      "Skill(vercel:deploy)",
+      "Bash(firebase *)",
+      "Bash(node -e \"const pkg = require\\('./node_modules/firebase/package.json'\\); console.log\\(pkg.version\\)\")",
+      "Bash(not exist *)"
+    ]
+  }
+}

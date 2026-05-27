@@ -8,6 +8,7 @@ import Historial from './pages/Historial'
 import Clientes from './pages/Clientes'
 import Configuracion from './pages/Configuracion'
 import Catalogo from './pages/Catalogo'
+import CatalogoServicios from './pages/CatalogoServicios'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -36,6 +37,10 @@ function App() {
         <Route
           path="/catalogo"
           element={<PrivateRoute><Catalogo /></PrivateRoute>}
+        />
+        <Route
+          path="/catalogo-servicios"
+          element={<PrivateRoute><CatalogoServicios /></PrivateRoute>}
         />
         <Route
           path="/configuracion"

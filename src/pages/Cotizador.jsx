@@ -43,6 +43,7 @@ const makeDefaultServicios = (cfg) => ({
   tratamiento_termico: { activo: false, tipo: '', precio: 0 },
   plegado:             { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.plegado.precio_ref,      unidad: cfg.servicios.plegado.unidad      },
   cilindrado:          { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.cilindrado.precio_ref,   unidad: cfg.servicios.cilindrado.unidad   },
+  custom:              [],
 })
 
 const makeDefaultBases = (cfg) =>
@@ -51,7 +52,9 @@ const makeDefaultBases = (cfg) =>
 const mergeServicios = (saved, defaults) => {
   const result = { ...defaults }
   if (!saved) return result
+  if (Array.isArray(saved.custom)) result.custom = saved.custom
   Object.keys(saved).forEach((key) => {
+    if (key === 'custom') return
     if (!result[key]) return
     const base = result[key]
     result[key] = {
@@ -280,7 +283,10 @@ export default function Cotizador() {
     const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
     return acc + hh + col
   }, 0)
-  const totalServicios = Object.values(servicios).reduce((acc, s) => acc + (s.activo ? Number(s.precio) || 0 : 0), 0)
+  const totalServicios = Object.entries(servicios).reduce((acc, [key, s]) => {
+    if (key === 'custom') return acc
+    return acc + (s.activo ? Number(s.precio) || 0 : 0)
+  }, 0) + (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
   const totalEmbalaje = (embalaje.activo === false) ? 0 : (
     (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (embalaje.pallets || []).reduce((accP, p) =>

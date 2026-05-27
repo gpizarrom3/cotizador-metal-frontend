@@ -223,6 +223,37 @@ export const eliminarItemCatalogo = async (uid, itemId, email) => {
   await deleteDoc(catalogoDocRef(uid, email, itemId))
 }
 
+// ── Catálogo de servicios ─────────────────────────────────────────────────────
+
+const catalogoServiciosRef = (uid, email) =>
+  isShared(email)
+    ? collection(db, 'empresas', SHARED_DOMAIN, 'catalogo_servicios')
+    : collection(db, 'usuarios', uid, 'catalogo_servicios')
+
+const catalogoServiciosDocRef = (uid, email, itemId) =>
+  isShared(email)
+    ? doc(db, 'empresas', SHARED_DOMAIN, 'catalogo_servicios', itemId)
+    : doc(db, 'usuarios', uid, 'catalogo_servicios', itemId)
+
+export const guardarItemCatalogoServicios = async (uid, datos, email) => {
+  const ref = await addDoc(catalogoServiciosRef(uid, email), { ...datos, creadoEn: serverTimestamp() })
+  return ref.id
+}
+
+export const obtenerCatalogoServicios = async (uid, email) => {
+  const q = query(catalogoServiciosRef(uid, email), orderBy('nombre', 'asc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+export const actualizarItemCatalogoServicios = async (uid, itemId, datos, email) => {
+  await updateDoc(catalogoServiciosDocRef(uid, email, itemId), datos)
+}
+
+export const eliminarItemCatalogoServicios = async (uid, itemId, email) => {
+  await deleteDoc(catalogoServiciosDocRef(uid, email, itemId))
+}
+
 // ── Plantillas ────────────────────────────────────────────────────────────────
 
 export const guardarPlantilla = async (uid, datos, email) => {
