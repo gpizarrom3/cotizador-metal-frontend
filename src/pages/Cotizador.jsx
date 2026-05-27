@@ -30,11 +30,11 @@ const TABS = [
   { id: 'resumen',   label: 'Resumen' },
 ]
 
-const makeDefaultRoles = (cfg) =>
-  cfg.roles.map((r, i) => ({
-    id: i + 1, nombre: r.nombre, precio_hora: r.precio_hora,
-    cantidad: 1, horas: 0, colacion: false, valor_colacion: 0,
-  }))
+const makeDefaultRoles = (cfg) => {
+  const first = cfg.roles[0]
+  if (!first) return []
+  return [{ id: 1, nombre: first.nombre, precio_hora: first.precio_hora, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 }]
+}
 
 const makeDefaultServicios = (cfg) => ({
   corte_plasma:        { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.corte_plasma.precio_ref, unidad: cfg.servicios.corte_plasma.unidad },
