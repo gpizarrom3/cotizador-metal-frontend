@@ -123,9 +123,9 @@ export const obtenerCotizaciones = async (uid, email) => {
   return snap.docs.map(mapCotizacion)
 }
 
-export const suscribirCotizaciones = (uid, email, callback) => {
+export const suscribirCotizaciones = (uid, email, callback, onError) => {
   const q = query(cotizacionesRef(uid, email), orderBy('fecha', 'desc'))
-  return onSnapshot(q, (snap) => callback(snap.docs.map(mapCotizacion)))
+  return onSnapshot(q, (snap) => callback(snap.docs.map(mapCotizacion)), onError || (() => {}))
 }
 
 export const actualizarEstado = async (uid, cotId, estado, email) => {
@@ -292,17 +292,21 @@ export const eliminarPresencia = (uid) =>
 
 export const suscribirPresencias = (callback) => {
   const col = collection(db, 'empresas', SHARED_DOMAIN, 'presencia')
-  return onSnapshot(col, (snap) => {
-    const now = Date.now()
-    const map = {}
-    snap.docs.forEach((d) => {
-      const p = d.data()
-      const ms = p.heartbeat?.toDate?.()?.getTime() || 0
-      if (now - ms < 120_000 && p.cotizacionId) {
-        if (!map[p.cotizacionId]) map[p.cotizacionId] = []
-        map[p.cotizacionId].push(p)
-      }
-    })
-    callback(map)
-  })
+  return onSnapshot(
+    col,
+    (snap) => {
+      const now = Date.now()
+      const map = {}
+      snap.docs.forEach((d) => {
+        const p = d.data()
+        const ms = p.heartbeat?.toDate?.()?.getTime() || 0
+        if (now - ms < 120_000 && p.cotizacionId) {
+          if (!map[p.cotizacionId]) map[p.cotizacionId] = []
+          map[p.cotizacionId].push(p)
+        }
+      })
+      callback(map)
+    },
+    () => {} // silencia errores de permisos de Firestore sin romper la app
+  )
 }
