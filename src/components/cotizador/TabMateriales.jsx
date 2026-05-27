@@ -234,6 +234,8 @@ export default function TabMateriales({ materiales, setMateriales }) {
   const [searchError, setSearchError] = useState('')
   const [catalogo, setCatalogo]       = useState([])
   const [catSearch, setCatSearch]     = useState('')
+  const [catOpen, setCatOpen]         = useState(false)
+  const [iaOpen, setIaOpen]           = useState(false)
   const [targetSpId, setTargetSpId]   = useState(() => materiales[0]?.id ?? null)
 
   useEffect(() => {
@@ -309,62 +311,83 @@ export default function TabMateriales({ materiales, setMateriales }) {
       {/* Catálogo guardado */}
       {catalogo.length > 0 && (
         <div className="card border-violet-500/30 bg-slate-800">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 bg-violet-600/30 border border-violet-500/30 rounded flex items-center justify-center flex-shrink-0">
-              <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
+          <button className="w-full flex items-center justify-between" onClick={() => setCatOpen(v => !v)}>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-violet-600/30 border border-violet-500/30 rounded flex items-center justify-center flex-shrink-0">
+                <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-violet-400">Desde catálogo</h3>
+              <span className="text-xs text-slate-500">({catalogo.length} items)</span>
             </div>
-            <h3 className="text-sm font-semibold text-violet-400">Desde catálogo</h3>
-          </div>
-          <input type="text" className="input-field mb-3" placeholder="Filtrar catálogo..." value={catSearch} onChange={e => setCatSearch(e.target.value)} />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-            {catalogo
-              .filter(i => i.nombre?.toLowerCase().includes(catSearch.toLowerCase()) || i.proveedor?.toLowerCase().includes(catSearch.toLowerCase()))
-              .map(i => (
-                <button key={i.id} onClick={() => addFromTool({ nombre: i.nombre, proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || 0 })}
-                  className="text-left bg-slate-950 border border-slate-600 hover:border-violet-500/50 rounded-lg p-3 transition-colors">
-                  <p className="text-white font-medium text-sm leading-tight">{i.nombre}</p>
-                  {i.proveedor && <p className="text-slate-400 text-xs mt-0.5">{i.proveedor}</p>}
-                  <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(i.precio_unitario)}{i.unidad ? ` / ${i.unidad}` : ''}</p>
-                </button>
-              ))}
-          </div>
+            <svg className={`w-4 h-4 text-slate-400 transition-transform ${catOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {catOpen && (
+            <div className="mt-4 space-y-3">
+              <input type="text" className="input-field" placeholder="Filtrar catálogo..." value={catSearch} onChange={e => setCatSearch(e.target.value)} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                {catalogo
+                  .filter(i => i.nombre?.toLowerCase().includes(catSearch.toLowerCase()) || i.proveedor?.toLowerCase().includes(catSearch.toLowerCase()))
+                  .map(i => (
+                    <button key={i.id} onClick={() => addFromTool({ nombre: i.nombre, proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || 0 })}
+                      className="text-left bg-slate-950 border border-slate-600 hover:border-violet-500/50 rounded-lg p-3 transition-colors">
+                      <p className="text-white font-medium text-sm leading-tight">{i.nombre}</p>
+                      {i.proveedor && <p className="text-slate-400 text-xs mt-0.5">{i.proveedor}</p>}
+                      <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(i.precio_unitario)}{i.unidad ? ` / ${i.unidad}` : ''}</p>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Búsqueda IA */}
       <div className="card border-blue-500/30 bg-slate-800">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
-            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
+        <button className="w-full flex items-center justify-between" onClick={() => setIaOpen(v => !v)}>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
+              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-blue-400">Buscar material con IA (Claude)</h3>
           </div>
-          <h3 className="text-sm font-semibold text-blue-400">Buscar material con IA (Claude)</h3>
-        </div>
-        <div className="flex gap-2">
-          <input type="text" className="input-field flex-1" placeholder="Ej: acero A36, tubo cuadrado 40x40..."
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchWithAI()} />
-          <button onClick={searchWithAI} className="btn-primary px-5 whitespace-nowrap" disabled={searching}>
-            {searching ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Buscando...</span> : 'Buscar'}
-          </button>
-        </div>
-        {searchError && <p className="text-red-400 text-sm mt-2">{searchError}</p>}
-        {results.length > 0 && (
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {results.map((r, i) => (
-              <div key={i} className="bg-slate-950 border border-slate-600 rounded-lg p-3">
-                <p className="text-white font-medium text-sm leading-tight">{r.nombre}</p>
-                <p className="text-slate-400 text-xs mt-1">{r.proveedor}</p>
-                <p className="text-slate-500 text-xs">Formato: {r.formato}</p>
-                <div className="flex items-center justify-between mt-2.5">
-                  <span className="text-blue-400 font-semibold text-sm">{fmt(r.precio_unitario)}</span>
-                  <button onClick={() => addFromTool({ nombre: r.nombre, proveedor: r.proveedor, formato: r.formato, precio_unitario: r.precio_unitario })}
-                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded transition-colors">+ Agregar</button>
-                </div>
+          <svg className={`w-4 h-4 text-slate-400 transition-transform ${iaOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {iaOpen && (
+          <div className="mt-4 space-y-3">
+            <div className="flex gap-2">
+              <input type="text" className="input-field flex-1" placeholder="Ej: acero A36, tubo cuadrado 40x40..."
+                value={searchTerm} onChange={e => setSearchTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchWithAI()} />
+              <button onClick={searchWithAI} className="btn-primary px-5 whitespace-nowrap" disabled={searching}>
+                {searching ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Buscando...</span> : 'Buscar'}
+              </button>
+            </div>
+            {searchError && <p className="text-red-400 text-sm">{searchError}</p>}
+            {results.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {results.map((r, i) => (
+                  <div key={i} className="bg-slate-950 border border-slate-600 rounded-lg p-3">
+                    <p className="text-white font-medium text-sm leading-tight">{r.nombre}</p>
+                    <p className="text-slate-400 text-xs mt-1">{r.proveedor}</p>
+                    <p className="text-slate-500 text-xs">Formato: {r.formato}</p>
+                    <div className="flex items-center justify-between mt-2.5">
+                      <span className="text-blue-400 font-semibold text-sm">{fmt(r.precio_unitario)}</span>
+                      <button onClick={() => addFromTool({ nombre: r.nombre, proveedor: r.proveedor, formato: r.formato, precio_unitario: r.precio_unitario })}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded transition-colors">+ Agregar</button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
