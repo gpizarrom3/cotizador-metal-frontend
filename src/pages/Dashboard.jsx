@@ -3,10 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { suscribirCotizaciones } from '../firebase/firestore'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie,
-} from 'recharts'
 
 const fmt = (n) =>
   (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
@@ -17,38 +13,90 @@ const STATUS_STYLE = {
   Entregada: 'bg-emerald-900/40 text-emerald-300 border-emerald-500/30',
 }
 
-const STATUS_COLOR = {
-  Pendiente: '#78716c',
-  Aprobada:  '#4ade80',
-  Entregada: '#34d399',
-}
-
+const STATUS_COLOR = { Pendiente: '#78716c', Aprobada: '#4ade80', Entregada: '#34d399' }
 const MESES_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
-function BarTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
+// ── Gráfico de barras puro (CSS/flexbox) ────────────────────────────────────
+function BarChart({ data }) {
+  const maxVal = Math.max(...data.map((d) => d.count), 1)
   return (
-    <div className="bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-sm shadow-lg">
-      <p className="text-stone-300 font-medium">{label}</p>
-      <p className="text-amber-400 font-bold">{payload[0].value} cotizaciones</p>
+    <div className="flex items-end gap-2 h-40 px-1">
+      {data.map((entry, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+          <span className="text-xs font-semibold tabular-nums" style={{ color: entry.isCurrent ? '#d97706' : '#a8a29e' }}>
+            {entry.count > 0 ? entry.count : ''}
+          </span>
+          <div className="w-full flex items-end" style={{ height: 120 }}>
+            <div
+              className="w-full rounded-t-md transition-all duration-500"
+              style={{
+                height: `${(entry.count / maxVal) * 100}%`,
+                minHeight: entry.count > 0 ? 6 : 0,
+                background: entry.isCurrent ? '#d97706' : '#57534e',
+              }}
+            />
+          </div>
+          <span className="text-xs text-stone-500">{entry.mes}</span>
+        </div>
+      ))}
     </div>
   )
 }
 
-function PieTooltip({ active, payload }) {
-  if (!active || !payload?.length) return null
-  const entry = payload[0]
+// ── Donut SVG puro ───────────────────────────────────────────────────────────
+function DonutChart({ data, total }) {
+  const R = 58
+  const C = 2 * Math.PI * R
+  const GAP = 3  // grados de separación entre segmentos
+
+  let cumulativeDeg = -90  // empezamos desde arriba
+
+  const segments = data.map(({ value, fill }) => {
+    const pct     = total > 0 ? value / total : 0
+    const deg     = pct * 360 - GAP
+    const dash    = (deg / 360) * C
+    const gap     = C - dash
+    const rotation = cumulativeDeg
+    cumulativeDeg += pct * 360
+    return { dash, gap, rotation, fill, skip: deg <= 0 }
+  })
+
   return (
-    <div className="bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-sm shadow-lg">
-      <p className="font-medium" style={{ color: entry.payload.fill }}>{entry.name}</p>
-      <p className="text-stone-200">{entry.value} cotizaciones ({entry.payload.pct}%)</p>
+    <div className="relative flex items-center justify-center" style={{ width: 160, height: 160 }}>
+      <svg width="160" height="160" viewBox="0 0 160 160">
+        {/* Pista de fondo */}
+        <circle cx="80" cy="80" r={R} fill="none" stroke="#292524" strokeWidth="22" />
+        {/* Segmentos */}
+        {segments.map((seg, i) =>
+          seg.skip ? null : (
+            <circle
+              key={i}
+              cx="80"
+              cy="80"
+              r={R}
+              fill="none"
+              stroke={seg.fill}
+              strokeWidth="22"
+              strokeDasharray={`${seg.dash} ${seg.gap}`}
+              strokeLinecap="butt"
+              transform={`rotate(${seg.rotation}, 80, 80)`}
+            />
+          )
+        )}
+      </svg>
+      {/* Label central */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-2xl font-bold text-stone-100 leading-none">{total}</span>
+        <span className="text-xs text-stone-500 mt-0.5">total</span>
+      </div>
     </div>
   )
 }
 
+// ── Dashboard ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const { user }    = useAuth()
+  const navigate    = useNavigate()
   const [cotizaciones, setCotizaciones] = useState([])
   const [loading, setLoading]           = useState(true)
 
@@ -70,27 +118,22 @@ export default function Dashboard() {
   const esMes = (c, m, a) =>
     c.fechaDate && c.fechaDate.getMonth() === m && c.fechaDate.getFullYear() === a
 
-  const thisMes   = cotizaciones.filter((c) => esMes(c, mesActual, anioActual))
-  const prevMes   = cotizaciones.filter((c) => esMes(c, mesPrev, anioPrev))
-  const montoMes  = thisMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
-  const montoMesP = prevMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
-
-  const entregadas     = cotizaciones.filter((c) => c.estado === 'Entregada').length
-  const tasaCierre     = cotizaciones.length > 0
+  const thisMes    = cotizaciones.filter((c) => esMes(c, mesActual, anioActual))
+  const prevMes    = cotizaciones.filter((c) => esMes(c, mesPrev, anioPrev))
+  const montoMes   = thisMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
+  const montoMesP  = prevMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
+  const entregadas = cotizaciones.filter((c) => c.estado === 'Entregada').length
+  const tasaCierre = cotizaciones.length > 0
     ? `${Math.round((entregadas / cotizaciones.length) * 100)}%`
     : '—'
   const clientesUnicos = new Set(
-    cotizaciones
-      .map((c) => (typeof c.cliente === 'object' ? c.cliente?.nombre : c.cliente))
-      .filter(Boolean)
+    cotizaciones.map((c) => (typeof c.cliente === 'object' ? c.cliente?.nombre : c.cliente)).filter(Boolean)
   ).size
 
-  // KPI: cotización más alta del mes
   const maxMes = thisMes.length > 0
     ? Math.max(...thisMes.map((c) => Number(c.totalFinal ?? c.costoTotal) || 0))
     : null
 
-  // KPI: variación vs mes anterior
   let variacion = '—'
   let variacionPositiva = true
   if (montoMesP > 0) {
@@ -102,32 +145,36 @@ export default function Dashboard() {
   }
 
   const stats = [
-    { label: 'Cotizaciones este mes',      value: String(thisMes.length) },
-    { label: 'Clientes únicos',            value: String(clientesUnicos) },
-    { label: 'Monto cotizado (mes)',        value: fmt(montoMes) },
-    { label: 'Tasa de cierre',             value: tasaCierre },
-    { label: 'Cotiz. más alta del mes',    value: maxMes !== null ? fmt(maxMes) : '—' },
-    { label: 'Variación vs mes anterior',  value: variacion, isVariacion: true, positive: variacionPositiva },
+    { label: 'Cotizaciones este mes',     value: String(thisMes.length) },
+    { label: 'Clientes únicos',           value: String(clientesUnicos) },
+    { label: 'Monto cotizado (mes)',       value: fmt(montoMes) },
+    { label: 'Tasa de cierre',            value: tasaCierre },
+    { label: 'Cotiz. más alta del mes',   value: maxMes !== null ? fmt(maxMes) : '—' },
+    { label: 'Variación vs mes anterior', value: variacion, isVariacion: true, positive: variacionPositiva },
   ]
 
-  // Barras: cotizaciones por mes (últimos 6)
+  // Barras: últimos 6 meses
   const barData = Array.from({ length: 6 }, (_, i) => {
-    const offset = i - 5
-    let m = mesActual + offset
+    let m = mesActual - 5 + i
     let a = anioActual
     if (m < 0)  { m += 12; a -= 1 }
     if (m > 11) { m -= 12; a += 1 }
-    const count = cotizaciones.filter((c) => esMes(c, m, a)).length
-    return { mes: MESES_ES[m], count, isCurrent: m === mesActual && a === anioActual }
+    return {
+      mes:       MESES_ES[m],
+      count:     cotizaciones.filter((c) => esMes(c, m, a)).length,
+      isCurrent: m === mesActual && a === anioActual,
+    }
   })
 
   // Donut: por estado
   const total   = cotizaciones.length
   const pieData = ['Pendiente', 'Aprobada', 'Entregada']
-    .map((estado) => {
-      const count = cotizaciones.filter((c) => c.estado === estado).length
-      return { name: estado, value: count, fill: STATUS_COLOR[estado], pct: total > 0 ? Math.round((count / total) * 100) : 0 }
-    })
+    .map((estado) => ({
+      name:  estado,
+      value: cotizaciones.filter((c) => c.estado === estado).length,
+      fill:  STATUS_COLOR[estado],
+      pct:   total > 0 ? Math.round((cotizaciones.filter((c) => c.estado === estado).length / total) * 100) : 0,
+    }))
     .filter((e) => e.value > 0)
 
   const recientes = cotizaciones.slice(0, 5)
@@ -174,19 +221,8 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={barData} barSize={28} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                  <XAxis dataKey="mes" tick={{ fill: '#a8a29e', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fill: '#a8a29e', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<BarTooltip />} cursor={{ fill: '#44403c44' }} />
-                  <Bar dataKey="count" radius={[5, 5, 0, 0]}>
-                    {barData.map((entry, i) => (
-                      <Cell key={i} fill={entry.isCurrent ? '#d97706' : '#57534e'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="flex items-center gap-4 mt-2 justify-end">
+              <BarChart data={barData} />
+              <div className="flex items-center gap-4 mt-3 justify-end">
                 <span className="flex items-center gap-1.5 text-stone-500 text-xs">
                   <span className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-600" />mes actual
                 </span>
@@ -206,38 +242,13 @@ export default function Dashboard() {
               <div className="w-7 h-7 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : pieData.length === 0 ? (
-            <p className="text-stone-500 text-sm text-center my-auto">Sin cotizaciones aún.</p>
+            <p className="text-stone-500 text-sm text-center my-auto py-8">Sin cotizaciones aún.</p>
           ) : (
             <>
-              {/* Donut con label central via overlay */}
-              <div className="flex justify-center">
-                <div className="relative" style={{ width: 170, height: 170 }}>
-                  <PieChart width={170} height={170}>
-                    <Pie
-                      data={pieData}
-                      cx={85}
-                      cy={85}
-                      innerRadius={52}
-                      outerRadius={78}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {pieData.map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PieTooltip />} />
-                  </PieChart>
-                  {/* Label central con CSS overlay */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-bold text-stone-100 leading-none">{total}</span>
-                    <span className="text-xs text-stone-500 mt-1">total</span>
-                  </div>
-                </div>
+              <div className="flex justify-center mb-4">
+                <DonutChart data={pieData} total={total} />
               </div>
-              {/* Leyenda */}
-              <div className="space-y-2.5 mt-4">
+              <div className="space-y-2.5">
                 {pieData.map(({ name, value, fill, pct }) => (
                   <div key={name} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
