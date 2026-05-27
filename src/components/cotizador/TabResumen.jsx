@@ -26,6 +26,7 @@ export default function TabResumen({
   saving, saveSuccess, saveError,
   onGuardar, onExportPDF, exportando,
   onExportFicha, exportandoFicha,
+  conMaterial, totalConsumibles = 0,
 }) {
   const {
     flete = 0, incluyeIVA = false, validezDias = 30,
@@ -43,8 +44,9 @@ export default function TabResumen({
     return fmt(v)
   }
 
-  const baseCalculo = totalMateriales + totalHH
-  const costoSinDescuento = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
+  const baseSubtotal = conMaterial === false ? totalConsumibles : totalMateriales
+  const baseCalculo = baseSubtotal + totalHH
+  const costoSinDescuento = baseSubtotal + totalHH + totalServicios + totalBases + totalEmbalaje
   const descuentoMonto = tipoDescuento === 'porcentaje'
     ? costoSinDescuento * (Number(descuento) || 0) / 100
     : Number(descuento) || 0
@@ -215,7 +217,10 @@ export default function TabResumen({
       <div className="card">
         <h2 className="text-lg font-semibold text-white mb-5">Desglose de costos — 1 lote</h2>
         <div className="space-y-1.5">
-          <SRow label="Materiales" value={totalMateriales} fmtFn={fmtM} />
+          {conMaterial === false
+            ? <SRow label="Consumibles de taller" value={totalConsumibles} fmtFn={fmtM} />
+            : <SRow label="Materiales" value={totalMateriales} fmtFn={fmtM} />
+          }
           <SRow label="Horas Hombre" value={totalHH} fmtFn={fmtM} />
 
           {activeServicios.length > 0 && (
@@ -230,7 +235,9 @@ export default function TabResumen({
 
           {bases.filter(b => Number(b.porcentaje) > 0).length > 0 && (
             <div className="pt-1">
-              <p className="text-xs text-slate-500 uppercase tracking-wider px-1 mb-1">% sobre base (Mat. + HH)</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wider px-1 mb-1">
+                % sobre base ({conMaterial === false ? 'Consumibles + HH' : 'Mat. + HH'})
+              </p>
               {bases.filter(b => Number(b.porcentaje) > 0).map(b => (
                 <SRow key={b.id} label={`${b.nombre} (${b.porcentaje}%)`} value={baseCalculo * b.porcentaje / 100} indent fmtFn={fmtM} />
               ))}

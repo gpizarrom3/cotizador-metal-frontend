@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import TabMateriales, { emptyMaterial, emptySubproducto } from '../components/cotizador/TabMateriales'
+import TabConsumibles, { DEFAULT_CONSUMIBLES } from '../components/cotizador/TabConsumibles'
 import TabHorasHombre from '../components/cotizador/TabHorasHombre'
 import TabServicios from '../components/cotizador/TabServicios'
 import TabBases from '../components/cotizador/TabBases'
@@ -22,14 +23,6 @@ import { getEmpresa } from '../utils/empresa'
 import { exportPDF } from '../utils/exportPDF'
 import { getConfigDefaults } from '../utils/configDefaults'
 
-const TABS = [
-  { id: 'materiales', label: 'Materiales' },
-  { id: 'hh',        label: 'Horas Hombre' },
-  { id: 'servicios', label: 'Servicios' },
-  { id: 'bases',     label: '% Bases' },
-  { id: 'embalaje',  label: 'Embalaje y Envío' },
-  { id: 'resumen',   label: 'Resumen' },
-]
 
 const makeDefaultRoles = (cfg) => {
   const first = cfg.roles[0]
@@ -148,8 +141,14 @@ export default function Cotizador() {
   // Landing / version comparison state
   const [cotizadorIniciado, setCotizadorIniciado] = useState(() => {
     const d = getDraft()
-    return !!(d.cotizacionId || (d.materiales && d.materiales.length > 0) || (d.cliente && d.cliente.nombre))
+    return !!(d.cotizacionId || (d.materiales && d.materiales.length > 0) || (d.cliente && d.cliente.nombre) || d.conMaterial !== undefined)
   })
+
+  const [conMaterial, setConMaterial] = useState(() => {
+    const d = getDraft()
+    return d.conMaterial !== undefined ? d.conMaterial : null
+  })
+  const [consumibles, setConsumibles] = useState(() => getDraft().consumibles ?? DEFAULT_CONSUMIBLES)
   const [versionGuardada, setVersionGuardada] = useState(() => {
     try {
       const v = localStorage.getItem('cotizador_original')
@@ -159,7 +158,7 @@ export default function Cotizador() {
   })
   const [showVersionGuardada, setShowVersionGuardada] = useState(false)
 
-  const [activeTab,      setActiveTab]      = useState('materiales')
+  const [activeTab,      setActiveTab]      = useState(() => getDraft().conMaterial === false ? 'consumibles' : 'materiales')
   const [cliente,        setCliente]        = useState(() => normCliente(getDraft().cliente))
   const [estado,         setEstado]         = useState(() => getDraft().estado ?? 'Pendiente')
   const [materiales,     setMateriales]     = useState(() => migrarMateriales(getDraft().materiales ?? []))
@@ -218,8 +217,9 @@ export default function Cotizador() {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       cliente, estado, materiales, roles, servicios, bases,
       cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
+      conMaterial, consumibles,
     }))
-  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId])
+  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles])
 
   const clearDraft = () => {
     const cfg = getConfigDefaults()
@@ -238,6 +238,8 @@ export default function Cotizador() {
     setCotizacionId('')
     setSaveSuccess(false)
     setSaveError('')
+    setConMaterial(null)
+    setConsumibles([...DEFAULT_CONSUMIBLES])
   }
 
   // Plantillas handlers
@@ -279,7 +281,8 @@ export default function Cotizador() {
 
   // Calculations
   const flatMateriales = materiales.flatMap(sp => sp.items || [])
-  const totalMateriales = flatMateriales.reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const totalMateriales   = flatMateriales.reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const totalConsumibles  = consumibles.reduce((acc, c) => acc + ((Number(c.cantidad) * Number(c.precio_unitario)) || 0), 0)
   const totalHH = roles.reduce((acc, r) => {
     const hh  = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
     const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
@@ -295,9 +298,11 @@ export default function Cotizador() {
       accP + (p.materialesPallet || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0), 0) +
     (Number(embalaje.costoEnvio) || 0)
   )
-  const baseCalculo       = totalMateriales + totalHH + totalServicios + totalEmbalaje
+  // Sin material: consumibles replace materials in the base calculation
+  const baseSubtotal      = conMaterial === false ? totalConsumibles : totalMateriales
+  const baseCalculo       = baseSubtotal + totalHH + totalServicios + totalEmbalaje
   const totalBases        = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
-  const costoSinDescuento = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
+  const costoSinDescuento = baseSubtotal + totalHH + totalServicios + totalBases + totalEmbalaje
   const descuentoMonto    = config.tipoDescuento === 'porcentaje'
     ? costoSinDescuento * (Number(config.descuento) || 0) / 100
     : Number(config.descuento) || 0
@@ -312,7 +317,11 @@ export default function Cotizador() {
     cliente, estado,
     materiales, roles, servicios, bases, config, embalaje,
     cantidadLotes, unidadesPorLote,
-    totalMateriales, totalHH, totalServicios, totalBases, totalEmbalaje,
+    conMaterial,
+    consumibles: conMaterial === false ? consumibles : [],
+    totalMateriales: conMaterial === false ? 0 : totalMateriales,
+    totalConsumibles: conMaterial === false ? totalConsumibles : 0,
+    totalHH, totalServicios, totalBases, totalEmbalaje,
     costoSinDescuento, descuentoMonto,
     totalNeto, totalIVA, totalFinal,
     numero: numeroCot,
@@ -361,21 +370,20 @@ export default function Cotizador() {
 
   // ── Landing screen ──────────────────────────────────────────────────────────
   if (!cotizadorIniciado) {
-    const hasDraft = !!(getDraft().cotizacionId ||
-      (getDraft().materiales && getDraft().materiales.length > 0) ||
-      (getDraft().cliente && getDraft().cliente.nombre))
+    const d = getDraft()
+    const hasDraft = !!(d.cotizacionId || (d.materiales && d.materiales.length > 0) || (d.cliente && d.cliente.nombre) || d.conMaterial !== undefined)
 
     return (
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center min-h-[65vh] gap-8">
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-600/20 border border-blue-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
-              <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 bg-amber-600/20 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <svg className="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Cotizador</h1>
-            <p className="text-slate-400 text-sm max-w-sm">
+            <p className="text-stone-400 text-sm max-w-sm">
               Crea cotizaciones profesionales con materiales, mano de obra, servicios y embalaje.
             </p>
           </div>
@@ -405,9 +413,11 @@ export default function Cotizador() {
           </div>
 
           {hasDraft && (
-            <p className="text-slate-600 text-xs">
+            <p className="text-stone-600 text-xs">
               Tienes un borrador guardado.
-              {getDraft().numeroCot && <span className="text-slate-500 ml-1">{getDraft().numeroCot}</span>}
+              {d.numeroCot && <span className="text-stone-500 ml-1">{d.numeroCot}</span>}
+              {d.conMaterial === false && <span className="text-amber-600 ml-1">· Sin materiales</span>}
+              {d.conMaterial === true && <span className="text-stone-500 ml-1">· Con materiales</span>}
             </p>
           )}
         </div>
@@ -415,7 +425,111 @@ export default function Cotizador() {
     )
   }
 
+  // ── Type selector ──────────────────────────────────────────────────────────
+  if (cotizadorIniciado && conMaterial === null) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center min-h-[65vh] gap-8">
+          <div className="text-center">
+            <p className="text-stone-500 text-xs uppercase tracking-widest mb-3 font-medium">Paso 1 de 1</p>
+            <h1 className="text-2xl font-bold text-white mb-2">¿Qué tipo de cotización es?</h1>
+            <p className="text-stone-400 text-sm max-w-md">
+              Define si tú provees el material o si el cliente lo suministra. Esto ajusta las pestañas y la base de cálculo.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full max-w-2xl">
+            {/* Con materiales */}
+            <button
+              onClick={() => { setConMaterial(true); setActiveTab('materiales') }}
+              className="card border-2 border-transparent hover:border-amber-500/50 text-left group transition-all hover:bg-stone-800/80 p-6 cursor-pointer"
+            >
+              <div className="w-12 h-12 bg-amber-600/20 border border-amber-500/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-amber-600/30 transition-colors">
+                <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <h3 className="text-white font-bold text-lg mb-2">Con materiales</h3>
+              <p className="text-stone-400 text-sm leading-relaxed mb-3">
+                Tú suministras el material. La cotización incluye plancha, perfiles, acero u otros materiales que compras e incorporas al trabajo.
+              </p>
+              <ul className="space-y-1.5">
+                <li className="text-stone-500 text-xs flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60 flex-shrink-0" />
+                  Tab <strong className="text-stone-400">Materiales</strong> habilitado
+                </li>
+                <li className="text-stone-500 text-xs flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60 flex-shrink-0" />
+                  Bases calculan sobre Mat. + HH
+                </li>
+                <li className="text-stone-500 text-xs flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60 flex-shrink-0" />
+                  Gastos generales ~15–25%
+                </li>
+              </ul>
+              <div className="mt-5 flex items-center gap-2 text-amber-400 text-sm font-semibold group-hover:gap-3 transition-all">
+                Seleccionar <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </div>
+            </button>
+
+            {/* Sin materiales */}
+            <button
+              onClick={() => { setConMaterial(false); setActiveTab('consumibles') }}
+              className="card border-2 border-transparent hover:border-blue-500/50 text-left group transition-all hover:bg-stone-800/80 p-6 cursor-pointer"
+            >
+              <div className="w-12 h-12 bg-blue-600/20 border border-blue-500/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-600/30 transition-colors">
+                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-white font-bold text-lg mb-2">Sin materiales</h3>
+              <p className="text-stone-400 text-sm leading-relaxed mb-3">
+                El cliente suministra el material. Cotizas solo mano de obra, servicios y consumibles del taller (electrodos, discos, gases, etc.).
+              </p>
+              <ul className="space-y-1.5">
+                <li className="text-stone-500 text-xs flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 flex-shrink-0" />
+                  Tab <strong className="text-stone-400">Consumibles</strong> reemplaza Materiales
+                </li>
+                <li className="text-stone-500 text-xs flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 flex-shrink-0" />
+                  Bases calculan sobre Consumibles + HH
+                </li>
+                <li className="text-stone-500 text-xs flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 flex-shrink-0" />
+                  Se sugieren % más altos (40–60%)
+                </li>
+              </ul>
+              <div className="mt-5 flex items-center gap-2 text-blue-400 text-sm font-semibold group-hover:gap-3 transition-all">
+                Seleccionar <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </div>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setCotizadorIniciado(false)}
+            className="text-stone-600 hover:text-stone-400 text-xs transition-colors flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            Volver
+          </button>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   // ── Full cotizador ──────────────────────────────────────────────────────────
+  const TABS = [
+    conMaterial === false
+      ? { id: 'consumibles', label: 'Consumibles' }
+      : { id: 'materiales',  label: 'Materiales'  },
+    { id: 'hh',        label: 'Horas Hombre' },
+    { id: 'servicios', label: 'Servicios' },
+    { id: 'bases',     label: '% Bases' },
+    { id: 'embalaje',  label: 'Embalaje y Envío' },
+    { id: 'resumen',   label: 'Resumen' },
+  ]
+
   return (
     <DashboardLayout>
       {otrosEditando.length > 0 && (
@@ -429,9 +543,16 @@ export default function Cotizador() {
       )}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">
-            {cotizacionId ? `Editando ${numeroCot || 'cotización'}` : 'Nueva Cotización'}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold text-white">
+              {cotizacionId ? `Editando ${numeroCot || 'cotización'}` : 'Nueva Cotización'}
+            </h1>
+            {conMaterial === false && (
+              <span className="text-xs font-semibold bg-blue-600/20 border border-blue-500/40 text-blue-300 px-2.5 py-1 rounded-full">
+                Sin materiales
+              </span>
+            )}
+          </div>
           <p className="text-slate-400 mt-1 text-sm">
             {cotizacionId ? 'Guardará los cambios en la cotización existente' : 'El borrador se guarda automáticamente'}
           </p>
@@ -547,12 +668,19 @@ export default function Cotizador() {
         ))}
       </div>
 
-      {activeTab === 'materiales' && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
-      {activeTab === 'hh'         && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={getConfigDefaults().roles} />}
-      {activeTab === 'servicios'  && <TabServicios servicios={servicios} setServicios={setServicios} />}
-      {activeTab === 'bases'      && <TabBases bases={bases} setBases={setBases} totalMateriales={totalMateriales} totalHH={totalHH} />}
-      {activeTab === 'embalaje'   && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} />}
-      {activeTab === 'resumen'    && (
+      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
+      {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
+      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={getConfigDefaults().roles} />}
+      {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
+      {activeTab === 'bases'       && (
+        <TabBases
+          bases={bases} setBases={setBases}
+          totalMateriales={totalMateriales} totalHH={totalHH}
+          conMaterial={conMaterial} totalConsumibles={totalConsumibles}
+        />
+      )}
+      {activeTab === 'embalaje'    && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} />}
+      {activeTab === 'resumen'     && (
         <TabResumen
           cliente={cliente} setCliente={setCliente} clientes={clientes}
           estado={estado} setEstado={setEstado}
@@ -567,6 +695,7 @@ export default function Cotizador() {
           saving={saving} saveSuccess={saveSuccess} saveError={saveError}
           onGuardar={handleGuardar} onExportPDF={handleExportPDF} exportando={exportando}
           onExportFicha={handleExportFicha} exportandoFicha={exportandoFicha}
+          conMaterial={conMaterial} totalConsumibles={totalConsumibles}
         />
       )}
 
@@ -587,7 +716,11 @@ export default function Cotizador() {
         contexto={{
           cliente, numeroCot,
           materiales, roles, servicios, bases, config,
-          totalMateriales, totalHH, totalServicios, totalBases, totalEmbalaje, totalFinal,
+          totalMateriales: conMaterial === false ? 0 : totalMateriales,
+          totalConsumibles: conMaterial === false ? totalConsumibles : 0,
+          consumibles: conMaterial === false ? consumibles : [],
+          conMaterial,
+          totalHH, totalServicios, totalBases, totalEmbalaje, totalFinal,
         }}
       />
 
