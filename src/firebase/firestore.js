@@ -239,3 +239,39 @@ export const obtenerPlantillas = async (uid, email) => {
 export const eliminarPlantilla = async (uid, plantillaId, email) => {
   await deleteDoc(plantillaDocRef(uid, email, plantillaId))
 }
+
+// ── Presencia (indicador tiempo real) ────────────────────────────────────────
+
+const presenciaDocRef = (uid) =>
+  doc(db, 'empresas', SHARED_DOMAIN, 'presencia', uid)
+
+export const escribirPresencia = (uid, email, nombre, cotizacionId) =>
+  setDoc(presenciaDocRef(uid), {
+    uid, email,
+    nombre: nombre || email.split('@')[0],
+    cotizacionId,
+    heartbeat: serverTimestamp(),
+  }).catch(() => {})
+
+export const actualizarHeartbeat = (uid) =>
+  updateDoc(presenciaDocRef(uid), { heartbeat: serverTimestamp() }).catch(() => {})
+
+export const eliminarPresencia = (uid) =>
+  deleteDoc(presenciaDocRef(uid)).catch(() => {})
+
+export const suscribirPresencias = (callback) => {
+  const col = collection(db, 'empresas', SHARED_DOMAIN, 'presencia')
+  return onSnapshot(col, (snap) => {
+    const now = Date.now()
+    const map = {}
+    snap.docs.forEach((d) => {
+      const p = d.data()
+      const ms = p.heartbeat?.toDate?.()?.getTime() || 0
+      if (now - ms < 120_000 && p.cotizacionId) {
+        if (!map[p.cotizacionId]) map[p.cotizacionId] = []
+        map[p.cotizacionId].push(p)
+      }
+    })
+    callback(map)
+  })
+}

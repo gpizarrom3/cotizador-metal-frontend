@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
-import { suscribirCotizaciones, actualizarEstado, eliminarCotizacion, migrarCotizacionesPersonales, SHARED_DOMAIN } from '../firebase/firestore'
+import { suscribirCotizaciones, actualizarEstado, eliminarCotizacion, migrarCotizacionesPersonales, suscribirPresencias, SHARED_DOMAIN } from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import ConfirmModal from '../components/ui/ConfirmModal'
@@ -36,6 +36,7 @@ export default function Historial() {
   const [error, setError]       = useState('')
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
   const [fichaModal, setFichaModal] = useState(null)
+  const [presencias, setPresencias] = useState({})
 
   const isInstitutional = user?.email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
 
@@ -75,6 +76,11 @@ export default function Historial() {
       })
     return () => unsub()
   }, [user])
+
+  useEffect(() => {
+    if (!isInstitutional) return
+    return suscribirPresencias(setPresencias)
+  }, [isInstitutional])
 
   const handleEstado = async (cotId, estado) => {
     try {
@@ -273,6 +279,15 @@ export default function Historial() {
                       {c.config?.numeroReferencia && (
                         <p className="text-slate-500 text-xs mt-0.5">{c.config.numeroReferencia}</p>
                       )}
+                      {(() => {
+                        const editando = (presencias[c.id] || []).filter(p => p.uid !== user?.uid)
+                        return editando.length > 0 ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse flex-shrink-0" />
+                            <span className="text-amber-400 text-xs">{editando.map(p => p.nombre).join(', ')}</span>
+                          </div>
+                        ) : null
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-slate-200">{getNombreCliente(c)}</p>
