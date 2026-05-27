@@ -145,6 +145,10 @@ export const eliminarCotizacion = async (uid, cotId, email) => {
   await deleteDoc(cotizacionDocRef(uid, email, cotId))
 }
 
+export const actualizarFichasTecnicas = async (uid, cotId, archivos, email) => {
+  await updateDoc(cotizacionDocRef(uid, email, cotId), { fichasTecnicas: archivos })
+}
+
 export const migrarCotizacionesPersonales = async (uid, email) => {
   if (!isShared(email)) return 0
 

@@ -6,6 +6,7 @@ import { suscribirCotizaciones, actualizarEstado, eliminarCotizacion, migrarCoti
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import ConfirmModal from '../components/ui/ConfirmModal'
+import AdjuntarFichaModal from '../components/historial/AdjuntarFichaModal'
 import { exportPDF } from '../utils/exportPDF'
 import { getEmpresa } from '../utils/empresa'
 
@@ -34,6 +35,7 @@ export default function Historial() {
   const [fechaHasta, setFechaHasta] = useState('')
   const [error, setError]       = useState('')
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
+  const [fichaModal, setFichaModal] = useState(null)
 
   const isInstitutional = user?.email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
 
@@ -137,6 +139,11 @@ export default function Historial() {
     }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
     navigate('/cotizador')
+  }
+
+  const handleArchivosUpdate = (cotId, archivos) => {
+    setCotizaciones((prev) => prev.map((c) => c.id === cotId ? { ...c, fichasTecnicas: archivos } : c))
+    setFichaModal((prev) => prev ? { ...prev, fichasTecnicas: archivos } : null)
   }
 
   const getNombreCliente = (c) => {
@@ -307,6 +314,17 @@ export default function Historial() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </button>
+                        <button onClick={() => setFichaModal(c)}
+                          className="relative text-slate-400 hover:text-violet-400 transition-colors" title="Fichas técnicas adjuntas">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          {(c.fichasTecnicas?.length > 0) && (
+                            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-violet-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                              {c.fichasTecnicas.length}
+                            </span>
+                          )}
+                        </button>
                         <button onClick={() => handleAbrir(c)}
                           className="text-slate-400 hover:text-green-400 transition-colors" title="Abrir y editar">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -375,6 +393,14 @@ export default function Historial() {
             </div>
           </div>
         </div>
+      )}
+
+      {fichaModal && (
+        <AdjuntarFichaModal
+          cot={fichaModal}
+          onClose={() => setFichaModal(null)}
+          onArchivosUpdate={handleArchivosUpdate}
+        />
       )}
 
       <ConfirmModal
