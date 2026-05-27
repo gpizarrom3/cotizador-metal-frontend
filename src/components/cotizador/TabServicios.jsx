@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import Toggle from '../ui/Toggle'
 import { useAuth } from '../../hooks/useAuth'
-import { obtenerCatalogoServicios, guardarItemCatalogoServicios } from '../../firebase/firestore'
+import { obtenerCatalogoServicios, guardarItemCatalogoServicios, eliminarItemCatalogoServicios } from '../../firebase/firestore'
+import ConfirmModal from '../ui/ConfirmModal'
 
 const EMPTY_NUEVO = { nombre: '', descripcion: '', unidad: '', cantidad: 1, precio_ref: '' }
 
@@ -39,6 +40,7 @@ export default function TabServicios({ servicios, setServicios }) {
   const [guardarEnCat, setGuardarEnCat] = useState(true)
   const [savingNuevo, setSavingNuevo]   = useState(false)
   const [savedMsg, setSavedMsg]         = useState('')
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
 
   useEffect(() => {
     if (!user) return
@@ -129,6 +131,16 @@ export default function TabServicios({ servicios, setServicios }) {
     }
   }
 
+  // ── Eliminar del catálogo ────────────────────────────────────────────────────
+  const ejecutarEliminarCat = async () => {
+    const id = confirmDelete.id
+    setConfirmDelete({ open: false, id: null })
+    try {
+      await eliminarItemCatalogoServicios(user.uid, id, user.email)
+      setCatalogoCat((prev) => prev.filter((i) => i.id !== id))
+    } catch { /* silent */ }
+  }
+
   // ── Totales ───────────────────────────────────────────────────────────────────
   const { custom: _custom, ...serviciosFijos } = servicios
   const totalFijos = Object.values(serviciosFijos).reduce(
@@ -176,17 +188,27 @@ export default function TabServicios({ servicios, setServicios }) {
                     i.descripcion?.toLowerCase().includes(catSearch.toLowerCase())
                   )
                   .map((i) => (
-                    <button
-                      key={i.id}
-                      onClick={() => agregarDesideCatalogo(i)}
-                      className="text-left bg-slate-950 border border-slate-600 hover:border-teal-500/50 rounded-lg p-3 transition-colors"
-                    >
-                      <p className="text-white font-medium text-sm leading-tight">{i.nombre}</p>
-                      {i.descripcion && <p className="text-slate-400 text-xs mt-0.5">{i.descripcion}</p>}
-                      <p className="text-teal-400 font-semibold text-xs mt-1">
-                        {fmt(i.precio_unitario)}{i.unidad ? ` / ${i.unidad}` : ''}
-                      </p>
-                    </button>
+                    <div key={i.id} className="group relative bg-slate-950 border border-slate-600 hover:border-teal-500/50 rounded-lg p-3 transition-colors">
+                      <button
+                        onClick={() => agregarDesideCatalogo(i)}
+                        className="text-left w-full pr-6"
+                      >
+                        <p className="text-white font-medium text-sm leading-tight">{i.nombre}</p>
+                        {i.descripcion && <p className="text-slate-400 text-xs mt-0.5">{i.descripcion}</p>}
+                        <p className="text-teal-400 font-semibold text-xs mt-1">
+                          {fmt(i.precio_unitario)}{i.unidad ? ` / ${i.unidad}` : ''}
+                        </p>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmDelete({ open: true, id: i.id }) }}
+                        className="absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                        title="Eliminar del catálogo"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   ))}
               </div>
             </div>
@@ -330,6 +352,14 @@ export default function TabServicios({ servicios, setServicios }) {
           </div>
         </div>
       </div>
+      <ConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar servicio del catálogo"
+        message="Este servicio será eliminado del catálogo permanentemente. Las cotizaciones existentes no se verán afectadas."
+        onConfirm={ejecutarEliminarCat}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
+
       {/* Modal nuevo servicio */}
       {showNuevo && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
