@@ -9,4 +9,7 @@ export const getEmpresa = () => {
   }
 }
 
-export const saveEmpresa = (data) => localStorage.setItem(KEY, JSON.stringify(data))
+export const saveEmpresa = (data) => {
+  localStorage.setItem(KEY, JSON.stringify(data))
+  window.dispatchEvent(new CustomEvent('empresaActualizada'))
+}

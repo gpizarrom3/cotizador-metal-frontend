@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '../../firebase/auth'
 import { useAuth } from '../../hooks/useAuth'
+import { getEmpresa } from '../../utils/empresa'
 
 const navItems = [
   {
@@ -71,6 +73,13 @@ const navItems = [
 export default function Sidebar() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [logoEmpresa, setLogoEmpresa] = useState(() => getEmpresa().logo || null)
+
+  useEffect(() => {
+    const handleUpdate = () => setLogoEmpresa(getEmpresa().logo || null)
+    window.addEventListener('empresaActualizada', handleUpdate)
+    return () => window.removeEventListener('empresaActualizada', handleUpdate)
+  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -81,14 +90,22 @@ export default function Sidebar() {
     <aside className="w-64 min-h-screen bg-stone-900 border-r border-stone-700 flex flex-col">
       <div className="px-6 py-5 border-b border-stone-700">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-amber-600 rounded-lg flex items-center justify-center">
-            {/* Ícono de fábrica industrial */}
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7V3H9V7M15 7V3H17V7" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V7H21V21H3Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11H10V14H7ZM14 11H17V14H14Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 21V17H14V21" />
-            </svg>
+          <div className="w-9 h-9 bg-amber-600 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+            {logoEmpresa ? (
+              <img
+                src={logoEmpresa}
+                alt="Logo empresa"
+                className="w-full h-full object-contain p-0.5"
+              />
+            ) : (
+              /* Ícono de fábrica industrial (fallback) */
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7V3H9V7M15 7V3H17V7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V7H21V21H3Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11H10V14H7ZM14 11H17V14H14Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 21V17H14V21" />
+              </svg>
+            )}
           </div>
           <div>
             <p className="text-stone-100 font-bold text-sm leading-tight">CotizaMetal</p>
