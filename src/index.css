@@ -8,8 +8,8 @@
   }
 
   body {
-    background-color: #0f172a;
-    color: #f1f5f9;
+    background-color: #1c1917;
+    color: #fafaf9;
     font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -21,11 +21,11 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-lg transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-5 rounded-lg transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold py-2.5 px-5 rounded-lg transition-colors duration-200 cursor-pointer;
+    @apply bg-stone-700 hover:bg-stone-600 text-stone-100 font-semibold py-2.5 px-5 rounded-lg transition-colors duration-200 cursor-pointer;
   }
 
   .btn-danger {
@@ -37,26 +37,26 @@
   }
 
   .input-field {
-    @apply w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-slate-400 transition-colors;
+    @apply w-full bg-stone-800 border border-stone-600 text-stone-100 rounded-lg px-4 py-2.5 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 placeholder-stone-400 transition-colors;
   }
 
   .card {
-    @apply bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg;
+    @apply bg-stone-800 border border-stone-700 rounded-xl p-6 shadow-lg;
   }
 
   .label {
-    @apply block text-sm font-medium text-slate-300 mb-1.5;
+    @apply block text-sm font-medium text-stone-300 mb-1.5;
   }
 
   .stat-card {
-    @apply bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-md flex flex-col gap-2;
+    @apply bg-stone-800 border border-stone-700 rounded-xl p-5 shadow-md flex flex-col gap-2;
   }
 
   .table-header {
-    @apply bg-slate-900 text-slate-400 text-xs font-semibold uppercase tracking-wider;
+    @apply bg-stone-900 text-stone-400 text-xs font-semibold uppercase tracking-wider;
   }
 
   .table-row {
-    @apply border-b border-slate-700 hover:bg-slate-700/50 transition-colors;
+    @apply border-b border-stone-700 hover:bg-stone-700/50 transition-colors;
   }
 }
