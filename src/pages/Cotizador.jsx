@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
-import TabMateriales from '../components/cotizador/TabMateriales'
+import TabMateriales, { emptyMaterial, emptySubproducto } from '../components/cotizador/TabMateriales'
 import TabHorasHombre from '../components/cotizador/TabHorasHombre'
 import TabServicios from '../components/cotizador/TabServicios'
 import TabBases from '../components/cotizador/TabBases'
@@ -112,8 +112,9 @@ const normCliente = (raw) => {
 }
 
 // Migrate old flat materials array → sub-products format
+// Always ensures at least one group with one empty row
 const migrarMateriales = (mats) => {
-  if (!mats || mats.length === 0) return []
+  if (!mats || mats.length === 0) return [{ ...emptySubproducto('MATERIALES'), items: [emptyMaterial()] }]
   if (Array.isArray(mats[0]?.items)) return mats  // already new format
   return [{ id: Date.now() + Math.random(), nombre: 'MATERIALES', items: mats }]
 }
@@ -225,7 +226,7 @@ export default function Cotizador() {
     localStorage.removeItem(DRAFT_KEY)
     setCliente({ ...DEFAULT_CLIENTE })
     setEstado('Pendiente')
-    setMateriales([])
+    setMateriales([{ ...emptySubproducto('MATERIALES'), items: [emptyMaterial()] }])
     setRoles(makeDefaultRoles(cfg))
     setServicios(makeDefaultServicios(cfg))
     setBases(makeDefaultBases(cfg))

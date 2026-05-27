@@ -4,7 +4,7 @@ import { obtenerCatalogo } from '../../firebase/firestore'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
-const emptyMaterial = () => ({
+export const emptyMaterial = () => ({
   id: Date.now() + Math.random(),
   nombre: '', proveedor: '', formato: '', cantidad: 1, precio_unitario: 0,
 })
@@ -257,7 +257,7 @@ export default function TabMateriales({ materiales, setMateriales }) {
   const removeSubproducto = (id) => {
     setMateriales(prev => {
       const next = prev.filter(sp => sp.id !== id)
-      return next.length === 0 ? [emptySubproducto('MATERIALES')] : next
+      return next.length === 0 ? [{ ...emptySubproducto('MATERIALES'), items: [emptyMaterial()] }] : next
     })
     setTargetSpId(prev => {
       if (prev !== id) return prev
@@ -431,11 +431,14 @@ export default function TabMateriales({ materiales, setMateriales }) {
 
       {/* Agregar sub-producto */}
       <button onClick={addSubproducto}
-        className="w-full border-2 border-dashed border-slate-700 hover:border-blue-500/50 text-slate-500 hover:text-blue-400 rounded-xl py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        Agregar Sub-Producto (Material Base, Pintura, EPP, etc.)
+        className="w-full bg-amber-600/15 hover:bg-amber-600/25 border border-amber-600/40 hover:border-amber-500/70 text-amber-500 hover:text-amber-400 rounded-xl py-3.5 text-sm font-semibold transition-all flex items-center justify-center gap-2 group">
+        <span className="w-6 h-6 rounded-full bg-amber-600/30 group-hover:bg-amber-600/50 flex items-center justify-center flex-shrink-0 transition-colors">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+        </span>
+        Agregar grupo de materiales
+        <span className="text-amber-600/60 text-xs font-normal">(Material Base, Pintura, EPP, etc.)</span>
       </button>
 
       {/* Total general (solo si hay múltiples sub-productos) */}
