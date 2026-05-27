@@ -1,23 +1,27 @@
-const SYSTEM_PROMPT = `Eres Carlos, un mecánico con 25 años de experiencia en cotizaciones metalmecánicas en Chile.
-Trabajas con todo tipo de proyectos: estructuras metálicas, maquinaria, piezas, fabricación en taller.
-Conoces bien el mercado chileno: precios del acero, aluminio, cobre, servicios de corte, soldadura, torneado.
+const SYSTEM_PROMPT = `Usted es Carlos, ingeniero senior y especialista en cotizaciones metalmecánicas con más de 25 años de experiencia en la industria chilena.
 
-Tu manera de ser:
-- Directo y honesto, sin rodeos
-- Usas términos técnicos del rubro, pero explicas cuando es necesario
-- Cuando ves algo inusual o un precio fuera de mercado, lo dices claramente
-- Das consejos prácticos basados en experiencia real de taller
-- Hablas en español chileno informal pero profesional (puedes usar "po", "cachai", etc. con moderación)
-- Conoces los márgenes típicos del rubro: materiales suelen llevar 15-25% de gastos generales, HH debe incluir leyes sociales, etc.
+Su expertise abarca:
+- Fabricación de estructuras metálicas, maquinaria industrial, piezas mecánicas y trabajos a medida
+- Conocimiento profundo del mercado de materiales en Chile: acero A36, A572, inoxidable, aluminio, cobre, entre otros (distribuidores como CINTAC, Aceros AZA, Dinalco, Brasimet)
+- Precios de mano de obra especializados: soldadores, maestros torneros, fresadores, pintores industriales
+- Servicios subcontratados: corte láser, plasma, oxicorte, tratamientos térmicos, galvanizado, pintura electrostática
+- Rentabilidad y márgenes del rubro: gastos generales 15–25%, imprevistos 5–10%, utilidad mínima rentable 20–30% sobre costo directo
 
-Cuando analices una cotización:
-- Evalúa si los precios de materiales son razonables para Chile actualmente (considera inflación, dólar, precios CINTAC, Aceros AZA, etc.)
-- Identifica ítems que típicamente faltan según el tipo de trabajo
-- Opina sobre rentabilidad y márgenes (mínimo rentable suele ser 20-30% sobre costo directo)
-- Señala riesgos: ítems subestimados, HH insuficientes, sin considerar mermas, etc.
-- Sugiere mejoras concretas con números cuando puedas
+Su forma de comunicarse:
+- Formal y profesional, como un especialista de alto nivel
+- Preciso y directo: cuando identifica errores, precios fuera de mercado o ítems faltantes, lo señala claramente con datos concretos
+- Cuando el usuario describe el proyecto, utiliza esa descripción en conjunto con los datos de la cotización para entregar un análisis completo
+- Si la cotización está vacía o incompleta, guía paso a paso al usuario sobre los materiales, HH y servicios que típicamente requiere ese tipo de proyecto, con referencias de precios actuales del mercado chileno
+- No use modismos ni lenguaje informal
 
-Responde de forma conversacional, concisa y útil. Máximo 4 párrafos por respuesta.`
+Instrucciones de análisis:
+1. Cruce siempre la descripción del proyecto (proporcionada por el usuario) con los datos ya ingresados en la cotización
+2. Identifique lo que falta, lo que está sobredimensionado o lo que podría ajustarse
+3. Para cotizaciones vacías: proponga una estructura de costos típica para el proyecto descrito
+4. Entregue valores de referencia concretos (rangos de precio actuales en CLP) cuando sea posible
+5. Evalúe la rentabilidad y señale si el margen es adecuado para el rubro
+
+Responda de forma estructurada y concisa. Máximo 5 párrafos por respuesta.`
 
 function buildContext(contexto) {
   if (!contexto) return ''
@@ -31,15 +35,15 @@ function buildContext(contexto) {
 
   const flatMats = (materiales || []).flatMap((sp) => sp.items || [])
   const matsStr = flatMats.length === 0
-    ? '  (sin materiales)'
+    ? '  (sin materiales ingresados)'
     : flatMats.slice(0, 20).map((m) =>
         `  - ${m.nombre}${m.proveedor ? ` (${m.proveedor})` : ''}: ${m.cantidad} ${m.formato || 'unid'} × ${fmt(m.precio_unitario)} = ${fmt((Number(m.cantidad) * Number(m.precio_unitario)) || 0)}`
-      ).join('\n') + (flatMats.length > 20 ? `\n  ...y ${flatMats.length - 20} ítems más` : '')
+      ).join('\n') + (flatMats.length > 20 ? `\n  ...y ${flatMats.length - 20} ítems adicionales` : '')
 
   const rolesStr = (roles || []).length === 0
-    ? '  (sin HH)'
+    ? '  (sin horas hombre ingresadas)'
     : roles.map((r) =>
-        `  - ${r.nombre}: ${r.horas}h × ${fmt(r.precio_hora)}/h × ${r.cantidad} persona = ${fmt((Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0)}`
+        `  - ${r.nombre}: ${r.horas}h × ${fmt(r.precio_hora)}/h × ${r.cantidad} persona(s) = ${fmt((Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0)}`
       ).join('\n')
 
   const activeSvcs = Object.entries(servicios || {}).filter(([k, s]) => k !== 'custom' && s?.activo)
@@ -53,33 +57,33 @@ function buildContext(contexto) {
 
   const basesActivas = (bases || []).filter((b) => Number(b.porcentaje) > 0)
   const basesStr = basesActivas.length === 0
-    ? '  (sin gastos generales)'
+    ? '  (sin gastos generales configurados)'
     : basesActivas.map((b) => `  - ${b.nombre}: ${b.porcentaje}%`).join('\n')
 
   return `
 
---- COTIZACIÓN EN PANTALLA ---
+--- DATOS DE LA COTIZACIÓN ACTUAL ---
 Número: ${numeroCot || 'Borrador'} | Cliente: ${cliente?.nombre || 'Sin especificar'}
 
-MATERIALES — Total: ${fmt(totalMateriales)}
+MATERIALES — Subtotal: ${fmt(totalMateriales)}
 ${matsStr}
 
-HORAS HOMBRE — Total: ${fmt(totalHH)}
+HORAS HOMBRE — Subtotal: ${fmt(totalHH)}
 ${rolesStr}
 
-SERVICIOS — Total: ${fmt(totalServicios)}
+SERVICIOS SUBCONTRATADOS — Subtotal: ${fmt(totalServicios)}
 ${svcsStr}
 
-GASTOS GENERALES/BASES — Total: ${fmt(totalBases)}
+GASTOS GENERALES / BASES — Subtotal: ${fmt(totalBases)}
 ${basesStr}
 
-EMBALAJE Y ENVÍO — Total: ${fmt(totalEmbalaje)}
+EMBALAJE Y ENVÍO — Subtotal: ${fmt(totalEmbalaje)}
 
-RESUMEN:
-  Descuento: ${config?.tipoDescuento === 'porcentaje' ? `${config?.descuento || 0}%` : fmt(config?.descuento || 0)}
+RESUMEN FINANCIERO:
+  Descuento aplicado: ${config?.tipoDescuento === 'porcentaje' ? `${config?.descuento || 0}%` : fmt(config?.descuento || 0)}
   IVA (19%): ${config?.incluyeIVA ? 'incluido' : 'no incluido'}
   TOTAL FINAL: ${fmt(totalFinal)}
---- FIN COTIZACIÓN ---`
+--- FIN DATOS COTIZACIÓN ---`
 }
 
 export default async function handler(req, res) {
