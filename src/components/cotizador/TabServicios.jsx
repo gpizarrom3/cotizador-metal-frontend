@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import Toggle from '../ui/Toggle'
 import { useAuth } from '../../hooks/useAuth'
-import { obtenerCatalogoServicios } from '../../firebase/firestore'
+import { obtenerCatalogoServicios, guardarItemCatalogoServicios } from '../../firebase/firestore'
+
+const EMPTY_NUEVO = { nombre: '', descripcion: '', unidad: '', cantidad: 1, precio_ref: '' }
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -29,9 +31,14 @@ const SERVICIOS_SIMPLES = [
 
 export default function TabServicios({ servicios, setServicios }) {
   const { user } = useAuth()
-  const [catalogoCat, setCatalogoCat] = useState([])
-  const [catOpen, setCatOpen]         = useState(false)
-  const [catSearch, setCatSearch]     = useState('')
+  const [catalogoCat, setCatalogoCat]   = useState([])
+  const [catOpen, setCatOpen]           = useState(false)
+  const [catSearch, setCatSearch]       = useState('')
+  const [showNuevo, setShowNuevo]       = useState(false)
+  const [nuevoForm, setNuevoForm]       = useState(EMPTY_NUEVO)
+  const [guardarEnCat, setGuardarEnCat] = useState(true)
+  const [savingNuevo, setSavingNuevo]   = useState(false)
+  const [savedMsg, setSavedMsg]         = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -83,6 +90,43 @@ export default function TabServicios({ servicios, setServicios }) {
 
   const removeCustom = (id) => {
     setServicios({ ...servicios, custom: customItems.filter((s) => s.id !== id) })
+  }
+
+  // ── Agregar nuevo servicio manual ────────────────────────────────────────────
+  const abrirNuevo = () => { setNuevoForm(EMPTY_NUEVO); setGuardarEnCat(true); setSavedMsg(''); setShowNuevo(true) }
+  const cerrarNuevo = () => { setShowNuevo(false); setSavedMsg('') }
+
+  const handleAgregarNuevo = async () => {
+    if (!nuevoForm.nombre.trim()) return
+    setSavingNuevo(true)
+    try {
+      const nuevo = {
+        id: Date.now() + Math.random(),
+        nombre: nuevoForm.nombre.trim(),
+        descripcion: nuevoForm.descripcion.trim(),
+        unidad: nuevoForm.unidad.trim(),
+        cantidad: Number(nuevoForm.cantidad) || 1,
+        precio_ref: Number(nuevoForm.precio_ref) || 0,
+      }
+      // Agregar a la cotización actual
+      setServicios({ ...servicios, custom: [...customItems, nuevo] })
+      // Guardar en catálogo si corresponde
+      if (guardarEnCat && user) {
+        const datos = {
+          nombre: nuevo.nombre,
+          descripcion: nuevo.descripcion,
+          unidad: nuevo.unidad,
+          precio_unitario: nuevo.precio_ref,
+        }
+        const id = await guardarItemCatalogoServicios(user.uid, datos, user.email)
+        setCatalogoCat((prev) =>
+          [...prev, { id, ...datos }].sort((a, b) => a.nombre.localeCompare(b.nombre))
+        )
+      }
+      cerrarNuevo()
+    } finally {
+      setSavingNuevo(false)
+    }
   }
 
   // ── Totales ───────────────────────────────────────────────────────────────────
@@ -152,7 +196,15 @@ export default function TabServicios({ servicios, setServicios }) {
 
       {/* Servicios fijos */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-5">Servicios requeridos</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-semibold text-white">Servicios requeridos</h2>
+          <button onClick={abrirNuevo} className="flex items-center gap-1.5 text-sm font-medium text-teal-400 hover:text-teal-300 border border-teal-500/30 hover:border-teal-400/50 px-3 py-1.5 rounded-lg transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nuevo servicio
+          </button>
+        </div>
 
         <div className="space-y-3">
           {SERVICIOS_SIMPLES.map(({ key, label }) => (
@@ -278,6 +330,88 @@ export default function TabServicios({ servicios, setServicios }) {
           </div>
         </div>
       </div>
+      {/* Modal nuevo servicio */}
+      {showNuevo && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="card w-full max-w-md">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-white">Nuevo servicio</h2>
+              <button onClick={cerrarNuevo} className="text-slate-400 hover:text-slate-200">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="label">Nombre *</label>
+                <input type="text" className="input-field" placeholder="Ej: Servicio de arenado"
+                  value={nuevoForm.nombre} onChange={(e) => setNuevoForm({ ...nuevoForm, nombre: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">Descripción</label>
+                <input type="text" className="input-field" placeholder="Ej: Arenado superficial para estructuras"
+                  value={nuevoForm.descripcion} onChange={(e) => setNuevoForm({ ...nuevoForm, descripcion: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Unidad</label>
+                  <input type="text" className="input-field" placeholder="m2, hora, kg..."
+                    value={nuevoForm.unidad} onChange={(e) => setNuevoForm({ ...nuevoForm, unidad: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">Precio ref. (CLP)</label>
+                  <input type="number" min="0" className="input-field" placeholder="0"
+                    value={nuevoForm.precio_ref} onChange={(e) => setNuevoForm({ ...nuevoForm, precio_ref: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className="label">Cantidad</label>
+                <input type="number" min="0" step="0.01" className="input-field" placeholder="1"
+                  value={nuevoForm.cantidad} onChange={(e) => setNuevoForm({ ...nuevoForm, cantidad: e.target.value })} />
+              </div>
+
+              {/* Toggle guardar en catálogo */}
+              <button
+                onClick={() => setGuardarEnCat(v => !v)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors ${
+                  guardarEnCat
+                    ? 'border-teal-500/40 bg-teal-900/20'
+                    : 'border-slate-700 bg-slate-900/40'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
+                  guardarEnCat ? 'bg-teal-500 border-teal-500' : 'border-slate-600 bg-transparent'
+                }`}>
+                  {guardarEnCat && (
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <div className="text-left">
+                  <p className={`text-sm font-medium ${guardarEnCat ? 'text-teal-300' : 'text-slate-400'}`}>
+                    Guardar en Cat. Servicios
+                  </p>
+                  <p className="text-slate-500 text-xs">Quedará disponible para futuras cotizaciones</p>
+                </div>
+              </button>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={cerrarNuevo} className="btn-secondary flex-1">Cancelar</button>
+                <button
+                  onClick={handleAgregarNuevo}
+                  className="btn-primary flex-1"
+                  disabled={savingNuevo || !nuevoForm.nombre.trim()}
+                >
+                  {savingNuevo ? 'Guardando...' : 'Agregar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
