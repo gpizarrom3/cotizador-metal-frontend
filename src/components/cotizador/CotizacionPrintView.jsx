@@ -277,29 +277,37 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
         </Section>
       )}
 
-      {/* Resumen de costos */}
+      {/* Resumen de costos — solo categorías visibles, sin márgenes internos */}
       <Section title="Resumen de costos">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+
+          {/* Categorías visibles para el cliente */}
           {conMaterial === false
-            ? <CostRow label="Consumibles de taller" value={fmtM(totalConsumibles)} />
-            : <CostRow label="Materiales"             value={fmtM(totalMateriales)} />
+            ? (totalConsumibles > 0 && <CostRow label="Consumibles de taller" value={fmtM(totalConsumibles)} />)
+            : (totalMateriales  > 0 && <CostRow label="Materiales"             value={fmtM(totalMateriales)} />)
           }
-          <CostRow label="Horas Hombre" value={fmtM(totalHH)} />
-          {totalServicios > 0 && <CostRow label="Servicios externos" value={fmtM(totalServicios)} />}
-          {totalMarkupServicios > 0 && <CostRow label={`Gestión servicios (${markupServicios}%)`} value={fmtM(totalMarkupServicios)} indent />}
-          {bases.filter(b => b.porcentaje > 0).map(b => (
-            <CostRow key={b.id} label={`${b.nombre} (${b.porcentaje}%)`} value={fmtM((baseSubtotal + totalHH) * b.porcentaje / 100)} indent />
-          ))}
-          {totalBases > 0 && <CostRow label="Subtotal % bases" value={fmtM(totalBases)} />}
+          {totalHH > 0 && <CostRow label="Mano de obra" value={fmtM(totalHH)} />}
+          {totalServicios > 0 && (
+            <CostRow
+              label={totalMarkupServicios > 0 ? `Servicios externos (incl. gestión)` : 'Servicios externos'}
+              value={fmtM(totalServicios + totalMarkupServicios)}
+            />
+          )}
           {tieneEmbalaje && <CostRow label="Embalaje y Envío" value={fmtM(totalEmbalaje)} />}
+
+          {/* Descuento */}
           {descuentoMonto > 0 && (
             <CostRow
               label={`Descuento${tipoDescuento === 'porcentaje' ? ` (${descuento}%)` : ''}`}
               value={`-${fmtM(descuentoMonto)}`}
             />
           )}
+
+          {/* Flete */}
           {Number(flete) > 0 && <CostRow label="Flete / transporte" value={fmtM(flete)} />}
-          <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '4px', paddingTop: '6px' }}>
+
+          {/* Neto + IVA + Total */}
+          <div style={{ borderTop: '2px solid #1e3a5f', marginTop: '6px', paddingTop: '8px' }}>
             <CostRow label="NETO" value={fmtM(totalNeto)} bold />
           </div>
           {incluyeIVA && <CostRow label="IVA (19%)" value={fmtM(totalIVA)} />}
