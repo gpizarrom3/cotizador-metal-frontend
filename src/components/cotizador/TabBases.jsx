@@ -219,19 +219,19 @@ export default function TabBases({ bases, setBases, totalMateriales, totalHH, co
             return (
               <div key={i} style={{
                 borderRadius: 12, padding: '14px 20px', display: 'flex', gap: 12,
-                background: isErr ? 'rgba(153,27,27,0.15)' : 'rgba(133,100,4,0.15)',
-                border: `1px solid ${isErr ? 'rgba(239,68,68,0.35)' : 'rgba(234,179,8,0.35)'}`,
+                background: isErr ? 'rgba(127,29,29,0.55)' : 'rgba(120,53,15,0.55)',
+                border: `1px solid ${isErr ? 'rgba(239,68,68,0.7)' : 'rgba(245,158,11,0.7)'}`,
               }}>
-                <svg style={{ width: 20, height: 20, flexShrink: 0, marginTop: 2, color: isErr ? '#f87171' : '#facc15' }}
+                <svg style={{ width: 20, height: 20, flexShrink: 0, marginTop: 2, color: isErr ? '#ff8080' : '#fbbf24' }}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, color: isErr ? '#fca5a5' : '#fde68a' }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: isErr ? '#ffb3b3' : '#fde68a' }}>
                     {isErr ? 'Margen probablemente insuficiente' : 'Revisa los márgenes'}
                   </p>
-                  <p style={{ fontSize: 13, lineHeight: 1.5, color: isErr ? 'rgba(252,165,165,0.8)' : 'rgba(253,230,138,0.8)' }}>
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: isErr ? '#ffd5d5' : '#fef3c7' }}>
                     {a.msg}
                   </p>
                 </div>
