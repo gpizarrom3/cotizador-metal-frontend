@@ -228,10 +228,10 @@ export default function TabBases({ bases, setBases, totalMateriales, totalHH, co
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: isErr ? '#ffb3b3' : '#fde68a', textShadow: '0 1px 3px #000, 0 0 6px rgba(0,0,0,0.8)' }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: isErr ? '#ffb3b3' : '#fde68a', textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
                     {isErr ? 'Margen probablemente insuficiente' : 'Revisa los márgenes'}
                   </p>
-                  <p style={{ fontSize: 13, lineHeight: 1.6, color: isErr ? '#ffd5d5' : '#fef3c7', textShadow: '0 1px 2px #000, 0 0 4px rgba(0,0,0,0.7)' }}>
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: isErr ? '#ffd5d5' : '#fef3c7', textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
                     {a.msg}
                   </p>
                 </div>
