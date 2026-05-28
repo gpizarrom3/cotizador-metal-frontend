@@ -66,6 +66,74 @@ function calcPesoKg(geomId, dims, densidad) {
   return vol * rho
 }
 
+// ── Verificador de precios de referencia ─────────────────────────────────────
+const PRECIO_REF_KG = [
+  { keywords: ['a36', 'a572', 'gr50', 'estructural'],                         min: 700,   max: 2500,  label: 'Acero A36 / estructural' },
+  { keywords: ['inox 304', 'inoxidable 304', 'inox 316', 'inoxidable 316', 'acero inox', 'inoxidable'], min: 2500, max: 10000, label: 'Acero inoxidable' },
+  { keywords: ['aluminio', 'aluminum', 'al 6061', 'al 5052'],                 min: 2000,  max: 8000,  label: 'Aluminio' },
+  { keywords: ['cobre'],                                                       min: 7000,  max: 22000, label: 'Cobre' },
+  { keywords: ['bronce'],                                                      min: 5000,  max: 20000, label: 'Bronce' },
+  { keywords: ['fundicion', 'fundición', 'hierro fundido', 'fierro fundido'], min: 500,   max: 2000,  label: 'Fundición' },
+]
+
+function detectarAviso(nombre, formato, precio) {
+  if (!nombre || !precio || precio <= 0) return null
+  const n = nombre.toLowerCase()
+  const f = (formato || '').toLowerCase()
+  // Solo avisar cuando la unidad indica precio por kg
+  if (!f.includes('kg') && !n.includes('/kg')) return null
+  for (const ref of PRECIO_REF_KG) {
+    if (!ref.keywords.some(k => n.includes(k))) continue
+    if (precio < ref.min * 0.45) return { nivel: 'error', label: ref.label, min: ref.min, max: ref.max }
+    if (precio < ref.min * 0.8)  return { nivel: 'warn',  label: ref.label, min: ref.min, max: ref.max }
+    if (precio > ref.max * 2.5)  return { nivel: 'warn',  label: ref.label, min: ref.min, max: ref.max }
+    return null
+  }
+  return null
+}
+
+function PrecioAviso({ aviso }) {
+  const [visible, setVisible] = useState(false)
+  if (!aviso) return null
+  const isErr = aviso.nivel === 'error'
+  return (
+    <div
+      className="relative flex-shrink-0"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      <svg
+        className="w-4 h-4 cursor-help"
+        style={{ color: isErr ? '#f87171' : '#facc15' }}
+        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      {visible && (
+        <div style={{
+          position: 'absolute', right: 0, bottom: '100%', marginBottom: 8,
+          width: 260, zIndex: 9999, pointerEvents: 'none',
+        }}>
+          <div style={{
+            borderRadius: 8, padding: '10px 12px', fontSize: 12,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            background: isErr ? '#1c0a0a' : '#1c1500',
+            border: `1px solid ${isErr ? 'rgba(239,68,68,0.5)' : 'rgba(234,179,8,0.5)'}`,
+            color: isErr ? '#fca5a5' : '#fde68a',
+          }}>
+            <p style={{ fontWeight: 700, marginBottom: 4 }}>
+              {isErr ? '🚨 Precio muy bajo' : '⚠️ Precio inusual'} — {aviso.label}
+            </p>
+            <p>Referencia Chile: <strong>{fmt(aviso.min)} – {fmt(aviso.max)} /kg</strong></p>
+            <p style={{ marginTop: 4, opacity: 0.8 }}>Verifica que sea $/kg y no haya error de tipeo.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PesoCalculadora({ onAgregar }) {
   const [open, setOpen] = useState(false)
   const [matIdx, setMatIdx] = useState(0)
@@ -200,7 +268,12 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
                   <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-28" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
                   <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-24" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
                   <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-20" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
-                  <td className="px-3 py-2"><input type="number" min="0" className="input-field py-1.5 text-sm text-right w-28" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} /></td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" min="0" className="input-field py-1.5 text-sm text-right w-28" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} />
+                      <PrecioAviso aviso={detectarAviso(m.nombre, m.formato, m.precio_unitario)} />
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
                   <td className="px-3 py-2">
                     <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors">

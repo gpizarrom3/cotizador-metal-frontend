@@ -7,6 +7,66 @@ const BASES_SIN_MATERIAL = [
   { nombre: 'Imprevistos',         porcentaje: 5  },
 ]
 
+// ── Análisis de márgenes ─────────────────────────────────────────────────────
+function analizarBases(bases, conMaterial) {
+  const avisos = []
+  const totalPct = bases.reduce((acc, b) => acc + (Number(b.porcentaje) || 0), 0)
+  if (bases.length === 0 || totalPct === 0) return avisos
+
+  const gg   = bases.find(b => /gastos\s*(gen|general)/i.test(b.nombre))
+  const util = bases.find(b => /utilidad/i.test(b.nombre))
+
+  if (conMaterial === false) {
+    // Sin material — base reducida, márgenes deben ser más altos
+    if (gg) {
+      const pct = Number(gg.porcentaje) || 0
+      if (pct < 25)
+        avisos.push({
+          nivel: pct < 15 ? 'error' : 'warn',
+          msg: `Gastos Generales al ${pct}% puede ser insuficiente. Sin material en la base, se recomienda mínimo 35–45% para cubrir herramientas, depreciación de maquinaria y overhead del taller.`,
+        })
+    }
+    if (util) {
+      const pct = Number(util.porcentaje) || 0
+      if (pct < 10)
+        avisos.push({
+          nivel: 'warn',
+          msg: `Utilidades al ${pct}% — se recomienda mínimo 12–15% para sostener el negocio a largo plazo.`,
+        })
+    }
+    if (totalPct < 50)
+      avisos.push({
+        nivel: totalPct < 35 ? 'error' : 'warn',
+        msg: `Total de bases ${totalPct.toFixed(1)}% parece bajo. Con base reducida (sin material) el rango recomendado es 55–90% para cubrir todos los costos indirectos y margen de utilidad.`,
+      })
+  } else {
+    // Con material incluido en la base
+    if (gg) {
+      const pct = Number(gg.porcentaje) || 0
+      if (pct < 15)
+        avisos.push({
+          nivel: pct < 8 ? 'error' : 'warn',
+          msg: `Gastos Generales al ${pct}% puede ser muy bajo. Con material incluido en la base, el rango habitual es 20–45%.`,
+        })
+    }
+    if (util) {
+      const pct = Number(util.porcentaje) || 0
+      if (pct < 8)
+        avisos.push({
+          nivel: 'warn',
+          msg: `Utilidades al ${pct}% — considera al menos 10–15% para cubrir riesgo de proyecto y crecimiento del taller.`,
+        })
+    }
+    if (totalPct < 25)
+      avisos.push({
+        nivel: totalPct < 15 ? 'error' : 'warn',
+        msg: `Total de bases ${totalPct.toFixed(1)}% puede ser insuficiente. Con material en la base, el rango habitual es 30–60%.`,
+      })
+  }
+
+  return avisos
+}
+
 export default function TabBases({ bases, setBases, totalMateriales, totalHH, conMaterial, totalConsumibles = 0 }) {
   const baseSubtotal = conMaterial === false ? totalConsumibles : totalMateriales
   const baseCalculo  = baseSubtotal + totalHH
@@ -22,6 +82,8 @@ export default function TabBases({ bases, setBases, totalMateriales, totalHH, co
 
   const totalPct   = bases.reduce((acc, b) => acc + (Number(b.porcentaje) || 0), 0)
   const totalMonto = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
+
+  const avisos = analizarBases(bases, conMaterial)
 
   return (
     <div className="space-y-5">
@@ -148,6 +210,36 @@ export default function TabBases({ bases, setBases, totalMateriales, totalHH, co
           </table>
         </div>
       </div>
+
+      {/* Avisos de márgenes insuficientes */}
+      {avisos.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {avisos.map((a, i) => {
+            const isErr = a.nivel === 'error'
+            return (
+              <div key={i} style={{
+                borderRadius: 12, padding: '14px 20px', display: 'flex', gap: 12,
+                background: isErr ? 'rgba(153,27,27,0.15)' : 'rgba(133,100,4,0.15)',
+                border: `1px solid ${isErr ? 'rgba(239,68,68,0.35)' : 'rgba(234,179,8,0.35)'}`,
+              }}>
+                <svg style={{ width: 20, height: 20, flexShrink: 0, marginTop: 2, color: isErr ? '#f87171' : '#facc15' }}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, color: isErr ? '#fca5a5' : '#fde68a' }}>
+                    {isErr ? 'Margen probablemente insuficiente' : 'Revisa los márgenes'}
+                  </p>
+                  <p style={{ fontSize: 13, lineHeight: 1.5, color: isErr ? 'rgba(252,165,165,0.8)' : 'rgba(253,230,138,0.8)' }}>
+                    {a.msg}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

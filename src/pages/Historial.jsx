@@ -148,6 +148,8 @@ export default function Historial() {
       unidadesPorLote: cot.unidadesPorLote || 1,
       config:          { ...(cot.config || {}), flete: 0 },
       embalaje:        cot.embalaje        || {},
+      conMaterial:     cot.conMaterial     ?? null,
+      consumibles:     cot.consumibles     || [],
       numeroCot:       '',
       estado:          'Pendiente',
     }
