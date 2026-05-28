@@ -22,10 +22,13 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
     ? clienteRaw
     : { nombre: clienteRaw, rut: '', email: '', telefono: '' }
 
-  const { flete = 0, incluyeIVA = false, descuento = 0, tipoDescuento = 'porcentaje', condicionesPago = '', plazoEntrega = '', notas = '' } = config
+  const { flete = 0, incluyeIVA = false, descuento = 0, tipoDescuento = 'porcentaje', condicionesPago = '', plazoEntrega = '', notas = '', markupServicios = 0 } = config
 
-  const baseCalculo        = totalMateriales + totalHH + totalServicios + totalEmbalaje
-  const costoSinDescuento  = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
+  const { conMaterial, totalConsumibles = 0 } = cot
+  const baseSubtotal         = conMaterial === false ? totalConsumibles : totalMateriales
+  const baseCalculo          = baseSubtotal + totalHH
+  const totalMarkupServicios = totalServicios > 0 ? totalServicios * (Number(markupServicios) || 0) / 100 : 0
+  const costoSinDescuento    = baseSubtotal + totalHH + totalServicios + totalMarkupServicios + totalBases + totalEmbalaje
   const descuentoMonto     = tipoDescuento === 'porcentaje' ? costoSinDescuento * (Number(descuento) || 0) / 100 : Number(descuento) || 0
   const costoTotal         = costoSinDescuento - descuentoMonto
   const totalNeto          = costoTotal + Number(flete)
@@ -199,7 +202,7 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
       )}
 
       {/* Servicios */}
-      {activeServicios.length > 0 && (
+      {totalServicios > 0 && (
         <Section title="3. Servicios Externos" color="#1e3a5f">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -216,9 +219,18 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
                   <Td right bold>{fmt(s.precio)}</Td>
                 </tr>
               ))}
+              {(servicios.custom || []).map((s, i) => (
+                <tr key={`custom-${i}`} style={{ background: (activeServicios.length + i) % 2 === 0 ? '#f8fafc' : '#fff' }}>
+                  <Td>{s.nombre}</Td>
+                  <Td right bold>{fmt((s.cantidad || 1) * (s.precio_ref || 0))}</Td>
+                </tr>
+              ))}
             </tbody>
           </table>
           <SubtotalRow label="SUBTOTAL SERVICIOS" value={fmt(totalServicios)} />
+          {totalMarkupServicios > 0 && (
+            <SubtotalRow label={`GESTIÓN / COORDINACIÓN (${markupServicios}%)`} value={fmt(totalMarkupServicios)} />
+          )}
         </Section>
       )}
 
@@ -262,7 +274,8 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
       {bases.some(b => Number(b.porcentaje) > 0) && (
         <Section title="5. Gastos de Estructura (% Bases)" color="#1e3a5f">
           <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '8px 12px', marginBottom: '6px', fontSize: '10px', color: '#64748b' }}>
-            Base de cálculo (Materiales + HH + Servicios + Embalaje): <strong style={{ color: '#1e293b' }}>{fmt(baseCalculo)}</strong>
+            Base de cálculo ({conMaterial === false ? 'Consumibles' : 'Materiales'} + HH): <strong style={{ color: '#1e293b' }}>{fmt(baseCalculo)}</strong>
+            <span style={{ marginLeft: '12px', color: '#94a3b8' }}>— Servicios y embalaje se suman directamente</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -291,9 +304,13 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
       <Section title="6. Resumen de Costos" color="#991b1b">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <SummaryRow label="Materiales"           value={fmt(totalMateriales)} />
+            {conMaterial === false
+              ? <SummaryRow label="Consumibles de taller" value={fmt(totalConsumibles)} />
+              : <SummaryRow label="Materiales"             value={fmt(totalMateriales)} />
+            }
             <SummaryRow label="Mano de Obra (HH)"    value={fmt(totalHH)} />
             {totalServicios > 0 && <SummaryRow label="Servicios Externos"  value={fmt(totalServicios)} />}
+            {totalMarkupServicios > 0 && <SummaryRow label={`Gestión servicios (${markupServicios}%)`} value={fmt(totalMarkupServicios)} />}
             {tieneEmbalaje      && <SummaryRow label="Embalaje y Envío"    value={fmt(totalEmbalaje)} />}
             {totalBases > 0     && <SummaryRow label="Gastos de Estructura" value={fmt(totalBases)} />}
             {descuentoMonto > 0 && <SummaryRow label={`Descuento${tipoDescuento === 'porcentaje' ? ` (${descuento}%)` : ''}`} value={`-${fmt(descuentoMonto)}`} color="#dc2626" />}

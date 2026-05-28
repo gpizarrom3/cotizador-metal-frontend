@@ -27,9 +27,13 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
     condicionesPago = '', plazoEntrega = '', notas = '',
     descuento = 0, tipoDescuento = 'porcentaje',
     moneda = 'CLP', tipoCambio = 1,
+    markupServicios = 0,
   } = config
 
-  const costoSinDescuento = totalMateriales + totalHH + totalServicios + totalBases + totalEmbalaje
+  const { conMaterial, totalConsumibles = 0 } = cot
+  const baseSubtotal         = conMaterial === false ? totalConsumibles : totalMateriales
+  const totalMarkupServicios = totalServicios > 0 ? totalServicios * (Number(markupServicios) || 0) / 100 : 0
+  const costoSinDescuento    = baseSubtotal + totalHH + totalServicios + totalMarkupServicios + totalBases + totalEmbalaje
   const descuentoMonto = tipoDescuento === 'porcentaje'
     ? costoSinDescuento * (Number(descuento) || 0) / 100
     : Number(descuento) || 0
@@ -180,19 +184,27 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
       )}
 
       {/* Servicios */}
-      {activeServicios.length > 0 && (
-        <Section title="Servicios">
+      {totalServicios > 0 && (
+        <Section title="Servicios Externos">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><Th cols={['Servicio', 'Monto']} /></thead>
             <tbody>
               {activeServicios.map(([key, s], i) => (
                 <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                  <Td>{SERVICIOS_LABELS[key]}</Td><Td right bold>{fmtM(s.precio)}</Td>
+                  <Td>{SERVICIOS_LABELS[key] || key}</Td><Td right bold>{fmtM(s.precio)}</Td>
+                </tr>
+              ))}
+              {(servicios.custom || []).map((s, i) => (
+                <tr key={`custom-${i}`} style={{ background: (activeServicios.length + i) % 2 === 0 ? '#f8fafc' : '#fff' }}>
+                  <Td>{s.nombre}</Td><Td right bold>{fmtM((s.cantidad || 1) * (s.precio_ref || 0))}</Td>
                 </tr>
               ))}
             </tbody>
           </table>
           <TotalRow label="Subtotal servicios" value={fmtM(totalServicios)} />
+          {totalMarkupServicios > 0 && (
+            <TotalRow label={`Gestión / coordinación (${markupServicios}%)`} value={fmtM(totalMarkupServicios)} />
+          )}
         </Section>
       )}
 
@@ -268,11 +280,15 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
       {/* Resumen de costos */}
       <Section title="Resumen de costos">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <CostRow label="Materiales"     value={fmtM(totalMateriales)} />
-          <CostRow label="Horas Hombre"   value={fmtM(totalHH)} />
-          {activeServicios.length > 0 && <CostRow label="Servicios" value={fmtM(totalServicios)} />}
+          {conMaterial === false
+            ? <CostRow label="Consumibles de taller" value={fmtM(totalConsumibles)} />
+            : <CostRow label="Materiales"             value={fmtM(totalMateriales)} />
+          }
+          <CostRow label="Horas Hombre" value={fmtM(totalHH)} />
+          {totalServicios > 0 && <CostRow label="Servicios externos" value={fmtM(totalServicios)} />}
+          {totalMarkupServicios > 0 && <CostRow label={`Gestión servicios (${markupServicios}%)`} value={fmtM(totalMarkupServicios)} indent />}
           {bases.filter(b => b.porcentaje > 0).map(b => (
-            <CostRow key={b.id} label={`${b.nombre} (${b.porcentaje}%)`} value={fmtM((totalMateriales + totalHH + totalServicios + totalEmbalaje) * b.porcentaje / 100)} indent />
+            <CostRow key={b.id} label={`${b.nombre} (${b.porcentaje}%)`} value={fmtM((baseSubtotal + totalHH) * b.porcentaje / 100)} indent />
           ))}
           {totalBases > 0 && <CostRow label="Subtotal % bases" value={fmtM(totalBases)} />}
           {tieneEmbalaje && <CostRow label="Embalaje y Envío" value={fmtM(totalEmbalaje)} />}
