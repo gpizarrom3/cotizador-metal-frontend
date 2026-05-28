@@ -34,6 +34,7 @@ export default function TabResumen({
     descuento = 0, tipoDescuento = 'porcentaje',
     moneda = 'CLP', tipoCambio = 1,
     descripcion = '', numeroReferencia = '',
+    markupServicios = 0,
   } = config
 
   const tc = Number(tipoCambio) || 1
@@ -44,9 +45,10 @@ export default function TabResumen({
     return fmt(v)
   }
 
-  const baseSubtotal = conMaterial === false ? totalConsumibles : totalMateriales
-  const baseCalculo = baseSubtotal + totalHH
-  const costoSinDescuento = baseSubtotal + totalHH + totalServicios + totalBases + totalEmbalaje
+  const baseSubtotal         = conMaterial === false ? totalConsumibles : totalMateriales
+  const baseCalculo          = baseSubtotal + totalHH
+  const totalMarkupServicios = totalServicios > 0 ? totalServicios * (Number(markupServicios) || 0) / 100 : 0
+  const costoSinDescuento    = baseSubtotal + totalHH + totalServicios + totalMarkupServicios + totalBases + totalEmbalaje
   const descuentoMonto = tipoDescuento === 'porcentaje'
     ? costoSinDescuento * (Number(descuento) || 0) / 100
     : Number(descuento) || 0
@@ -225,11 +227,33 @@ export default function TabResumen({
 
           {activeServicios.length > 0 && (
             <div className="pt-1">
-              <p className="text-xs text-slate-500 uppercase tracking-wider px-1 mb-1">Servicios</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wider px-1 mb-1">Servicios externos</p>
               {activeServicios.map(([k, s]) => (
                 <SRow key={k} label={SERVICIOS_LABELS[k]} value={s.precio || 0} indent fmtFn={fmtM} />
               ))}
+              {(servicios.custom || []).map(s => (
+                <SRow key={s.id} label={s.nombre} value={(s.cantidad || 1) * (s.precio_ref || 0)} indent fmtFn={fmtM} />
+              ))}
               <SRow label="Subtotal servicios" value={totalServicios} fmtFn={fmtM} />
+              {/* Markup de gestión */}
+              <div className="flex items-center justify-between py-1.5 pl-5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-stone-500 text-sm">Gestión / coordinación</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min="0" max="50" step="0.5"
+                      className="input-field text-xs py-1 w-16 text-right"
+                      placeholder="0"
+                      value={markupServicios || ''}
+                      onChange={e => setConfigField('markupServicios', Number(e.target.value))}
+                    />
+                    <span className="text-stone-500 text-xs">%</span>
+                  </div>
+                </div>
+                <span className={`font-medium text-sm ${totalMarkupServicios > 0 ? 'text-slate-300' : 'text-stone-700'}`}>
+                  {totalMarkupServicios > 0 ? fmtM(totalMarkupServicios) : '—'}
+                </span>
+              </div>
             </div>
           )}
 

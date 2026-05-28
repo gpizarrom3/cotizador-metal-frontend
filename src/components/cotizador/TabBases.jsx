@@ -74,7 +74,7 @@ export default function TabBases({ bases, setBases, totalMateriales, totalHH, co
           </div>
         </div>
         <p className="text-stone-500 text-xs mt-3">
-          Los servicios no forman parte de la base para los porcentajes.
+          Los servicios externos y el embalaje <strong className="text-stone-400">no forman parte de la base</strong> — se suman directamente al precio final.
         </p>
       </div>
 

@@ -68,6 +68,7 @@ const DEFAULT_CONFIG = {
   descuento: 0, tipoDescuento: 'porcentaje',
   moneda: 'CLP', tipoCambio: 1,
   descripcion: '', numeroReferencia: '',
+  markupServicios: 0,
 }
 
 const DEFAULT_CLIENTE = { nombre: '', rut: '', email: '', telefono: '' }
@@ -299,10 +300,12 @@ export default function Cotizador() {
     (Number(embalaje.costoEnvio) || 0)
   )
   // Sin material: consumibles replace materials in the base calculation
-  const baseSubtotal      = conMaterial === false ? totalConsumibles : totalMateriales
-  const baseCalculo       = baseSubtotal + totalHH + totalServicios + totalEmbalaje
-  const totalBases        = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
-  const costoSinDescuento = baseSubtotal + totalHH + totalServicios + totalBases + totalEmbalaje
+  // Base = Mat (o Consumibles) + HH — los servicios externos NO forman parte de la base
+  const baseSubtotal         = conMaterial === false ? totalConsumibles : totalMateriales
+  const baseCalculo          = baseSubtotal + totalHH
+  const totalBases           = bases.reduce((acc, b) => acc + (baseCalculo * (Number(b.porcentaje) || 0) / 100), 0)
+  const totalMarkupServicios = totalServicios > 0 ? totalServicios * (Number(config.markupServicios) || 0) / 100 : 0
+  const costoSinDescuento    = baseSubtotal + totalHH + totalServicios + totalMarkupServicios + totalBases + totalEmbalaje
   const descuentoMonto    = config.tipoDescuento === 'porcentaje'
     ? costoSinDescuento * (Number(config.descuento) || 0) / 100
     : Number(config.descuento) || 0
@@ -321,7 +324,7 @@ export default function Cotizador() {
     consumibles: conMaterial === false ? consumibles : [],
     totalMateriales: conMaterial === false ? 0 : totalMateriales,
     totalConsumibles: conMaterial === false ? totalConsumibles : 0,
-    totalHH, totalServicios, totalBases, totalEmbalaje,
+    totalHH, totalServicios, totalMarkupServicios, totalBases, totalEmbalaje,
     costoSinDescuento, descuentoMonto,
     totalNeto, totalIVA, totalFinal,
     numero: numeroCot,
