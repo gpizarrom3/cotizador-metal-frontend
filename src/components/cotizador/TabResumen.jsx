@@ -225,7 +225,7 @@ export default function TabResumen({
           }
           <SRow label="Horas Hombre" value={totalHH} fmtFn={fmtM} />
 
-          {activeServicios.length > 0 && (
+          {totalServicios > 0 && (
             <div className="pt-1">
               <p className="text-xs text-slate-500 uppercase tracking-wider px-1 mb-1">Servicios externos</p>
               {activeServicios.map(([k, s]) => (
