@@ -30,37 +30,16 @@ const makeDefaultRoles = (cfg) => {
   return [{ id: 1, nombre: first.nombre, precio_hora: first.precio_hora, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 }]
 }
 
-const makeDefaultServicios = (cfg) => ({
-  corte_plasma:        { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.corte_plasma.precio_ref, unidad: cfg.servicios.corte_plasma.unidad },
-  corte_laser:         { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.corte_laser.precio_ref,  unidad: cfg.servicios.corte_laser.unidad  },
-  oxicorte:            { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.oxicorte.precio_ref,     unidad: cfg.servicios.oxicorte.unidad     },
-  tratamiento_termico: { activo: false, tipo: '', precio: 0 },
-  plegado:             { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.plegado.precio_ref,      unidad: cfg.servicios.plegado.unidad      },
-  cilindrado:          { activo: false, precio: 0, cantidad: 0, precio_ref: cfg.servicios.cilindrado.precio_ref,   unidad: cfg.servicios.cilindrado.unidad   },
-  custom:              [],
-})
+const makeDefaultServicios = () => ({ custom: [] })
 
 const makeDefaultBases = (cfg) =>
   cfg.bases.map((b, i) => ({ id: i + 1, nombre: b.nombre, porcentaje: b.porcentaje }))
 
-const mergeServicios = (saved, defaults) => {
-  const result = { ...defaults }
-  if (!saved) return result
-  if (Array.isArray(saved.custom)) result.custom = saved.custom
-  Object.keys(saved).forEach((key) => {
-    if (key === 'custom') return
-    if (!result[key]) return
-    const base = result[key]
-    result[key] = {
-      ...base,
-      ...saved[key],
-      ...('precio_ref' in base && { precio_ref: saved[key].precio_ref || base.precio_ref }),
-      ...('unidad'     in base && { unidad:     saved[key].unidad     || base.unidad     }),
-      ...('cantidad'   in base && { cantidad:   saved[key].cantidad   ?? 0               }),
-    }
-  })
-  return result
-}
+// Migración: si hay servicios guardados del formato antiguo (con claves fijas),
+// descarta los toggles y solo preserva el array custom
+const mergeServicios = (saved) => ({
+  custom: Array.isArray(saved?.custom) ? saved.custom : [],
+})
 
 const DEFAULT_CONFIG = {
   flete: 0, incluyeIVA: false, validezDias: 30,
@@ -164,7 +143,7 @@ export default function Cotizador() {
   const [estado,         setEstado]         = useState(() => getDraft().estado ?? 'Pendiente')
   const [materiales,     setMateriales]     = useState(() => migrarMateriales(getDraft().materiales ?? []))
   const [roles,          setRoles]          = useState(() => getDraft().roles          ?? makeDefaultRoles(getConfigDefaults()))
-  const [servicios,      setServicios]      = useState(() => mergeServicios(getDraft().servicios, makeDefaultServicios(getConfigDefaults())))
+  const [servicios,      setServicios]      = useState(() => mergeServicios(getDraft().servicios))
   const [bases,          setBases]          = useState(() => getDraft().bases          ?? makeDefaultBases(getConfigDefaults()))
   const [cantidadLotes,  setCantidadLotes]  = useState(() => getDraft().cantidadLotes ?? 1)
   const [unidadesPorLote,setUnidadesPorLote]= useState(() => getDraft().unidadesPorLote ?? 1)
@@ -263,7 +242,7 @@ export default function Cotizador() {
   const handleCargarPlantilla = (p) => {
     setMateriales(migrarMateriales(p.materiales || []))
     setRoles(p.roles || makeDefaultRoles(getConfigDefaults()))
-    setServicios(p.servicios || makeDefaultServicios(getConfigDefaults()))
+    setServicios(p.servicios || makeDefaultServicios())
     setBases(p.bases || makeDefaultBases(getConfigDefaults()))
     setConfig((c) => ({ ...c, ...(p.config || {}) }))
     setCantidadLotes(p.cantidadLotes || 1)
@@ -289,10 +268,7 @@ export default function Cotizador() {
     const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
     return acc + hh + col
   }, 0)
-  const totalServicios = Object.entries(servicios).reduce((acc, [key, s]) => {
-    if (key === 'custom') return acc
-    return acc + (s.activo ? Number(s.precio) || 0 : 0)
-  }, 0) + (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
+  const totalServicios = (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
   const totalEmbalaje = (embalaje.activo === false) ? 0 : (
     (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (embalaje.pallets || []).reduce((accP, p) =>
