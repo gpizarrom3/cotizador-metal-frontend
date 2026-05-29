@@ -242,15 +242,15 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="table-header">
               <th className="text-left px-3 py-3 rounded-l-lg">Material</th>
-              <th className="text-left px-3 py-3">Proveedor</th>
-              <th className="text-left px-3 py-3">Formato</th>
-              <th className="text-right px-3 py-3">Cant.</th>
-              <th className="text-right px-3 py-3">P. Unit.</th>
-              <th className="text-right px-3 py-3">Total</th>
+              <th className="text-left px-3 py-3 w-28">Proveedor</th>
+              <th className="text-left px-3 py-3 w-24">Formato</th>
+              <th className="text-right px-3 py-3 w-28">Cant.</th>
+              <th className="text-right px-3 py-3 w-40">P. Unit.</th>
+              <th className="text-right px-3 py-3 w-28">Total</th>
               <th className="px-3 py-3 rounded-r-lg w-8" />
             </tr>
           </thead>
@@ -264,13 +264,13 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
             ) : (
               (sp.items || []).map((m) => (
                 <tr key={m.id} className="border-b border-slate-700">
-                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-36" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} /></td>
-                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-28" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
-                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm min-w-24" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
-                  <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-20" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
+                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} /></td>
+                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
+                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
+                  <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-full" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5">
-                      <input type="number" min="0" className="input-field py-1.5 text-sm text-right w-28" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} />
+                      <input type="number" min="0" className="input-field py-1.5 text-sm text-right min-w-0 flex-1" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} />
                       <PrecioAviso aviso={detectarAviso(m.nombre, m.formato, m.precio_unitario)} />
                     </div>
                   </td>
@@ -457,17 +457,23 @@ export default function TabMateriales({ materiales, setMateriales }) {
                       <button onClick={() => addFromTool({ nombre: r.nombre, proveedor: r.proveedor, formato: r.formato, precio_unitario: r.precio_unitario })}
                         className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded transition-colors">+ Agregar</button>
                     </div>
-                    <a
-                      href={`https://www.google.com/search?q=${encodeURIComponent(`${r.nombre} ${r.proveedor} precio Chile`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 flex items-center gap-1 text-xs text-slate-500 hover:text-blue-400 transition-colors"
-                    >
-                      <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                      Verificar precio →
-                    </a>
+                    {r.url && (() => {
+                      let domain = r.url
+                      try { domain = new URL(r.url).hostname.replace(/^www\./, '') } catch {}
+                      return (
+                        <a
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center gap-1 text-xs text-slate-500 hover:text-blue-400 transition-colors"
+                        >
+                          <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          {domain}
+                        </a>
+                      )
+                    })()}
                   </div>
                 ))}
               </div>

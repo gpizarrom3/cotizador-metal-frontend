@@ -3,13 +3,6 @@ import DashboardLayout from '../components/layout/DashboardLayout'
 import { getEmpresa, saveEmpresa } from '../utils/empresa'
 import { getConfigDefaults, saveConfigDefaults } from '../utils/configDefaults'
 
-const SERVICIOS_LABELS = {
-  corte_plasma: 'Corte Plasma',
-  corte_laser:  'Corte Láser',
-  oxicorte:     'Oxicorte',
-  plegado:      'Servicio de Plegado',
-  cilindrado:   'Servicio de Cilindrado',
-}
 
 export default function Configuracion() {
   const [form, setForm] = useState(() => ({
@@ -27,9 +20,6 @@ export default function Configuracion() {
     setConfigDef((d) => ({ ...d, roles: [...d.roles, { nombre: '', precio_hora: 0 }] }))
   const removeRole = (i) =>
     setConfigDef((d) => ({ ...d, roles: d.roles.filter((_, idx) => idx !== i) }))
-
-  const updateServicio = (key, field, value) =>
-    setConfigDef((d) => ({ ...d, servicios: { ...d.servicios, [key]: { ...d.servicios[key], [field]: value } } }))
 
   const updateBase = (i, field, value) =>
     setConfigDef((d) => ({ ...d, bases: d.bases.map((b, idx) => idx === i ? { ...b, [field]: value } : b) }))
@@ -187,34 +177,6 @@ export default function Configuracion() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Servicios */}
-        <div className="card">
-          <h2 className="text-lg font-semibold text-white mb-4">Servicios (precios de referencia)</h2>
-          <div className="space-y-3">
-            {Object.entries(configDef.servicios).map(([key, s]) => (
-              <div key={key} className="flex items-center gap-3">
-                <span className="text-slate-300 text-sm flex-1">{SERVICIOS_LABELS[key] ?? key}</span>
-                <input
-                  type="number"
-                  min="0"
-                  className="input-field text-sm py-2 w-32 text-right"
-                  placeholder="0"
-                  value={s.precio_ref || ''}
-                  onChange={(e) => updateServicio(key, 'precio_ref', Number(e.target.value))}
-                />
-                <input
-                  type="text"
-                  className="input-field text-sm py-2 w-24"
-                  placeholder="unidad"
-                  value={s.unidad}
-                  onChange={(e) => updateServicio(key, 'unidad', e.target.value)}
-                />
-              </div>
-            ))}
-          </div>
-          <p className="text-slate-500 text-xs mt-3">La unidad se muestra junto al campo de cantidad (ej: kg, pliegue)</p>
         </div>
 
         {/* Bases */}

@@ -37,6 +37,8 @@ export default function Historial() {
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
   const [fichaModal, setFichaModal] = useState(null)
   const [presencias, setPresencias] = useState({})
+  const [sortBy, setSortBy] = useState('fecha_desc')
+  const [pagina, setPagina] = useState(1)
 
   const isInstitutional = user?.email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
 
@@ -89,6 +91,8 @@ export default function Historial() {
     if (!isInstitutional) return
     return suscribirPresencias(setPresencias)
   }, [isInstitutional])
+
+  useEffect(() => { setPagina(1) }, [search, statusFilter, fechaDesde, fechaHasta, sortBy])
 
   const handleEstado = async (cotId, estado) => {
     try {
@@ -172,6 +176,7 @@ export default function Historial() {
     setStatusFilter('Todos')
     setFechaDesde('')
     setFechaHasta('')
+    setPagina(1)
   }
 
   const desde = fechaDesde ? new Date(fechaDesde + 'T00:00:00') : null
@@ -190,6 +195,23 @@ export default function Historial() {
     const matchHasta = !hasta || (c.fechaDate && c.fechaDate <= hasta)
     return matchSearch && matchStatus && matchDesde && matchHasta
   })
+
+  const sorted = [...filtered].sort((a, b) => {
+    const ta = a.totalFinal || a.costoTotal || 0
+    const tb = b.totalFinal || b.costoTotal || 0
+    const fa = a.fechaDate || 0
+    const fb = b.fechaDate || 0
+    if (sortBy === 'fecha_asc')   return fa - fb
+    if (sortBy === 'fecha_desc')  return fb - fa
+    if (sortBy === 'precio_desc') return tb - ta
+    if (sortBy === 'precio_asc')  return ta - tb
+    return 0
+  })
+
+  const POR_PAGINA = 20
+  const totalPaginas = Math.max(1, Math.ceil(sorted.length / POR_PAGINA))
+  const paginaActual = Math.min(pagina, totalPaginas)
+  const paginados = sorted.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
 
   const conteo = ESTADOS.reduce((acc, e) => {
     acc[e] = cotizaciones.filter(c => c.estado === e).length
@@ -234,23 +256,37 @@ export default function Historial() {
             </div>
           </div>
 
-          {/* Chips de estado */}
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => setStatusFilter('Todos')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${statusFilter === 'Todos' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
-              Todos ({cotizaciones.length})
-            </button>
-            {ESTADOS.map((s) => conteo[s] > 0 && (
-              <button key={s} onClick={() => setStatusFilter(s === statusFilter ? 'Todos' : s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${statusFilter === s ? 'bg-blue-600 text-white border-blue-500' : `${STATUS_STYLE[s] || 'bg-slate-700 text-slate-300 border-slate-600'} hover:opacity-80`}`}>
-                {s} ({conteo[s]})
+          {/* Chips de estado + ordenamiento */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
+              <button onClick={() => setStatusFilter('Todos')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${statusFilter === 'Todos' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+                Todos ({cotizaciones.length})
               </button>
-            ))}
-            {filtered.length !== cotizaciones.length && (
-              <span className="text-slate-500 text-xs self-center ml-1">
-                Mostrando {filtered.length} de {cotizaciones.length}
-              </span>
-            )}
+              {ESTADOS.map((s) => conteo[s] > 0 && (
+                <button key={s} onClick={() => setStatusFilter(s === statusFilter ? 'Todos' : s)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${statusFilter === s ? 'bg-blue-600 text-white border-blue-500' : `${STATUS_STYLE[s] || 'bg-slate-700 text-slate-300 border-slate-600'} hover:opacity-80`}`}>
+                  {s} ({conteo[s]})
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {filtered.length !== cotizaciones.length && (
+                <span className="text-slate-500 text-xs">
+                  {filtered.length} de {cotizaciones.length}
+                </span>
+              )}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="input-field text-xs py-1.5 pr-7 pl-2.5 w-auto"
+              >
+                <option value="fecha_desc">Fecha: más reciente</option>
+                <option value="fecha_asc">Fecha: más antigua</option>
+                <option value="precio_desc">Precio: mayor primero</option>
+                <option value="precio_asc">Precio: menor primero</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -263,11 +299,11 @@ export default function Historial() {
           <>
           {/* ── Vista móvil: tarjetas ── */}
           <div className="md:hidden space-y-3">
-            {filtered.length === 0 ? (
+            {sorted.length === 0 ? (
               <p className="text-slate-500 text-sm text-center py-10">
                 {cotizaciones.length === 0 ? 'Sin cotizaciones guardadas.' : 'Sin resultados con estos filtros.'}
               </p>
-            ) : filtered.map((c) => (
+            ) : paginados.map((c) => (
               <div key={c.id} className="bg-stone-800/60 border border-stone-700 rounded-xl p-4">
                 {/* N° + Estado */}
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -358,7 +394,7 @@ export default function Historial() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {sorted.length === 0 ? (
                   <tr>
                     <td colSpan={isInstitutional ? 7 : 6} className="text-center py-12 text-slate-500">
                       {cotizaciones.length === 0
@@ -366,7 +402,7 @@ export default function Historial() {
                         : 'No se encontraron cotizaciones con esos filtros.'}
                     </td>
                   </tr>
-                ) : filtered.map((c) => (
+                ) : paginados.map((c) => (
                   <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
                     <td className="px-4 py-3">
                       <p className="text-blue-400 font-mono font-medium">{c.numero}</p>
@@ -459,6 +495,46 @@ export default function Historial() {
               </tbody>
             </table>
           </div>
+
+          {/* ── Paginación ── */}
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700/50">
+              <span className="text-slate-500 text-xs">
+                {(paginaActual - 1) * POR_PAGINA + 1}–{Math.min(paginaActual * POR_PAGINA, sorted.length)} de {sorted.length} cotizaciones
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPagina(p => Math.max(1, p - 1))}
+                  disabled={paginaActual === 1}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Anterior
+                </button>
+                {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+                  .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 1)
+                  .reduce((acc, n, idx, arr) => {
+                    if (idx > 0 && n - arr[idx - 1] > 1) acc.push('…')
+                    acc.push(n)
+                    return acc
+                  }, [])
+                  .map((n, i) => n === '…'
+                    ? <span key={`sep-${i}`} className="px-1 text-slate-600 text-xs">…</span>
+                    : <button key={n} onClick={() => setPagina(n)}
+                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${paginaActual === n ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+                        {n}
+                      </button>
+                  )
+                }
+                <button
+                  onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                  disabled={paginaActual === totalPaginas}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
           </>
         )}
       </div>

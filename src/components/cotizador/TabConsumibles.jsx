@@ -62,14 +62,14 @@ export default function TabConsumibles({ consumibles, setConsumibles }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="table-header">
                 <th className="text-left px-3 py-3 rounded-l-lg">Consumible</th>
                 <th className="text-left px-3 py-3 w-24">Unidad</th>
                 <th className="text-right px-3 py-3 w-24">Cantidad</th>
                 <th className="text-right px-3 py-3 w-32">P. Unit.</th>
-                <th className="text-right px-3 py-3 w-32">Total</th>
+                <th className="text-right px-3 py-3 w-28">Total</th>
                 <th className="px-3 py-3 rounded-r-lg w-8" />
               </tr>
             </thead>
@@ -80,25 +80,25 @@ export default function TabConsumibles({ consumibles, setConsumibles }) {
                 return (
                   <tr key={c.id} className={`border-b border-stone-700 transition-opacity ${activo ? '' : 'opacity-40'}`}>
                     <td className="px-3 py-2">
-                      <input type="text" className="input-field py-1.5 text-sm min-w-44"
+                      <input type="text" className="input-field py-1.5 text-sm w-full"
                         placeholder="Nombre del consumible"
                         value={c.nombre}
                         onChange={e => update(c.id, 'nombre', e.target.value)} />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="text" className="input-field py-1.5 text-sm w-20"
+                      <input type="text" className="input-field py-1.5 text-sm w-full"
                         placeholder="unid"
                         value={c.unidad}
                         onChange={e => update(c.id, 'unidad', e.target.value)} />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" min="0" step="0.1" className="input-field py-1.5 text-sm text-right w-20"
+                      <input type="number" min="0" step="0.1" className="input-field py-1.5 text-sm text-right w-full"
                         placeholder="0"
                         value={c.cantidad || ''}
                         onChange={e => update(c.id, 'cantidad', Number(e.target.value))} />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" min="0" className="input-field py-1.5 text-sm text-right w-28"
+                      <input type="number" min="0" className="input-field py-1.5 text-sm text-right w-full"
                         placeholder="0"
                         value={c.precio_unitario || ''}
                         onChange={e => update(c.id, 'precio_unitario', Number(e.target.value))} />

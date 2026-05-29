@@ -314,9 +314,9 @@ export default function Cotizador() {
       if (cotizacionId) {
         await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa: getEmpresa() }, user.email)
       } else {
-        const { numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa: getEmpresa() }, user.email, user.displayName)
+        const { id, numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa: getEmpresa() }, user.email, user.displayName)
         setNumeroCot(numero)
-        setCotizacionId('')
+        setCotizacionId(id)
       }
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 5000)
