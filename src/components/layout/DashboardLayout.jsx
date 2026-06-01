@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Sidebar from './Sidebar'
+import TutorialModal from '../ui/TutorialModal'
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -35,6 +36,8 @@ export default function DashboardLayout({ children }) {
 
         <div className="p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
+
+      <TutorialModal />
     </div>
   )
 }
