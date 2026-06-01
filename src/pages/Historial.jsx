@@ -8,7 +8,7 @@ import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import ConfirmModal from '../components/ui/ConfirmModal'
 import AdjuntarFichaModal from '../components/historial/AdjuntarFichaModal'
 import { exportPDF } from '../utils/exportPDF'
-import { getEmpresa } from '../utils/empresa'
+import { useUserData } from '../contexts/UserDataContext'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -24,6 +24,7 @@ const DRAFT_KEY = 'cotizador_draft'
 
 export default function Historial() {
   const { user }   = useAuth()
+  const { empresa } = useUserData()
   const navigate   = useNavigate()
   const location   = useLocation()
 
@@ -574,9 +575,9 @@ export default function Historial() {
           <div className="flex-1 overflow-y-auto bg-slate-200 p-6 flex justify-center" ref={previewRef}>
             <div id="historial-preview-content" className="w-full max-w-4xl">
               {preview.tipo === 'cotizacion' ? (
-                <CotizacionPrintView empresa={preview.cot.empresa || getEmpresa()} cot={preview.cot} />
+                <CotizacionPrintView empresa={preview.cot.empresa || empresa} cot={preview.cot} />
               ) : (
-                <FichaCostosPrintView empresa={preview.cot.empresa || getEmpresa()} cot={preview.cot} />
+                <FichaCostosPrintView empresa={preview.cot.empresa || empresa} cot={preview.cot} />
               )}
             </div>
           </div>

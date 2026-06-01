@@ -1,4 +1,9 @@
-const KEY = 'cotizador_config_defaults'
+const LEGACY_KEY = 'cotizador_config_defaults'
+let _uid = null
+
+export const setConfigDefaultsUid = (uid) => { _uid = uid }
+
+const key = () => _uid ? `cotizador_config_${_uid}` : LEGACY_KEY
 
 export const DEFAULT_CONFIG_VALUES = {
   roles: [
@@ -25,7 +30,7 @@ export const DEFAULT_CONFIG_VALUES = {
 
 export const getConfigDefaults = () => {
   try {
-    const s = localStorage.getItem(KEY)
+    const s = localStorage.getItem(key())
     if (!s) return DEFAULT_CONFIG_VALUES
     const saved = JSON.parse(s)
     return {
@@ -39,5 +44,5 @@ export const getConfigDefaults = () => {
 }
 
 export const saveConfigDefaults = (data) => {
-  localStorage.setItem(KEY, JSON.stringify(data))
+  localStorage.setItem(key(), JSON.stringify(data))
 }

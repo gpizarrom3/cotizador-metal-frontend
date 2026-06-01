@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '../../firebase/auth'
 import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../hooks/useTheme'
-import { getEmpresa } from '../../utils/empresa'
+import { useUserData } from '../../contexts/UserDataContext'
 
 const navItems = [
   {
@@ -75,13 +74,8 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
-  const [logoEmpresa, setLogoEmpresa] = useState(() => getEmpresa().logo || null)
-
-  useEffect(() => {
-    const handleUpdate = () => setLogoEmpresa(getEmpresa().logo || null)
-    window.addEventListener('empresaActualizada', handleUpdate)
-    return () => window.removeEventListener('empresaActualizada', handleUpdate)
-  }, [])
+  const { empresa } = useUserData()
+  const logoEmpresa = empresa?.logo || null
 
   const handleLogout = async () => {
     await logout()

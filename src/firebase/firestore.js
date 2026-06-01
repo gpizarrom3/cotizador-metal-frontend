@@ -271,6 +271,28 @@ export const eliminarPlantilla = async (uid, plantillaId, email) => {
   await deleteDoc(plantillaDocRef(uid, email, plantillaId))
 }
 
+// ── Config del usuario (empresa + defaults) ──────────────────────────────────
+
+const userConfigDoc = (uid, docId) => doc(db, 'usuarios', uid, 'config', docId)
+
+export const getEmpresaFS = async (uid) => {
+  const snap = await getDoc(userConfigDoc(uid, 'empresa'))
+  return snap.exists() ? snap.data() : null
+}
+
+export const saveEmpresaFS = async (uid, data) => {
+  await setDoc(userConfigDoc(uid, 'empresa'), clean(data))
+}
+
+export const getConfigDefaultsFS = async (uid) => {
+  const snap = await getDoc(userConfigDoc(uid, 'defaults'))
+  return snap.exists() ? snap.data() : null
+}
+
+export const saveConfigDefaultsFS = async (uid, data) => {
+  await setDoc(userConfigDoc(uid, 'defaults'), clean(data))
+}
+
 // ── Presencia (indicador tiempo real) ────────────────────────────────────────
 
 const presenciaDocRef = (uid) =>

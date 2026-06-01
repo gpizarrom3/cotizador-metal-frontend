@@ -1,18 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
-import { getEmpresa, saveEmpresa } from '../utils/empresa'
-import { getConfigDefaults, saveConfigDefaults } from '../utils/configDefaults'
+import { useUserData } from '../contexts/UserDataContext'
 
 
 export default function Configuracion() {
+  const { empresa, configDefaults, saveEmpresa, saveConfigDefaults } = useUserData()
+
   const [form, setForm] = useState(() => ({
     nombre: '', rut: '', giro: '', direccion: '', telefono: '', email: '', logo: null,
-    ...getEmpresa(),
+    ...empresa,
   }))
   const [success, setSuccess] = useState(false)
 
-  const [configDef, setConfigDef] = useState(() => getConfigDefaults())
+  const [configDef, setConfigDef] = useState(() => configDefaults)
   const [defSuccess, setDefSuccess] = useState(false)
+
+  // Sync form when empresa loads from Firestore (async)
+  useEffect(() => {
+    setForm((f) => ({ nombre: '', rut: '', giro: '', direccion: '', telefono: '', email: '', logo: null, ...empresa, ...f }))
+  }, [empresa]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync configDef when configDefaults loads from Firestore (async)
+  useEffect(() => {
+    setConfigDef(configDefaults)
+  }, [configDefaults]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateRole = (i, field, value) =>
     setConfigDef((d) => ({ ...d, roles: d.roles.map((r, idx) => idx === i ? { ...r, [field]: value } : r) }))
@@ -29,7 +40,7 @@ export default function Configuracion() {
     setConfigDef((d) => ({ ...d, bases: d.bases.filter((_, idx) => idx !== i) }))
 
   const handleSaveDefaults = () => {
-    saveConfigDefaults(configDef)
+    saveConfigDefaults(configDef)  // from context — saves to Firestore + localStorage
     setDefSuccess(true)
     setTimeout(() => setDefSuccess(false), 3000)
   }
@@ -45,7 +56,7 @@ export default function Configuracion() {
   }
 
   const handleSave = () => {
-    saveEmpresa(form)
+    saveEmpresa(form)  // from context — saves to Firestore + localStorage
     setSuccess(true)
     setTimeout(() => setSuccess(false), 3000)
   }

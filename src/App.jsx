@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { UserDataProvider } from './contexts/UserDataContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -14,6 +15,7 @@ import PrivateRoute from './components/PrivateRoute'
 function App() {
   return (
     <BrowserRouter>
+      <UserDataProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -48,6 +50,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </UserDataProvider>
     </BrowserRouter>
   )
 }

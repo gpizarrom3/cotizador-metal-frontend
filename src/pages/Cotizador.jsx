@@ -19,9 +19,9 @@ import {
   eliminarPlantilla as eliminarPlantillaFS,
   suscribirPresencias, SHARED_DOMAIN,
 } from '../firebase/firestore'
-import { getEmpresa } from '../utils/empresa'
 import { exportPDF } from '../utils/exportPDF'
 import { getConfigDefaults } from '../utils/configDefaults'
+import { useUserData } from '../contexts/UserDataContext'
 
 
 const makeDefaultRoles = (cfg) => {
@@ -116,6 +116,7 @@ const migrarEmbalaje = (emb) => {
 
 export default function Cotizador() {
   const { user } = useAuth()
+  const { empresa, configDefaults } = useUserData()
   const printRef  = useRef(null)
 
   // Landing / version comparison state
@@ -202,14 +203,13 @@ export default function Cotizador() {
   }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles])
 
   const clearDraft = () => {
-    const cfg = getConfigDefaults()
     localStorage.removeItem(DRAFT_KEY)
     setCliente({ ...DEFAULT_CLIENTE })
     setEstado('Pendiente')
     setMateriales([{ ...emptySubproducto('MATERIALES'), items: [emptyMaterial()] }])
-    setRoles(makeDefaultRoles(cfg))
-    setServicios(makeDefaultServicios(cfg))
-    setBases(makeDefaultBases(cfg))
+    setRoles(makeDefaultRoles(configDefaults))
+    setServicios(makeDefaultServicios(configDefaults))
+    setBases(makeDefaultBases(configDefaults))
     setCantidadLotes(1)
     setUnidadesPorLote(1)
     setConfig(DEFAULT_CONFIG)
@@ -241,9 +241,9 @@ export default function Cotizador() {
 
   const handleCargarPlantilla = (p) => {
     setMateriales(migrarMateriales(p.materiales || []))
-    setRoles(p.roles || makeDefaultRoles(getConfigDefaults()))
+    setRoles(p.roles || makeDefaultRoles(configDefaults))
     setServicios(p.servicios || makeDefaultServicios())
-    setBases(p.bases || makeDefaultBases(getConfigDefaults()))
+    setBases(p.bases || makeDefaultBases(configDefaults))
     setConfig((c) => ({ ...c, ...(p.config || {}) }))
     setCantidadLotes(p.cantidadLotes || 1)
     setUnidadesPorLote(p.unidadesPorLote || 1)
@@ -312,9 +312,9 @@ export default function Cotizador() {
     setSaving(true); setSaveError(''); setSaveSuccess(false)
     try {
       if (cotizacionId) {
-        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa: getEmpresa() }, user.email)
+        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa }, user.email)
       } else {
-        const { id, numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa: getEmpresa() }, user.email, user.displayName)
+        const { id, numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa }, user.email, user.displayName)
         setNumeroCot(numero)
         setCotizacionId(id)
       }
@@ -649,7 +649,7 @@ export default function Cotizador() {
 
       {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
-      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={getConfigDefaults().roles} />}
+      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
       {activeTab === 'bases'       && (
         <TabBases
@@ -681,12 +681,12 @@ export default function Cotizador() {
       {/* Hidden PDF templates */}
       {showPrint && (
         <div ref={printRef} style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1 }}>
-          <CotizacionPrintView empresa={getEmpresa()} cot={cotizacionData} />
+          <CotizacionPrintView empresa={empresa} cot={cotizacionData} />
         </div>
       )}
       {showFicha && (
         <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1 }}>
-          <FichaCostosPrintView empresa={getEmpresa()} cot={cotizacionData} />
+          <FichaCostosPrintView empresa={empresa} cot={cotizacionData} />
         </div>
       )}
 
@@ -725,7 +725,7 @@ export default function Cotizador() {
           </div>
           <div className="flex-1 overflow-y-auto bg-slate-200 p-6 flex justify-center">
             <div className="w-full max-w-4xl">
-              <CotizacionPrintView empresa={versionGuardada.empresa || getEmpresa()} cot={versionGuardada} />
+              <CotizacionPrintView empresa={versionGuardada.empresa || empresa} cot={versionGuardada} />
             </div>
           </div>
         </div>
