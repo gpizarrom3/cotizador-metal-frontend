@@ -110,6 +110,9 @@ export default function TutorialModal() {
     if (!localStorage.getItem(TUTORIAL_KEY)) {
       setVisible(true)
     }
+    const abrir = () => { setPaso(0); setVisible(true) }
+    window.addEventListener('abrirTutorial', abrir)
+    return () => window.removeEventListener('abrirTutorial', abrir)
   }, [])
 
   const cerrar = () => {
