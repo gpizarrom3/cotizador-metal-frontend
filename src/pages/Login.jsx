@@ -126,6 +126,11 @@ export default function Login() {
               Regístrate aquí
             </Link>
           </p>
+
+          <div className="flex justify-center gap-4 mt-4 pt-4 border-t border-stone-700">
+            <Link to="/terminos" className="text-stone-600 hover:text-stone-400 text-xs">Términos y Condiciones</Link>
+            <Link to="/privacidad" className="text-stone-600 hover:text-stone-400 text-xs">Política de Privacidad</Link>
+          </div>
         </div>
       </div>
     </div>

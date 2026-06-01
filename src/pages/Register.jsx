@@ -117,6 +117,12 @@ export default function Register() {
                 required
               />
             </div>
+            <p className="text-slate-500 text-xs text-center leading-relaxed">
+              Al crear tu cuenta aceptas nuestros{' '}
+              <Link to="/terminos" target="_blank" className="text-blue-400 hover:text-blue-300">Términos y Condiciones</Link>
+              {' '}y la{' '}
+              <Link to="/privacidad" target="_blank" className="text-blue-400 hover:text-blue-300">Política de Privacidad</Link>.
+            </p>
             <button type="submit" className="btn-primary w-full" disabled={loading}>
               {loading ? 'Creando cuenta...' : 'Crear cuenta'}
             </button>

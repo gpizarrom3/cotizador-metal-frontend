@@ -11,6 +11,8 @@ import Configuracion from './pages/Configuracion'
 import Catalogo from './pages/Catalogo'
 import CatalogoServicios from './pages/CatalogoServicios'
 import PrivateRoute from './components/PrivateRoute'
+import Terminos from './pages/Terminos'
+import Privacidad from './pages/Privacidad'
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/terminos" element={<Terminos />} />
+        <Route path="/privacidad" element={<Privacidad />} />
         <Route
           path="/dashboard"
           element={<PrivateRoute><Dashboard /></PrivateRoute>}
