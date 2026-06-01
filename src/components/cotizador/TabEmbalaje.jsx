@@ -10,22 +10,6 @@ const PALLETS_STD = [
   { id: 'custom',    nombre: 'Pallet a medida', largo: 0,    ancho: 0,    alto_max: 0,    carga_max: 0,    uso: '' },
 ]
 
-const CIUDADES_CHILE = [
-  'Arica', 'Iquique', 'Antofagasta', 'Calama', 'Copiapó', 'La Serena', 'Coquimbo',
-  'Valparaíso', 'Viña del Mar', 'Santiago', 'Rancagua', 'Talca', 'Chillán',
-  'Concepción', 'Los Ángeles', 'Temuco', 'Valdivia', 'Osorno', 'Puerto Montt',
-  'Coyhaique', 'Punta Arenas',
-]
-
-const KM_DESDE_STG = {
-  'Arica': 2050, 'Iquique': 1850, 'Antofagasta': 1370, 'Calama': 1530,
-  'Copiapó': 810, 'La Serena': 470, 'Coquimbo': 480,
-  'Valparaíso': 120, 'Viña del Mar': 115, 'Santiago': 0,
-  'Rancagua': 85, 'Talca': 255, 'Chillán': 400,
-  'Concepción': 520, 'Los Ángeles': 535,
-  'Temuco': 680, 'Valdivia': 840, 'Osorno': 950,
-  'Puerto Montt': 1020, 'Coyhaique': 1500, 'Punta Arenas': 3100,
-}
 
 const RECOMENDACIONES = [
   { titulo: 'Peso por pallet', detalle: 'No exceder el 80% de la carga máxima nominal para seguridad en manipulación con horquilla.' },
@@ -110,34 +94,6 @@ function calcCantidadesEmbalaje(palletId, palletLargoMm, palletAnchoMm, altoCm, 
   return { rollosFilm, rollosZunchoPlastico, rollosZunchoMetal, cantoneras: 1, usaMetal }
 }
 
-function calcPrecioEnvio(origen, destino, pesoRealKg, largoCm, anchoCm, altoCm) {
-  if (!origen || !destino || origen === destino) return null
-  const kmO = KM_DESDE_STG[origen]
-  const kmD = KM_DESDE_STG[destino]
-  if (kmO === undefined || kmD === undefined) return null
-
-  const distKm = Math.abs(kmO - kmD)
-  const L = Number(largoCm) || 0
-  const A = Number(anchoCm) || 0
-  const H = Number(altoCm) || 0
-  const pesoVol  = L && A && H ? Math.ceil((L * A * H) / 6000) : 0
-  const pesoReal = Number(pesoRealKg) || 0
-  const pesoFacturado = Math.max(pesoReal, pesoVol)
-  if (!pesoFacturado) return null
-
-  let precioPorKg, minimo, zona
-  if      (distKm <= 100)  { precioPorKg = 420;  minimo = 9000;   zona = 'Corta distancia' }
-  else if (distKm <= 300)  { precioPorKg = 600;  minimo = 14000;  zona = 'Media distancia' }
-  else if (distKm <= 600)  { precioPorKg = 800;  minimo = 20000;  zona = 'Larga distancia' }
-  else if (distKm <= 900)  { precioPorKg = 1000; minimo = 28000;  zona = 'Muy larga distancia' }
-  else if (distKm <= 1200) { precioPorKg = 1300; minimo = 38000;  zona = 'Interregional' }
-  else if (distKm <= 1700) { precioPorKg = 1700; minimo = 52000;  zona = 'Gran distancia' }
-  else if (distKm <= 2200) { precioPorKg = 2300; minimo = 72000;  zona = 'Extremo norte' }
-  else                     { precioPorKg = 4200; minimo = 160000; zona = 'Patagonia / Magallanes' }
-
-  const estimado = Math.max(minimo, pesoFacturado * precioPorKg)
-  return { pesoReal, pesoVol, pesoFacturado, distKm, zona, precioPorKg, minimo, estimado, usaVolumetrico: pesoVol > pesoReal }
-}
 
 export const newPallet = () => ({
   id: Date.now() + Math.random(),
@@ -156,7 +112,18 @@ function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
   const set = (field) => (v) => onChange({ ...pallet, [field]: v })
 
   const handlePalletSelect = (pid) => {
-    onChange({ ...pallet, palletId: pid, materialesPallet: calcMaderaPallet(pid, pallet.largo, pallet.ancho) })
+    let updated = { ...pallet, palletId: pid, materialesPallet: calcMaderaPallet(pid, pallet.largo, pallet.ancho) }
+    if (pid === 'custom') {
+      updated = {
+        ...updated,
+        largo:    String(Number(largoCm) * 10  || ''),
+        ancho:    String(Number(anchoCm) * 10  || ''),
+        alto_max: String(Number(alturaCm) * 10 || ''),
+        carga_max: String(cargaKg || ''),
+      }
+      updated.materialesPallet = calcMaderaPallet('custom', updated.largo, updated.ancho)
+    }
+    onChange(updated)
   }
 
   const handleCustomDim = (field, v) => {
@@ -348,33 +315,33 @@ function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
                 <thead>
                   <tr className="table-header">
                     <th className="text-left px-3 py-2 rounded-l-lg">Material</th>
-                    <th className="text-center px-3 py-2 w-20">Unid.</th>
-                    <th className="text-center px-3 py-2 w-20">Cant.</th>
-                    <th className="text-right px-3 py-2 w-32">P. Unit.</th>
-                    <th className="text-right px-3 py-2 rounded-r-lg w-28">Total</th>
+                    <th className="text-center px-3 py-2 w-28">Unid.</th>
+                    <th className="text-center px-3 py-2 w-28">Cant.</th>
+                    <th className="text-right px-3 py-2 w-36">P. Unit.</th>
+                    <th className="text-right px-3 py-2 rounded-r-lg w-32">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {materialesPallet.map((m) => (
                     <tr key={m.id} className="border-b border-slate-700">
                       <td className="px-3 py-2">
-                        <input type="text" className="input-field text-sm py-1.5"
+                        <input type="text" className="input-field text-sm py-1.5 w-full"
                           value={m.nombre} onChange={(e) => updateMatPallet(m.id, 'nombre', e.target.value)} />
                       </td>
                       <td className="px-3 py-2">
-                        <input type="text" className="input-field text-sm py-1.5 text-center"
+                        <input type="text" className="input-field text-sm py-1.5 text-center w-full"
                           value={m.unidad} onChange={(e) => updateMatPallet(m.id, 'unidad', e.target.value)} />
                       </td>
                       <td className="px-3 py-2">
-                        <input type="number" min="0" step="0.1" className="input-field text-sm py-1.5 text-center"
+                        <input type="number" min="0" step="0.1" className="input-field text-sm py-1.5 text-center w-full"
                           value={m.cantidad} onChange={(e) => updateMatPallet(m.id, 'cantidad', e.target.value)} />
                       </td>
                       <td className="px-3 py-2">
-                        <input type="number" min="0" className="input-field text-sm py-1.5 text-right"
+                        <input type="number" min="0" className="input-field text-sm py-1.5 text-right w-full"
                           value={m.precio_unitario} onChange={(e) => updateMatPallet(m.id, 'precio_unitario', e.target.value)} />
                       </td>
                       <td className="px-3 py-2 text-right font-medium text-slate-200">
@@ -397,7 +364,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
   const {
     activo = true,
     pallets = [],
-    materiales = [], costoEnvio = '', ciudadOrigen = '', ciudadDestino = '', notas = '',
+    materiales = [], costoEnvio = '', notas = '',
   } = embalaje
 
   const set = (field) => (v) => setEmbalaje((e) => ({ ...e, [field]: v }))
@@ -427,11 +394,6 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
       }),
     }))
   }, [p0?.palletId, p0?.alturaCm, p0?.cargaKg, p0?.largo, p0?.ancho]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const envioEstimado = useMemo(() => {
-    if (!p0) return null
-    return calcPrecioEnvio(ciudadOrigen, ciudadDestino, p0.cargaKg, p0.largoCm, p0.anchoCm, p0.alturaCm)
-  }, [ciudadOrigen, ciudadDestino, p0?.cargaKg, p0?.largoCm, p0?.anchoCm, p0?.alturaCm])
 
   const totalPallets  = pallets.reduce((acc, p) =>
     acc + (p.materialesPallet || []).reduce((a, m) => a + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0), 0)
@@ -514,12 +476,12 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
         </div>
         <p className="text-slate-500 text-xs mb-4">Precios referencia mercado chileno (mayo 2026) · Edita según tu cotización real</p>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="table-header">
                 <th className="text-left px-4 py-3 rounded-l-lg">Material</th>
-                <th className="text-center px-4 py-3 w-24">Unidad</th>
-                <th className="text-center px-4 py-3 w-24">Cantidad</th>
+                <th className="text-center px-4 py-3 w-28">Unidad</th>
+                <th className="text-center px-4 py-3 w-28">Cantidad</th>
                 <th className="text-right px-4 py-3 w-40">Precio unit. (CLP)</th>
                 <th className="text-right px-4 py-3 w-36">Total</th>
                 <th className="px-4 py-3 rounded-r-lg w-10" />
@@ -529,20 +491,20 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
               {(materiales || []).map((m) => (
                 <tr key={m.id} className={`border-b border-slate-700 ${Number(m.cantidad) === 0 ? 'opacity-40' : ''}`}>
                   <td className="px-4 py-2">
-                    <input type="text" className="input-field text-sm py-1.5"
+                    <input type="text" className="input-field text-sm py-1.5 w-full"
                       value={m.nombre} onChange={(e) => updateMaterial(m.id, 'nombre', e.target.value)} />
                   </td>
                   <td className="px-4 py-2">
-                    <input type="text" className="input-field text-sm py-1.5 text-center"
+                    <input type="text" className="input-field text-sm py-1.5 text-center w-full"
                       value={m.unidad} onChange={(e) => updateMaterial(m.id, 'unidad', e.target.value)} />
                   </td>
                   <td className="px-4 py-2">
-                    <input type="number" min="0" step="0.1" className="input-field text-sm py-1.5 text-center"
+                    <input type="number" min="0" step="0.1" className="input-field text-sm py-1.5 text-center w-full"
                       value={m.cantidad || ''} placeholder="0"
                       onChange={(e) => updateMaterial(m.id, 'cantidad', e.target.value)} />
                   </td>
                   <td className="px-4 py-2">
-                    <input type="number" min="0" className="input-field text-sm py-1.5 text-right"
+                    <input type="number" min="0" className="input-field text-sm py-1.5 text-right w-full"
                       value={m.precio_unitario || ''} placeholder="0"
                       onChange={(e) => updateMaterial(m.id, 'precio_unitario', e.target.value)} />
                   </td>
@@ -580,86 +542,14 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white">Envíos</h2>
-            <p className="text-slate-500 text-xs">
-              Estimación automática
-              {pallets.length > 1 && <span className="text-slate-600"> (calculada desde pallet 1)</span>}
-            </p>
+            <p className="text-slate-500 text-xs">Ingresa el costo de envío según cotización del transportista</p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="label">Ciudad de origen</label>
-            <select className="input-field" value={ciudadOrigen} onChange={(e) => set('ciudadOrigen')(e.target.value)}>
-              <option value="">Seleccionar ciudad...</option>
-              {CIUDADES_CHILE.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="label">Ciudad de destino</label>
-            <select className="input-field" value={ciudadDestino} onChange={(e) => set('ciudadDestino')(e.target.value)}>
-              <option value="">Seleccionar ciudad...</option>
-              {CIUDADES_CHILE.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {envioEstimado && (
-          <div className="mb-4 p-4 bg-purple-900/20 border border-purple-500/30 rounded-lg">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <p className="text-purple-300 font-semibold text-sm">Estimación referencial de flete</p>
-                <p className="text-purple-400/70 text-xs mt-0.5">
-                  {ciudadOrigen} → {ciudadDestino} · {envioEstimado.distKm} km aprox · {envioEstimado.zona}
-                </p>
-              </div>
-              <p className="text-purple-200 font-bold text-2xl flex-shrink-0">~{fmt(envioEstimado.estimado)}</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
-              <div className="bg-slate-800/50 rounded-lg p-2">
-                <p className="text-slate-500">Peso facturado</p>
-                <p className="text-slate-200 font-semibold">{envioEstimado.pesoFacturado} kg</p>
-                {envioEstimado.usaVolumetrico && <p className="text-amber-400">volumétrico</p>}
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-2">
-                <p className="text-slate-500">Tarifa/kg</p>
-                <p className="text-slate-200 font-semibold">{fmt(envioEstimado.precioPorKg)}</p>
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-2">
-                <p className="text-slate-500">Mínimo cobro</p>
-                <p className="text-slate-200 font-semibold">{fmt(envioEstimado.minimo)}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-purple-400/60 text-xs">Tarifas referenciales Pullman Cargo / Starken (mayo 2026).</p>
-              <button onClick={() => set('costoEnvio')(String(envioEstimado.estimado))}
-                className="flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
-                Usar este valor
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-4 mb-4 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-          <div className="flex-1">
-            <p className="text-slate-300 text-sm font-medium">Cotizador oficial Pullman Cargo</p>
-            <p className="text-slate-500 text-xs mt-0.5">Confirma el precio real en su sitio web</p>
-          </div>
-          <a href="https://www.pullmancargo.cl" target="_blank" rel="noopener noreferrer"
-            className="flex-shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
-            Ir al sitio →
-          </a>
         </div>
 
         <div>
-          <label className="label">
-            Costo de envío confirmado (CLP)
-            {ciudadOrigen && ciudadDestino && (
-              <span className="text-slate-400 normal-case font-normal"> — {ciudadOrigen} → {ciudadDestino}</span>
-            )}
-          </label>
+          <label className="label">Costo de envío (CLP)</label>
           <input type="number" min="0" className="input-field"
-            placeholder="Ingresa el valor real de Pullman Cargo"
+            placeholder="Ej: 35000"
             value={costoEnvio}
             onChange={(e) => set('costoEnvio')(e.target.value)} />
         </div>
@@ -720,10 +610,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
             )}
             {totalEnvio > 0 && (
               <div className="flex justify-between text-slate-300">
-                <span>
-                  Envío
-                  {ciudadOrigen && ciudadDestino && <span className="text-slate-500"> ({ciudadOrigen} → {ciudadDestino})</span>}
-                </span>
+                <span>Envío</span>
                 <span className="font-medium">{fmt(totalEnvio)}</span>
               </div>
             )}
