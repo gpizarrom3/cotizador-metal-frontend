@@ -190,7 +190,7 @@ export default function Historial() {
       || (c.numero || '').toLowerCase().includes(s)
       || (c.config?.numeroReferencia || '').toLowerCase().includes(s)
       || (c.config?.descripcion || '').toLowerCase().includes(s)
-    const matchStatus = statusFilter === 'Todos' || c.estado === statusFilter
+    const matchStatus = statusFilter === 'Todos' || normEstado(c.estado) === statusFilter
     const matchDesde = !desde || (c.fechaDate && c.fechaDate >= desde)
     const matchHasta = !hasta || (c.fechaDate && c.fechaDate <= hasta)
     return matchSearch && matchStatus && matchDesde && matchHasta
@@ -213,8 +213,10 @@ export default function Historial() {
   const paginaActual = Math.min(pagina, totalPaginas)
   const paginados = sorted.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
 
+  const normEstado = (e) => ESTADOS.includes(e) ? e : 'Pendiente'
+
   const conteo = ESTADOS.reduce((acc, e) => {
-    acc[e] = cotizaciones.filter(c => c.estado === e).length
+    acc[e] = cotizaciones.filter(c => normEstado(c.estado) === e).length
     return acc
   }, {})
 
