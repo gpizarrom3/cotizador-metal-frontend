@@ -242,6 +242,8 @@ export default function Historial() {
   const hasta = fechaHasta ? new Date(fechaHasta + 'T23:59:59') : null
   const hayFiltros = search || statusFilter !== 'Todos' || fechaDesde || fechaHasta
 
+  const normEstado = (e) => ESTADOS.includes(e) ? e : 'Pendiente'
+
   const filtered = cotizaciones.filter((c) => {
     const nombre = getNombreCliente(c).toLowerCase()
     const s = search.toLowerCase()
@@ -271,8 +273,6 @@ export default function Historial() {
   const totalPaginas = Math.max(1, Math.ceil(sorted.length / POR_PAGINA))
   const paginaActual = Math.min(pagina, totalPaginas)
   const paginados = sorted.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA)
-
-  const normEstado = (e) => ESTADOS.includes(e) ? e : 'Pendiente'
 
   const conteo = ESTADOS.reduce((acc, e) => {
     acc[e] = cotizaciones.filter(c => normEstado(c.estado) === e).length
