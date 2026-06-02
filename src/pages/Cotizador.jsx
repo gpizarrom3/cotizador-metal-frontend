@@ -150,6 +150,7 @@ export default function Cotizador() {
   const [embalaje,       setEmbalaje]       = useState(() => migrarEmbalaje(getDraft().embalaje))
   const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
   const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
+  const [ownerUid,       setOwnerUid]       = useState(() => getDraft().ownerUid ?? null)
 
   const [clientes, setClientes] = useState([])
 
@@ -184,9 +185,9 @@ export default function Cotizador() {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       cliente, estado, materiales, roles, servicios, bases,
       cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
-      conMaterial, consumibles,
+      conMaterial, consumibles, ownerUid,
     }))
-  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles])
+  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles, ownerUid])
 
   const clearDraft = () => {
     localStorage.removeItem(DRAFT_KEY)
@@ -202,6 +203,7 @@ export default function Cotizador() {
     setEmbalaje({ ...DEFAULT_EMBALAJE })
     setNumeroCot('')
     setCotizacionId('')
+    setOwnerUid(null)
     setSaveSuccess(false)
     setSaveError('')
     setConMaterial(null)
@@ -298,7 +300,8 @@ export default function Cotizador() {
     setSaving(true); setSaveError(''); setSaveSuccess(false)
     try {
       if (cotizacionId) {
-        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa })
+        // ownerUid presente cuando se edita una cotización compartida como editor
+        await actualizarCotizacion(ownerUid || user.uid, cotizacionId, { ...cotizacionData, empresa })
       } else {
         const { id, numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa })
         setNumeroCot(numero)

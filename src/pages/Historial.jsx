@@ -129,13 +129,14 @@ export default function Historial() {
     } catch { setError('Error al eliminar.') }
   }
 
-  const handleAbrir = (cot) => {
+  const handleAbrir = (cot, ownerUid = null) => {
     const clienteObj = typeof cot.cliente === 'object' && cot.cliente !== null
       ? cot.cliente
       : { nombre: cot.cliente || '', rut: '', email: '', telefono: '' }
 
     const draft = {
       cotizacionId:    cot.id,
+      ownerUid:        ownerUid || null,
       numeroCot:       cot.numero || '',
       cliente:         clienteObj,
       estado:          cot.estado || 'Pendiente',
@@ -316,16 +317,22 @@ export default function Historial() {
                         </div>
                         <p className="text-slate-500 text-xs mt-0.5">{cot.fecha || '—'} · {(cot.totalFinal || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })}</p>
                       </div>
-                      <div className="flex gap-2 flex-shrink-0">
+                      <div className="flex gap-2 flex-shrink-0 flex-wrap">
                         <button
                           onClick={() => handlePreview(cot, 'cotizacion')}
                           className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition-colors"
                         >
-                          Ver PDF
+                          Cotización
+                        </button>
+                        <button
+                          onClick={() => handlePreview(cot, 'ficha')}
+                          className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          Ficha costos
                         </button>
                         {conexion.permiso === 'editor' && (
                           <button
-                            onClick={() => handleAbrir(cot)}
+                            onClick={() => handleAbrir(cot, conexion.ownerUid)}
                             className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
                           >
                             Editar
@@ -628,7 +635,24 @@ export default function Historial() {
         )}
       </div>
 
-      {/* Modal de preview */}
+      {fichaModal && (
+        <AdjuntarFichaModal
+          cot={fichaModal}
+          onClose={() => setFichaModal(null)}
+          onArchivosUpdate={handleArchivosUpdate}
+        />
+      )}
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        title="Eliminar cotización"
+        message="Esta acción no se puede deshacer. La cotización será eliminada permanentemente."
+        onConfirm={ejecutarEliminar}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
+      </>)}
+
+      {/* Modal de preview — disponible en ambas pestañas */}
       {preview && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col">
           <div className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-700 flex-shrink-0">
@@ -669,23 +693,6 @@ export default function Historial() {
           </div>
         </div>
       )}
-
-      {fichaModal && (
-        <AdjuntarFichaModal
-          cot={fichaModal}
-          onClose={() => setFichaModal(null)}
-          onArchivosUpdate={handleArchivosUpdate}
-        />
-      )}
-
-      <ConfirmModal
-        open={confirmDelete.open}
-        title="Eliminar cotización"
-        message="Esta acción no se puede deshacer. La cotización será eliminada permanentemente."
-        onConfirm={ejecutarEliminar}
-        onCancel={() => setConfirmDelete({ open: false, id: null })}
-      />
-      </>)}
     </DashboardLayout>
   )
 }
