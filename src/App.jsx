@@ -8,6 +8,7 @@ import Cotizador from './pages/Cotizador'
 import Historial from './pages/Historial'
 import Clientes from './pages/Clientes'
 import Configuracion from './pages/Configuracion'
+import Conexiones from './pages/Conexiones'
 import Catalogo from './pages/Catalogo'
 import CatalogoServicios from './pages/CatalogoServicios'
 import PrivateRoute from './components/PrivateRoute'
@@ -47,6 +48,10 @@ function App() {
         <Route
           path="/catalogo-servicios"
           element={<PrivateRoute><CatalogoServicios /></PrivateRoute>}
+        />
+        <Route
+          path="/conexiones"
+          element={<PrivateRoute><Conexiones /></PrivateRoute>}
         />
         <Route
           path="/configuracion"

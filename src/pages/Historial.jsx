@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
-import { suscribirCotizaciones, actualizarEstado, eliminarCotizacion, migrarCotizacionesPersonales, suscribirPresencias, SHARED_DOMAIN } from '../firebase/firestore'
+import {
+  suscribirCotizaciones, actualizarEstado, eliminarCotizacion,
+  migrarCotizacionesPersonales, suscribirPresencias, SHARED_DOMAIN,
+  obtenerConexionesComoLector, obtenerCotizacionesDeOwner,
+} from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import ConfirmModal from '../components/ui/ConfirmModal'
@@ -28,7 +32,10 @@ export default function Historial() {
   const navigate   = useNavigate()
   const location   = useLocation()
 
+  const [tabVista, setTabVista] = useState('propias')
   const [cotizaciones, setCotizaciones] = useState([])
+  const [cotizsCompartidas, setCotizsCompartidas] = useState([])
+  const [loadingCompartidas, setLoadingCompartidas] = useState(false)
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState(() => location.state?.search || '')
   const [statusFilter, setStatusFilter] = useState('Todos')
@@ -92,6 +99,21 @@ export default function Historial() {
     if (!isInstitutional) return
     return suscribirPresencias(setPresencias)
   }, [isInstitutional])
+
+  useEffect(() => {
+    if (!user || tabVista !== 'compartidas') return
+    setLoadingCompartidas(true)
+    obtenerConexionesComoLector(user.uid).then(async (conexiones) => {
+      const grupos = await Promise.all(
+        conexiones.map(async (c) => {
+          const cots = await obtenerCotizacionesDeOwner(c.ownerUid)
+          return { conexion: c, cots }
+        })
+      )
+      setCotizsCompartidas(grupos.filter(g => g.cots.length > 0))
+      setLoadingCompartidas(false)
+    }).catch(() => setLoadingCompartidas(false))
+  }, [user, tabVista])
 
   useEffect(() => { setPagina(1) }, [search, statusFilter, fechaDesde, fechaHasta, sortBy])
 
@@ -230,7 +252,102 @@ export default function Historial() {
         </div>
       </div>
 
+      {/* Tabs propias / compartidas */}
+      <div className="flex gap-1 mb-5 bg-slate-800/60 p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setTabVista('propias')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            tabVista === 'propias'
+              ? 'bg-slate-700 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Mis cotizaciones
+        </button>
+        <button
+          onClick={() => setTabVista('compartidas')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            tabVista === 'compartidas'
+              ? 'bg-slate-700 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Compartidas conmigo
+        </button>
+      </div>
+
       {error && <div className="bg-red-900/30 border border-red-500/50 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">{error}</div>}
+
+      {tabVista === 'compartidas' && (
+        <div className="space-y-6">
+          {loadingCompartidas ? (
+            <div className="text-center py-12 text-slate-500">Cargando cotizaciones compartidas...</div>
+          ) : cotizsCompartidas.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p className="text-sm">Nadie ha compartido cotizaciones contigo aún.</p>
+              <p className="text-xs mt-1">Pide a otro usuario que te envíe una invitación desde <strong>Conexiones</strong>.</p>
+            </div>
+          ) : (
+            cotizsCompartidas.map(({ conexion, cots }) => (
+              <div key={conexion.id}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                    {(conexion.ownerNombre || conexion.ownerEmail)[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">{conexion.ownerNombre || conexion.ownerEmail}</p>
+                    <p className="text-slate-500 text-xs">{conexion.ownerEmail}</p>
+                  </div>
+                  <span className={`ml-2 text-xs font-medium px-2 py-0.5 rounded border ${
+                    conexion.permiso === 'editor'
+                      ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                      : 'text-sky-400 bg-sky-500/10 border-sky-500/30'
+                  }`}>
+                    {conexion.permiso === 'editor' ? 'Editor' : 'Solo lectura'}
+                  </span>
+                  <span className="text-slate-500 text-xs ml-1">· {cots.length} cotizaciones</span>
+                </div>
+                <div className="card space-y-2 p-3">
+                  {cots.map(cot => (
+                    <div key={cot.id} className="flex items-center justify-between gap-3 p-3 bg-slate-800 rounded-lg border border-slate-700">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {cot.numero && <span className="text-blue-400 font-mono text-xs">{cot.numero}</span>}
+                          <span className="text-white text-sm font-medium truncate">
+                            {typeof cot.cliente === 'object' ? cot.cliente?.nombre : cot.cliente || '—'}
+                          </span>
+                        </div>
+                        <p className="text-slate-500 text-xs mt-0.5">{cot.fecha || '—'} · {(cot.totalFinal || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })}</p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handlePreview(cot, 'cotizacion')}
+                          className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          Ver PDF
+                        </button>
+                        {conexion.permiso === 'editor' && (
+                          <button
+                            onClick={() => handleAbrir(cot)}
+                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            Editar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {tabVista === 'propias' && (<>
 
       <div className="card">
         {/* Barra de búsqueda y filtros */}
@@ -599,6 +716,7 @@ export default function Historial() {
         onConfirm={ejecutarEliminar}
         onCancel={() => setConfirmDelete({ open: false, id: null })}
       />
+      </>)}
     </DashboardLayout>
   )
 }

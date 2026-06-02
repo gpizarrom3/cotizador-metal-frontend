@@ -2,7 +2,7 @@ import { db } from './config'
 import {
   collection, doc, addDoc, getDoc, getDocs,
   updateDoc, deleteDoc, setDoc, increment,
-  query, orderBy, serverTimestamp, onSnapshot,
+  query, orderBy, where, writeBatch, serverTimestamp, onSnapshot,
 } from 'firebase/firestore'
 
 export const SHARED_DOMAIN = 'innovattech.org'
@@ -291,6 +291,111 @@ export const getConfigDefaultsFS = async (uid) => {
 
 export const saveConfigDefaultsFS = async (uid, data) => {
   await setDoc(userConfigDoc(uid, 'defaults'), clean(data))
+}
+
+// ── Conexiones / Sistema de compartir ────────────────────────────────────────
+
+export const enviarInvitacion = async (fromUid, fromEmail, fromNombre, toEmail, permiso) => {
+  const dest = toEmail.trim().toLowerCase()
+  if (dest === fromEmail.toLowerCase()) throw new Error('No puedes invitarte a ti mismo.')
+
+  const qPending = query(
+    collection(db, 'invitaciones'),
+    where('fromUid', '==', fromUid),
+    where('toEmail', '==', dest),
+    where('status', '==', 'pending')
+  )
+  const pendingSnap = await getDocs(qPending)
+  if (!pendingSnap.empty) throw new Error('Ya tienes una invitación pendiente para ese correo.')
+
+  const qConex = query(
+    collection(db, 'aceptaciones'),
+    where('ownerUid', '==', fromUid),
+    where('readerEmail', '==', dest)
+  )
+  const conexSnap = await getDocs(qConex)
+  if (!conexSnap.empty) throw new Error('Ya tienes una conexión activa con ese correo.')
+
+  await addDoc(collection(db, 'invitaciones'), {
+    fromUid,
+    fromEmail: fromEmail.toLowerCase(),
+    fromNombre: fromNombre || fromEmail.split('@')[0],
+    toEmail: dest,
+    permiso,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  })
+}
+
+export const suscribirInvitacionesPendientes = (email, callback) => {
+  const q = query(
+    collection(db, 'invitaciones'),
+    where('toEmail', '==', email.toLowerCase()),
+    where('status', '==', 'pending')
+  )
+  return onSnapshot(q, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {})
+}
+
+export const obtenerInvitacionesEnviadas = async (fromUid) => {
+  const q = query(collection(db, 'invitaciones'), where('fromUid', '==', fromUid), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export const aceptarInvitacion = async (inv, toUid, toEmail, toNombre) => {
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'invitaciones', inv.id), {
+    status: 'accepted',
+    toUid,
+    acceptedAt: serverTimestamp(),
+  })
+  const conexionId = `${inv.fromUid}_${toUid}`
+  batch.set(doc(db, 'aceptaciones', conexionId), {
+    ownerUid: inv.fromUid,
+    ownerEmail: inv.fromEmail,
+    ownerNombre: inv.fromNombre,
+    readerUid: toUid,
+    readerEmail: toEmail.toLowerCase(),
+    readerNombre: toNombre || toEmail.split('@')[0],
+    permiso: inv.permiso,
+    createdAt: serverTimestamp(),
+  })
+  await batch.commit()
+}
+
+export const rechazarInvitacion = async (invId) => {
+  await updateDoc(doc(db, 'invitaciones', invId), { status: 'rejected' })
+}
+
+export const cancelarInvitacion = async (invId) => {
+  await deleteDoc(doc(db, 'invitaciones', invId))
+}
+
+export const obtenerConexionesComoLector = async (myUid) => {
+  const q = query(collection(db, 'aceptaciones'), where('readerUid', '==', myUid))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export const obtenerConexionesComoOwner = async (myUid) => {
+  const q = query(collection(db, 'aceptaciones'), where('ownerUid', '==', myUid))
+  const snap = await getDocs(q)
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export const suscribirConexionesComoLector = (myUid, callback) => {
+  const q = query(collection(db, 'aceptaciones'), where('readerUid', '==', myUid))
+  return onSnapshot(q, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {})
+}
+
+export const eliminarConexion = async (conexionId) => {
+  await deleteDoc(doc(db, 'aceptaciones', conexionId))
+}
+
+export const obtenerCotizacionesDeOwner = async (ownerUid) => {
+  const q = query(collection(db, 'usuarios', ownerUid, 'cotizaciones'), orderBy('fecha', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map(mapCotizacion)
 }
 
 // ── Presencia (indicador tiempo real) ────────────────────────────────────────

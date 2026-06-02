@@ -2,12 +2,53 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Cada usuario solo puede acceder a sus propios datos
+    // Cada usuario accede a sus propios datos
     match /usuarios/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Espacio compartido de dominio (innovattech.org) — solo usuarios autenticados
+    // Cotizaciones compartidas: lector o editor puede leer; editor puede escribir
+    match /usuarios/{userId}/cotizaciones/{cotId} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/aceptaciones/$(userId + '_' + request.auth.uid));
+      allow create, update: if request.auth != null && esEditor(userId);
+    }
+
+    function esEditor(userId) {
+      let key = userId + '_' + request.auth.uid;
+      return exists(/databases/$(database)/documents/aceptaciones/$(key)) &&
+        get(/databases/$(database)/documents/aceptaciones/$(key)).data.permiso == 'editor';
+    }
+
+    // Invitaciones: el emisor crea, ambos pueden leer, el receptor actualiza estado
+    match /invitaciones/{invId} {
+      allow create: if request.auth != null &&
+        request.resource.data.fromUid == request.auth.uid;
+      allow read: if request.auth != null && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toEmail == request.auth.token.email
+      );
+      allow update: if request.auth != null &&
+        resource.data.toEmail == request.auth.token.email;
+      allow delete: if request.auth != null &&
+        resource.data.fromUid == request.auth.uid;
+    }
+
+    // Aceptaciones: el receptor crea (con su propio readerUid); ambos pueden leer y eliminar
+    match /aceptaciones/{conexionId} {
+      allow create: if request.auth != null &&
+        request.resource.data.readerUid == request.auth.uid;
+      allow read: if request.auth != null && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.readerUid == request.auth.uid
+      );
+      allow delete: if request.auth != null && (
+        resource.data.ownerUid == request.auth.uid ||
+        resource.data.readerUid == request.auth.uid
+      );
+    }
+
+    // Espacio compartido dominio innovattech.org
     match /empresas/{empresa}/{document=**} {
       allow read, write: if request.auth != null;
     }
