@@ -108,11 +108,13 @@ export default function Historial() {
     obtenerConexionesComoLector(user.uid).then(async (conexiones) => {
       setDebugCompartidas(`conexiones=${conexiones.length}`)
       // Migration: create sharedWith docs for connections accepted before this fix
-      const migrErrors = []
+      const migrResults = []
       await Promise.all(
-        conexiones.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso).catch(e => { migrErrors.push(e?.code || e?.message || String(e)) }))
+        conexiones.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso)
+          .then(r => migrResults.push(`sw=${r}`))
+          .catch(e => migrResults.push(`sw_err=${e?.code || e?.message || String(e)}`)))
       )
-      if (migrErrors.length) setDebugCompartidas(d => d + ` migr_err=${migrErrors.join(',')}`)
+      setDebugCompartidas(d => d + ' ' + migrResults.join(' '))
       const grupos = await Promise.all(
         conexiones.map(async (c) => {
           try {

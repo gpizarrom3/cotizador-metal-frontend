@@ -409,7 +409,9 @@ export const asegurarSharedWith = async (ownerUid, readerUid, permiso) => {
   const snap = await getDoc(ref)
   if (!snap.exists()) {
     await setDoc(ref, { permiso, createdAt: serverTimestamp() })
+    return 'created'
   }
+  return 'exists'
 }
 
 export const obtenerCotizacionesDeOwner = async (ownerUid) => {
