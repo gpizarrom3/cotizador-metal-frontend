@@ -2,31 +2,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Cada usuario accede a sus propios datos
+    // Subcollections del usuario: dueño con acceso completo
     match /usuarios/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Cotizaciones compartidas: el lector puede leer si tiene entrada en sharedWith del dueño
+    // Documento raíz del usuario: dueño completo + lectores pueden gestionar su propia entrada en sharedReaders
+    match /usuarios/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null &&
+        request.auth.uid != userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sharedReaders']) &&
+        request.resource.data.get('sharedReaders', {}).diff(resource.data.get('sharedReaders', {})).affectedKeys().hasOnly([request.auth.uid]) &&
+        (
+          (request.auth.uid in request.resource.data.get('sharedReaders', {}) &&
+           exists(/databases/$(database)/documents/aceptaciones/$(userId + '_' + request.auth.uid))) ||
+          !(request.auth.uid in request.resource.data.get('sharedReaders', {}))
+        );
+      allow create: if request.auth != null &&
+        request.auth.uid != userId &&
+        request.resource.data.keys().hasOnly(['sharedReaders']) &&
+        request.resource.data.sharedReaders.keys().hasOnly([request.auth.uid]) &&
+        exists(/databases/$(database)/documents/aceptaciones/$(userId + '_' + request.auth.uid));
+    }
+
+    // Cotizaciones: dueño cubierto por {document=**}; lectores con entrada en sharedReaders del doc raíz
     match /usuarios/{userId}/cotizaciones/{cotId} {
       allow read: if request.auth != null &&
-        exists(/databases/$(database)/documents/usuarios/$(userId)/sharedWith/$(request.auth.uid));
+        request.auth.uid in get(/databases/$(database)/documents/usuarios/$(userId)).data.get('sharedReaders', {});
       allow create, update: if request.auth != null && esEditor(userId);
     }
 
-    // Índice de acceso: dentro de la misma jerarquía del dueño (necesario para que Firestore
-    // pueda evaluar exists() en reglas de queries de colección)
+    function esEditor(userId) {
+      return get(/databases/$(database)/documents/usuarios/$(userId)).data.get('sharedReaders', {})[request.auth.uid] == 'editor';
+    }
+
+    // sharedWith: se mantiene por compatibilidad con reglas anteriores
     match /usuarios/{userId}/sharedWith/{readerUid} {
       allow create: if request.auth != null && request.auth.uid == readerUid;
       allow read: if request.auth != null &&
         (request.auth.uid == userId || request.auth.uid == readerUid);
       allow delete: if request.auth != null &&
         (request.auth.uid == userId || request.auth.uid == readerUid);
-    }
-
-    function esEditor(userId) {
-      return exists(/databases/$(database)/documents/usuarios/$(userId)/sharedWith/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/usuarios/$(userId)/sharedWith/$(request.auth.uid)).data.permiso == 'editor';
     }
 
     // Invitaciones: el emisor crea, ambos pueden leer, el receptor actualiza estado

@@ -1,7 +1,7 @@
 import { db } from './config'
 import {
   collection, doc, addDoc, getDoc, getDocs,
-  updateDoc, deleteDoc, setDoc, increment,
+  updateDoc, deleteDoc, setDoc, increment, deleteField,
   query, orderBy, where, writeBatch, serverTimestamp, onSnapshot,
 } from 'firebase/firestore'
 
@@ -360,12 +360,15 @@ export const aceptarInvitacion = async (inv, toUid, toEmail, toNombre) => {
     permiso: inv.permiso,
     createdAt: serverTimestamp(),
   })
-  // Security index within owner's namespace — required for Firestore collection query rules
   batch.set(doc(db, 'usuarios', inv.fromUid, 'sharedWith', toUid), {
     permiso: inv.permiso,
     createdAt: serverTimestamp(),
   })
   await batch.commit()
+  // Write sharedReaders on owner's root doc AFTER batch (aceptacion must exist for the rule)
+  await setDoc(doc(db, 'usuarios', inv.fromUid), {
+    sharedReaders: { [toUid]: inv.permiso },
+  }, { merge: true })
 }
 
 export const rechazarInvitacion = async (invId) => {
@@ -402,16 +405,18 @@ export const eliminarConexion = async (conexionId) => {
   batch.delete(doc(db, 'aceptaciones', conexionId))
   batch.delete(doc(db, 'usuarios', ownerUid, 'sharedWith', readerUid))
   await batch.commit()
+  // Remove from owner's sharedReaders map; ignore if root doc doesn't exist
+  try {
+    await updateDoc(doc(db, 'usuarios', ownerUid), {
+      [`sharedReaders.${readerUid}`]: deleteField(),
+    })
+  } catch { /* root doc may not exist */ }
 }
 
 export const asegurarSharedWith = async (ownerUid, readerUid, permiso) => {
-  const ref = doc(db, 'usuarios', ownerUid, 'sharedWith', readerUid)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) {
-    await setDoc(ref, { permiso, createdAt: serverTimestamp() })
-    return 'created'
-  }
-  return 'exists'
+  await setDoc(doc(db, 'usuarios', ownerUid), {
+    sharedReaders: { [readerUid]: permiso },
+  }, { merge: true })
 }
 
 export const obtenerCotizacionesDeOwner = async (ownerUid) => {
