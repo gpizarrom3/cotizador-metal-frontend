@@ -200,7 +200,7 @@ export const saveConfigDefaultsFS = async (uid, data) => {
 
 // ── Conexiones / Sistema de compartir ────────────────────────────────────────
 
-export const enviarInvitacion = async (fromUid, fromEmail, fromNombre, toEmail, permiso) => {
+export const enviarInvitacion = async (fromUid, fromEmail, fromNombre, toEmail, permiso, tipo = 'individual') => {
   const dest = toEmail.trim().toLowerCase()
   if (dest === fromEmail.toLowerCase()) throw new Error('No puedes invitarte a ti mismo.')
 
@@ -227,6 +227,7 @@ export const enviarInvitacion = async (fromUid, fromEmail, fromNombre, toEmail, 
     fromNombre: fromNombre || fromEmail.split('@')[0],
     toEmail: dest,
     permiso,
+    tipo,
     status: 'pending',
     createdAt: serverTimestamp(),
   })
@@ -248,6 +249,7 @@ export const obtenerInvitacionesEnviadas = async (fromUid) => {
 }
 
 export const aceptarInvitacion = async (inv, toUid, toEmail, toNombre) => {
+  const tipo = inv.tipo || 'individual'
   const batch = writeBatch(db)
   batch.update(doc(db, 'invitaciones', inv.id), {
     status: 'accepted',
@@ -263,6 +265,7 @@ export const aceptarInvitacion = async (inv, toUid, toEmail, toNombre) => {
     readerEmail: toEmail.toLowerCase(),
     readerNombre: toNombre || toEmail.split('@')[0],
     permiso: inv.permiso,
+    tipo,
     createdAt: serverTimestamp(),
   })
   batch.set(doc(db, 'usuarios', inv.fromUid, 'sharedWith', toUid), {
@@ -274,6 +277,12 @@ export const aceptarInvitacion = async (inv, toUid, toEmail, toNombre) => {
   await setDoc(doc(db, 'usuarios', inv.fromUid), {
     sharedReaders: { [toUid]: inv.permiso },
   }, { merge: true })
+  // Para mutua: también registrar acceso inverso (el lector puede ser leído por el dueño)
+  if (tipo === 'mutua') {
+    await setDoc(doc(db, 'usuarios', toUid), {
+      sharedReaders: { [inv.fromUid]: inv.permiso },
+    }, { merge: true })
+  }
 }
 
 export const rechazarInvitacion = async (invId) => {
@@ -301,7 +310,7 @@ export const suscribirConexionesComoLector = (myUid, callback) => {
   return onSnapshot(q, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {})
 }
 
-export const eliminarConexion = async (conexionId) => {
+export const eliminarConexion = async (conexionId, tipo = 'individual') => {
   // conexionId = ownerUid_readerUid; Firebase UIDs are alphanumeric so first underscore is the separator
   const idx = conexionId.indexOf('_')
   const ownerUid = conexionId.slice(0, idx)
@@ -310,12 +319,19 @@ export const eliminarConexion = async (conexionId) => {
   batch.delete(doc(db, 'aceptaciones', conexionId))
   batch.delete(doc(db, 'usuarios', ownerUid, 'sharedWith', readerUid))
   await batch.commit()
-  // Remove from owner's sharedReaders map; ignore if root doc doesn't exist
   try {
     await updateDoc(doc(db, 'usuarios', ownerUid), {
       [`sharedReaders.${readerUid}`]: deleteField(),
     })
   } catch { /* root doc may not exist */ }
+  // Para mutua: también limpiar el acceso inverso
+  if (tipo === 'mutua') {
+    try {
+      await updateDoc(doc(db, 'usuarios', readerUid), {
+        [`sharedReaders.${ownerUid}`]: deleteField(),
+      })
+    } catch { /* root doc may not exist */ }
+  }
 }
 
 export const asegurarSharedWith = async (ownerUid, readerUid, permiso) => {

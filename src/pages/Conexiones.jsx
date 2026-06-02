@@ -18,6 +18,11 @@ const PERMISO_LABELS = {
   editor:  { label: 'Editor',       color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' },
 }
 
+const TIPO_LABELS = {
+  individual: { label: 'Individual', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
+  mutua:      { label: 'Mutua',      color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/30' },
+}
+
 function PermisoBadge({ permiso }) {
   const p = PERMISO_LABELS[permiso] || PERMISO_LABELS.lectura
   return (
@@ -27,11 +32,21 @@ function PermisoBadge({ permiso }) {
   )
 }
 
+function TipoBadge({ tipo }) {
+  const t = TIPO_LABELS[tipo] || TIPO_LABELS.individual
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded border ${t.bg} ${t.color}`}>
+      {t.label}
+    </span>
+  )
+}
+
 export default function Conexiones() {
   const { user } = useAuth()
 
   const [toEmail, setToEmail]   = useState('')
   const [permiso, setPermiso]   = useState('lectura')
+  const [tipo, setTipo]         = useState('individual')
   const [enviando, setEnviando] = useState(false)
   const [envioOk, setEnvioOk]   = useState(false)
   const [envioErr, setEnvioErr] = useState('')
@@ -68,7 +83,7 @@ export default function Conexiones() {
     setEnvioOk(false)
     setEnviando(true)
     try {
-      await enviarInvitacion(user.uid, user.email, user.displayName || '', toEmail, permiso)
+      await enviarInvitacion(user.uid, user.email, user.displayName || '', toEmail, permiso, tipo)
       setEnvioOk(true)
       setToEmail('')
       const env = await obtenerInvitacionesEnviadas(user.uid)
@@ -109,10 +124,10 @@ export default function Conexiones() {
     setAccionando(null)
   }
 
-  const handleEliminarConexion = async (conexionId) => {
+  const handleEliminarConexion = async (conexionId, tipoConexion = 'individual') => {
     setAccionando(conexionId)
     try {
-      await eliminarConexion(conexionId)
+      await eliminarConexion(conexionId, tipoConexion)
       setComoOwner(prev => prev.filter(c => c.id !== conexionId))
       setComoLector(prev => prev.filter(c => c.id !== conexionId))
     } catch { /* silencioso */ }
@@ -145,9 +160,11 @@ export default function Conexiones() {
                   <div className="min-w-0">
                     <p className="text-white font-medium text-sm">{inv.fromNombre || inv.fromEmail}</p>
                     <p className="text-slate-400 text-xs">{inv.fromEmail}</p>
-                    <p className="text-slate-500 text-xs mt-1">
-                      Quiere compartir sus cotizaciones contigo como: <PermisoBadge permiso={inv.permiso} />
-                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-slate-500 text-xs">Acceso:</span>
+                      <PermisoBadge permiso={inv.permiso} />
+                      <TipoBadge tipo={inv.tipo || 'individual'} />
+                    </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button
@@ -173,8 +190,50 @@ export default function Conexiones() {
 
         {/* Enviar invitación */}
         <div className="card">
-          <h2 className="text-base font-semibold text-white mb-4">Compartir mis cotizaciones</h2>
+          <h2 className="text-base font-semibold text-white mb-1">Compartir cotizaciones</h2>
+          <p className="text-slate-400 text-xs mb-4">Elige cómo quieres compartir antes de enviar la invitación.</p>
           <form onSubmit={handleEnviar} className="space-y-4">
+            {/* Tipo de conexión */}
+            <div>
+              <label className="label">Tipo de conexión</label>
+              <div className="grid grid-cols-2 gap-3 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setTipo('individual')}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    tipo === 'individual'
+                      ? 'border-blue-500/60 bg-blue-500/10'
+                      : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className={`text-sm font-medium ${tipo === 'individual' ? 'text-blue-300' : 'text-slate-300'}`}>Individual</span>
+                  </div>
+                  <p className="text-slate-500 text-xs">Solo tú compartes tus cotizaciones con el otro. Él no comparte las suyas contigo.</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipo('mutua')}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    tipo === 'mutua'
+                      ? 'border-violet-500/60 bg-violet-500/10'
+                      : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className={`text-sm font-medium ${tipo === 'mutua' ? 'text-violet-300' : 'text-slate-300'}`}>Mutua</span>
+                  </div>
+                  <p className="text-slate-500 text-xs">Ambos comparten sus cotizaciones entre sí. Los dos ven las del otro al aceptar.</p>
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="label">Correo del destinatario</label>
               <input
@@ -187,7 +246,7 @@ export default function Conexiones() {
               />
             </div>
             <div>
-              <label className="label">Tipo de acceso</label>
+              <label className="label">Nivel de acceso</label>
               <div className="grid grid-cols-2 gap-3 mt-1">
                 <button
                   type="button"
@@ -243,7 +302,10 @@ export default function Conexiones() {
                 <div key={inv.id} className="flex items-center justify-between gap-3 py-2 border-b border-slate-700 last:border-0">
                   <div>
                     <p className="text-slate-300 text-sm">{inv.toEmail}</p>
-                    <span className="mt-0.5"><PermisoBadge permiso={inv.permiso} /></span>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <PermisoBadge permiso={inv.permiso} />
+                      <TipoBadge tipo={inv.tipo || 'individual'} />
+                    </div>
                   </div>
                   <button
                     onClick={() => handleCancelarInv(inv.id)}
@@ -268,10 +330,13 @@ export default function Conexiones() {
                   <div>
                     <p className="text-slate-300 text-sm font-medium">{c.readerNombre || c.readerEmail}</p>
                     <p className="text-slate-500 text-xs">{c.readerEmail}</p>
-                    <span className="mt-0.5"><PermisoBadge permiso={c.permiso} /></span>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <PermisoBadge permiso={c.permiso} />
+                      <TipoBadge tipo={c.tipo || 'individual'} />
+                    </div>
                   </div>
                   <button
-                    onClick={() => handleEliminarConexion(c.id)}
+                    onClick={() => handleEliminarConexion(c.id, c.tipo || 'individual')}
                     disabled={accionando === c.id}
                     className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50"
                   >
@@ -293,10 +358,13 @@ export default function Conexiones() {
                   <div>
                     <p className="text-slate-300 text-sm font-medium">{c.ownerNombre || c.ownerEmail}</p>
                     <p className="text-slate-500 text-xs">{c.ownerEmail}</p>
-                    <span className="mt-0.5"><PermisoBadge permiso={c.permiso} /></span>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <PermisoBadge permiso={c.permiso} />
+                      <TipoBadge tipo={c.tipo || 'individual'} />
+                    </div>
                   </div>
                   <button
-                    onClick={() => handleEliminarConexion(c.id)}
+                    onClick={() => handleEliminarConexion(c.id, c.tipo || 'individual')}
                     disabled={accionando === c.id}
                     className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50"
                   >
@@ -306,7 +374,7 @@ export default function Conexiones() {
               ))}
             </div>
             <p className="text-slate-500 text-xs mt-4">
-              Las cotizaciones compartidas contigo aparecen en la pestaña "Compartidas" del Historial.
+              Las cotizaciones compartidas contigo aparecen en las pestañas "Individuales" o "Mutuas" del Historial.
             </p>
           </div>
         )}

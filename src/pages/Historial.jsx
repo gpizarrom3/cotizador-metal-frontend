@@ -4,7 +4,7 @@ import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import {
   suscribirCotizaciones, actualizarEstado, eliminarCotizacion,
-  obtenerConexionesComoLector, obtenerCotizacionesDeOwner, asegurarSharedWith,
+  obtenerConexionesComoLector, obtenerConexionesComoOwner, obtenerCotizacionesDeOwner, asegurarSharedWith,
 } from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
@@ -35,6 +35,8 @@ export default function Historial() {
   const [cotizaciones, setCotizaciones] = useState([])
   const [cotizsCompartidas, setCotizsCompartidas] = useState([])
   const [loadingCompartidas, setLoadingCompartidas] = useState(false)
+  const [cotizsMutuas, setCotizsMutuas] = useState([])
+  const [loadingMutua, setLoadingMutua] = useState(false)
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState(() => location.state?.search || '')
   const [statusFilter, setStatusFilter] = useState('Todos')
@@ -83,16 +85,16 @@ export default function Historial() {
   }, [user])
 
   useEffect(() => {
-    if (!user || tabVista !== 'compartidas') return
+    if (!user || tabVista !== 'individual') return
     setLoadingCompartidas(true)
     setError('')
     obtenerConexionesComoLector(user.uid).then(async (conexiones) => {
-      // Populate sharedReaders on owner's root doc for existing connections
+      const individuales = conexiones.filter(c => !c.tipo || c.tipo === 'individual')
       await Promise.all(
-        conexiones.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso).catch(() => {}))
+        individuales.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso).catch(() => {}))
       )
       const grupos = await Promise.all(
-        conexiones.map(async (c) => {
+        individuales.map(async (c) => {
           try {
             const cots = await obtenerCotizacionesDeOwner(c.ownerUid)
             return { conexion: c, cots }
@@ -106,6 +108,45 @@ export default function Historial() {
     }).catch(() => {
       setError('Error al cargar cotizaciones compartidas.')
       setLoadingCompartidas(false)
+    })
+  }, [user, tabVista])
+
+  useEffect(() => {
+    if (!user || tabVista !== 'mutua') return
+    setLoadingMutua(true)
+    Promise.all([
+      obtenerConexionesComoLector(user.uid),
+      obtenerConexionesComoOwner(user.uid),
+    ]).then(async ([comoLector, comoOwner]) => {
+      const mutuasLector = comoLector.filter(c => c.tipo === 'mutua')
+      const mutuasOwner  = comoOwner.filter(c => c.tipo === 'mutua')
+      await Promise.all(
+        mutuasLector.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso).catch(() => {}))
+      )
+      const lectorGrupos = await Promise.all(
+        mutuasLector.map(async (c) => {
+          try {
+            const cots = await obtenerCotizacionesDeOwner(c.ownerUid)
+            return { partner: { uid: c.ownerUid, nombre: c.ownerNombre || c.ownerEmail, email: c.ownerEmail, permiso: c.permiso }, cots, conexionId: c.id }
+          } catch {
+            return { partner: { uid: c.ownerUid, nombre: c.ownerNombre || c.ownerEmail, email: c.ownerEmail, permiso: c.permiso }, cots: [], conexionId: c.id }
+          }
+        })
+      )
+      const ownerGrupos = await Promise.all(
+        mutuasOwner.map(async (c) => {
+          try {
+            const cots = await obtenerCotizacionesDeOwner(c.readerUid)
+            return { partner: { uid: c.readerUid, nombre: c.readerNombre || c.readerEmail, email: c.readerEmail, permiso: c.permiso }, cots, conexionId: c.id }
+          } catch {
+            return { partner: { uid: c.readerUid, nombre: c.readerNombre || c.readerEmail, email: c.readerEmail, permiso: c.permiso }, cots: [], conexionId: c.id }
+          }
+        })
+      )
+      setCotizsMutuas([...lectorGrupos, ...ownerGrupos])
+      setLoadingMutua(false)
+    }).catch(() => {
+      setLoadingMutua(false)
     })
   }, [user, tabVista])
 
@@ -247,7 +288,7 @@ export default function Historial() {
         </div>
       </div>
 
-      {/* Tabs propias / compartidas */}
+      {/* Tabs */}
       <div className="flex gap-1 mb-5 bg-slate-800/60 p-1 rounded-lg w-fit">
         <button
           onClick={() => setTabVista('propias')}
@@ -260,20 +301,30 @@ export default function Historial() {
           Mis cotizaciones
         </button>
         <button
-          onClick={() => setTabVista('compartidas')}
+          onClick={() => setTabVista('individual')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            tabVista === 'compartidas'
+            tabVista === 'individual'
               ? 'bg-slate-700 text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Compartidas conmigo
+          Individuales
+        </button>
+        <button
+          onClick={() => setTabVista('mutua')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            tabVista === 'mutua'
+              ? 'bg-slate-700 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Mutuas
         </button>
       </div>
 
       {error && <div className="bg-red-900/30 border border-red-500/50 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">{error}</div>}
 
-      {tabVista === 'compartidas' && (
+      {tabVista === 'individual' && (
         <div className="space-y-6">
           {loadingCompartidas ? (
             <div className="text-center py-12 text-slate-500">Cargando cotizaciones compartidas...</div>
@@ -282,8 +333,8 @@ export default function Historial() {
               <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <p className="text-sm">Nadie ha compartido cotizaciones contigo aún.</p>
-              <p className="text-xs mt-1">Pide a otro usuario que te envíe una invitación desde <strong>Conexiones</strong>.</p>
+              <p className="text-sm">Nadie te ha compartido cotizaciones de forma individual.</p>
+              <p className="text-xs mt-1">Pide a otro usuario que te envíe una invitación individual desde <strong>Conexiones</strong>.</p>
             </div>
           ) : (
             cotizsCompartidas.map(({ conexion, cots }) => (
@@ -342,6 +393,86 @@ export default function Historial() {
                     </div>
                   ))}
                 </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {tabVista === 'mutua' && (
+        <div className="space-y-6">
+          {loadingMutua ? (
+            <div className="text-center py-12 text-slate-500">Cargando cotizaciones mutuas...</div>
+          ) : cotizsMutuas.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p className="text-sm">Sin conexiones mutuas activas.</p>
+              <p className="text-xs mt-1">Envía o acepta una invitación de tipo <strong>Mutua</strong> desde <strong>Conexiones</strong>.</p>
+            </div>
+          ) : (
+            cotizsMutuas.map(({ partner, cots, conexionId }) => (
+              <div key={conexionId}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-violet-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                    {partner.nombre[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">{partner.nombre}</p>
+                    <p className="text-slate-500 text-xs">{partner.email}</p>
+                  </div>
+                  <span className={`ml-2 text-xs font-medium px-2 py-0.5 rounded border ${
+                    partner.permiso === 'editor'
+                      ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                      : 'text-sky-400 bg-sky-500/10 border-sky-500/30'
+                  }`}>
+                    {partner.permiso === 'editor' ? 'Editor' : 'Solo lectura'}
+                  </span>
+                  <span className="text-violet-400 text-xs font-medium px-2 py-0.5 rounded border bg-violet-500/10 border-violet-500/30 ml-1">Mutua</span>
+                  <span className="text-slate-500 text-xs ml-1">· {cots.length} cotizaciones</span>
+                </div>
+                {cots.length === 0 ? (
+                  <p className="text-slate-600 text-xs ml-11">Sin cotizaciones aún.</p>
+                ) : (
+                  <div className="card space-y-2 p-3">
+                    {cots.map(cot => (
+                      <div key={cot.id} className="flex items-center justify-between gap-3 p-3 bg-slate-800 rounded-lg border border-slate-700">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {cot.numero && <span className="text-blue-400 font-mono text-xs">{cot.numero}</span>}
+                            <span className="text-white text-sm font-medium truncate">
+                              {typeof cot.cliente === 'object' ? cot.cliente?.nombre : cot.cliente || '—'}
+                            </span>
+                          </div>
+                          <p className="text-slate-500 text-xs mt-0.5">{cot.fecha || '—'} · {(cot.totalFinal || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })}</p>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                          <button
+                            onClick={() => handlePreview(cot, 'cotizacion')}
+                            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            Cotización
+                          </button>
+                          <button
+                            onClick={() => handlePreview(cot, 'ficha')}
+                            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            Ficha costos
+                          </button>
+                          {partner.permiso === 'editor' && (
+                            <button
+                              onClick={() => handleAbrir(cot, partner.uid)}
+                              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              Editar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}
