@@ -36,6 +36,7 @@ export default function Historial() {
   const [cotizaciones, setCotizaciones] = useState([])
   const [cotizsCompartidas, setCotizsCompartidas] = useState([])
   const [loadingCompartidas, setLoadingCompartidas] = useState(false)
+  const [debugCompartidas, setDebugCompartidas] = useState('')
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState(() => location.state?.search || '')
   const [statusFilter, setStatusFilter] = useState('Todos')
@@ -105,17 +106,23 @@ export default function Historial() {
     setLoadingCompartidas(true)
     setError('')
     obtenerConexionesComoLector(user.uid).then(async (conexiones) => {
+      setDebugCompartidas(`conexiones=${conexiones.length}`)
       // Migration: create sharedWith docs for connections accepted before this fix
+      const migrErrors = []
       await Promise.all(
-        conexiones.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso).catch(() => {}))
+        conexiones.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso).catch(e => { migrErrors.push(e?.code || e?.message || String(e)) }))
       )
+      if (migrErrors.length) setDebugCompartidas(d => d + ` migr_err=${migrErrors.join(',')}`)
       const grupos = await Promise.all(
         conexiones.map(async (c) => {
           try {
             const cots = await obtenerCotizacionesDeOwner(c.ownerUid)
+            setDebugCompartidas(d => d + ` cots[${c.ownerUid.slice(-4)}]=${cots.length}`)
             return { conexion: c, cots }
           } catch (e) {
+            const msg = e?.code || e?.message || String(e)
             console.error('Error cargando cots de', c.ownerUid, e)
+            setDebugCompartidas(d => d + ` err[${c.ownerUid.slice(-4)}]=${msg}`)
             return { conexion: c, cots: [] }
           }
         })
@@ -123,7 +130,9 @@ export default function Historial() {
       setCotizsCompartidas(grupos.filter(g => g.cots.length > 0))
       setLoadingCompartidas(false)
     }).catch((e) => {
+      const msg = e?.code || e?.message || String(e)
       console.error('Error cargando conexiones:', e)
+      setDebugCompartidas(`conn_err=${msg}`)
       setError('Error al cargar cotizaciones compartidas.')
       setLoadingCompartidas(false)
     })
@@ -303,6 +312,7 @@ export default function Historial() {
               </svg>
               <p className="text-sm">Nadie ha compartido cotizaciones contigo aún.</p>
               <p className="text-xs mt-1">Pide a otro usuario que te envíe una invitación desde <strong>Conexiones</strong>.</p>
+              {debugCompartidas && <p className="text-xs mt-3 font-mono text-slate-600 break-all">{debugCompartidas}</p>}
             </div>
           ) : (
             cotizsCompartidas.map(({ conexion, cots }) => (
