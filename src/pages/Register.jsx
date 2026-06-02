@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { registerWithEmail, loginWithGoogle } from '../firebase/auth'
+import { registerWithEmail, loginWithGoogle, getGoogleRedirectResult } from '../firebase/auth'
 
 export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
@@ -32,15 +32,19 @@ export default function Register() {
     }
   }
 
+  useEffect(() => {
+    getGoogleRedirectResult().catch((err) => {
+      if (err?.code) setError(getFirebaseError(err.code))
+    })
+  }, [])
+
   const handleGoogle = async () => {
     setError('')
     setLoading(true)
     try {
       await loginWithGoogle()
-      navigate('/dashboard')
     } catch (err) {
       setError(getFirebaseError(err.code))
-    } finally {
       setLoading(false)
     }
   }

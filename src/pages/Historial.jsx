@@ -77,7 +77,9 @@ export default function Historial() {
         setCotizaciones(data)
         setLoading(false)
       },
-      () => {
+      (err) => {
+        console.error('suscribirCotizaciones error:', err)
+        setError(`Error al cargar cotizaciones (${err?.code || err?.message || 'desconocido'}). Si el problema persiste, intenta cerrar sesión y volver a entrar.`)
         setLoading(false)
       }
     )
