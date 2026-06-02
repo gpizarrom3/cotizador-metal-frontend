@@ -7,17 +7,26 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Cotizaciones compartidas: lector o editor puede leer; editor puede escribir
+    // Cotizaciones compartidas: el lector puede leer si tiene entrada en sharedWith del dueño
     match /usuarios/{userId}/cotizaciones/{cotId} {
       allow read: if request.auth != null &&
-        exists(/databases/$(database)/documents/aceptaciones/$(userId + '_' + request.auth.uid));
+        exists(/databases/$(database)/documents/usuarios/$(userId)/sharedWith/$(request.auth.uid));
       allow create, update: if request.auth != null && esEditor(userId);
     }
 
+    // Índice de acceso: dentro de la misma jerarquía del dueño (necesario para que Firestore
+    // pueda evaluar exists() en reglas de queries de colección)
+    match /usuarios/{userId}/sharedWith/{readerUid} {
+      allow create: if request.auth != null && request.auth.uid == readerUid;
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || request.auth.uid == readerUid);
+      allow delete: if request.auth != null &&
+        (request.auth.uid == userId || request.auth.uid == readerUid);
+    }
+
     function esEditor(userId) {
-      let key = userId + '_' + request.auth.uid;
-      return exists(/databases/$(database)/documents/aceptaciones/$(key)) &&
-        get(/databases/$(database)/documents/aceptaciones/$(key)).data.permiso == 'editor';
+      return exists(/databases/$(database)/documents/usuarios/$(userId)/sharedWith/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(userId)/sharedWith/$(request.auth.uid)).data.permiso == 'editor';
     }
 
     // Invitaciones: el emisor crea, ambos pueden leer, el receptor actualiza estado
@@ -34,7 +43,7 @@ service cloud.firestore {
         resource.data.fromUid == request.auth.uid;
     }
 
-    // Aceptaciones: el receptor crea (con su propio readerUid); ambos pueden leer y eliminar
+    // Aceptaciones: el receptor crea; ambos pueden leer y eliminar
     match /aceptaciones/{conexionId} {
       allow create: if request.auth != null &&
         request.resource.data.readerUid == request.auth.uid;

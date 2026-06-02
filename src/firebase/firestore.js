@@ -360,6 +360,11 @@ export const aceptarInvitacion = async (inv, toUid, toEmail, toNombre) => {
     permiso: inv.permiso,
     createdAt: serverTimestamp(),
   })
+  // Security index within owner's namespace — required for Firestore collection query rules
+  batch.set(doc(db, 'usuarios', inv.fromUid, 'sharedWith', toUid), {
+    permiso: inv.permiso,
+    createdAt: serverTimestamp(),
+  })
   await batch.commit()
 }
 
@@ -389,7 +394,22 @@ export const suscribirConexionesComoLector = (myUid, callback) => {
 }
 
 export const eliminarConexion = async (conexionId) => {
-  await deleteDoc(doc(db, 'aceptaciones', conexionId))
+  // conexionId = ownerUid_readerUid; Firebase UIDs are alphanumeric so first underscore is the separator
+  const idx = conexionId.indexOf('_')
+  const ownerUid = conexionId.slice(0, idx)
+  const readerUid = conexionId.slice(idx + 1)
+  const batch = writeBatch(db)
+  batch.delete(doc(db, 'aceptaciones', conexionId))
+  batch.delete(doc(db, 'usuarios', ownerUid, 'sharedWith', readerUid))
+  await batch.commit()
+}
+
+export const asegurarSharedWith = async (ownerUid, readerUid, permiso) => {
+  const ref = doc(db, 'usuarios', ownerUid, 'sharedWith', readerUid)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) {
+    await setDoc(ref, { permiso, createdAt: serverTimestamp() })
+  }
 }
 
 export const obtenerCotizacionesDeOwner = async (ownerUid) => {

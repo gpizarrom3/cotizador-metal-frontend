@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import {
   suscribirCotizaciones, actualizarEstado, eliminarCotizacion,
   migrarCotizacionesPersonales, suscribirPresencias, SHARED_DOMAIN,
-  obtenerConexionesComoLector, obtenerCotizacionesDeOwner,
+  obtenerConexionesComoLector, obtenerCotizacionesDeOwner, asegurarSharedWith,
 } from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
@@ -105,6 +105,10 @@ export default function Historial() {
     setLoadingCompartidas(true)
     setError('')
     obtenerConexionesComoLector(user.uid).then(async (conexiones) => {
+      // Migration: create sharedWith docs for connections accepted before this fix
+      await Promise.all(
+        conexiones.map(c => asegurarSharedWith(c.ownerUid, user.uid, c.permiso).catch(() => {}))
+      )
       const grupos = await Promise.all(
         conexiones.map(async (c) => {
           try {
