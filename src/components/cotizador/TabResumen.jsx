@@ -344,6 +344,77 @@ export default function TabResumen({
         </div>
       </div>
 
+      {/* Directos vs Indirectos */}
+      {costoSinDescuento > 0 && (() => {
+        const totalDirectos   = baseSubtotal + totalHH + totalServicios + totalMarkupServicios + totalEmbalaje
+        const totalIndirectos = totalBases
+        const pctD = totalDirectos   / costoSinDescuento * 100
+        const pctI = totalIndirectos / costoSinDescuento * 100
+        return (
+          <div className="card">
+            <h2 className="text-base font-semibold text-white mb-4">Costos directos vs. indirectos</h2>
+            {/* barra proporcional */}
+            <div className="flex h-2.5 rounded-full overflow-hidden mb-4 bg-slate-700">
+              <div className="bg-blue-500 transition-all" style={{ width: `${pctD}%` }} />
+              <div className="bg-amber-500 transition-all" style={{ width: `${pctI}%` }} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Directos */}
+              <div className="p-3 bg-blue-600/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />
+                  <span className="text-blue-300 font-medium text-sm">Costos Directos</span>
+                  <span className="ml-auto text-blue-300/60 text-xs">{pctD.toFixed(1)}%</span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  {conMaterial === false
+                    ? <div className="flex justify-between text-slate-400"><span>Consumibles</span><span>{fmtM(totalConsumibles)}</span></div>
+                    : <div className="flex justify-between text-slate-400"><span>Materiales</span><span>{fmtM(totalMateriales)}</span></div>
+                  }
+                  <div className="flex justify-between text-slate-400"><span>Horas Hombre</span><span>{fmtM(totalHH)}</span></div>
+                  {(totalServicios + totalMarkupServicios) > 0 && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>Servicios ext.{totalMarkupServicios > 0 ? ' + gestión' : ''}</span>
+                      <span>{fmtM(totalServicios + totalMarkupServicios)}</span>
+                    </div>
+                  )}
+                  {totalEmbalaje > 0 && (
+                    <div className="flex justify-between text-slate-400"><span>Embalaje y Envío</span><span>{fmtM(totalEmbalaje)}</span></div>
+                  )}
+                </div>
+                <div className="mt-3 pt-2 border-t border-blue-500/20 flex justify-between items-baseline">
+                  <span className="text-blue-200 text-sm font-semibold">Total directos</span>
+                  <span className="text-blue-200 font-bold">{fmtM(totalDirectos)}</span>
+                </div>
+              </div>
+              {/* Indirectos */}
+              <div className="p-3 bg-amber-600/10 border border-amber-500/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0" />
+                  <span className="text-amber-300 font-medium text-sm">Costos Indirectos</span>
+                  <span className="ml-auto text-amber-300/60 text-xs">{pctI.toFixed(1)}%</span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  {bases.filter(b => Number(b.porcentaje) > 0).length > 0
+                    ? bases.filter(b => Number(b.porcentaje) > 0).map(b => (
+                        <div key={b.id} className="flex justify-between text-slate-400">
+                          <span>{b.nombre} ({b.porcentaje}%)</span>
+                          <span>{fmtM(baseCalculo * b.porcentaje / 100)}</span>
+                        </div>
+                      ))
+                    : <p className="text-slate-600 text-xs italic">Sin % bases configurados</p>
+                  }
+                </div>
+                <div className="mt-3 pt-2 border-t border-amber-500/20 flex justify-between items-baseline">
+                  <span className="text-amber-200 text-sm font-semibold">Total indirectos</span>
+                  <span className="text-amber-200 font-bold">{fmtM(totalIndirectos)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Totales finales */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="card border-blue-500/40 bg-blue-600/5">
