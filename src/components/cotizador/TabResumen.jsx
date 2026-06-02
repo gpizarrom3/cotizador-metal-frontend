@@ -27,6 +27,7 @@ export default function TabResumen({
   onGuardar, onExportPDF, exportando,
   onExportFicha, exportandoFicha,
   conMaterial, totalConsumibles = 0,
+  totalPesoKg = 0,
 }) {
   const {
     flete = 0, incluyeIVA = false, validezDias = 30,
@@ -437,6 +438,37 @@ export default function TabResumen({
           {moneda !== 'CLP' && <p className="text-slate-500 text-xs mt-1">{fmt(costoUnitario)} CLP</p>}
         </div>
       </div>
+
+      {/* Peso total estimado */}
+      {totalPesoKg > 0 && (() => {
+        const pesoLotes = totalPesoKg * cantidadLotes
+        const pesoUnit  = totalUnidades > 0 ? pesoLotes / totalUnidades : 0
+        return (
+          <div className="card border-stone-500/30 bg-stone-800/40">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+              </svg>
+              <h3 className="text-stone-300 font-semibold text-sm">Peso total estimado</h3>
+              <span className="text-stone-600 text-xs ml-1">(basado en materiales con kg ingresados)</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-stone-500 text-xs mb-1">Por lote</p>
+                <p className="text-stone-200 font-bold text-xl">{totalPesoKg.toFixed(2)} <span className="text-sm font-normal text-stone-400">kg</span></p>
+              </div>
+              <div className="border-x border-stone-700">
+                <p className="text-stone-500 text-xs mb-1">{cantidadLotes} {cantidadLotes === 1 ? 'lote' : 'lotes'}</p>
+                <p className="text-stone-200 font-bold text-xl">{pesoLotes.toFixed(2)} <span className="text-sm font-normal text-stone-400">kg</span></p>
+              </div>
+              <div>
+                <p className="text-stone-500 text-xs mb-1">Por unidad</p>
+                <p className="text-stone-200 font-bold text-xl">{pesoUnit.toFixed(3)} <span className="text-sm font-normal text-stone-400">kg</span></p>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Condiciones de pago */}
       <div className="card">

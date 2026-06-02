@@ -6,7 +6,7 @@ const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency',
 
 export const emptyMaterial = () => ({
   id: Date.now() + Math.random(),
-  nombre: '', proveedor: '', formato: '', cantidad: 1, precio_unitario: 0,
+  nombre: '', proveedor: '', formato: '', cantidad: 1, precio_unitario: 0, peso_kg: 0,
 })
 
 export const emptySubproducto = (nombre = 'MATERIALES') => ({
@@ -148,7 +148,7 @@ function PesoCalculadora({ onAgregar }) {
 
   const handleAgregar = () => {
     if (pesoTotal <= 0) return
-    onAgregar({ nombre: `${mat.label} — ${geom.label}`, formato: `${pesoTotal.toFixed(2)} kg`, cantidad: Number(cantidad) || 1 })
+    onAgregar({ nombre: `${mat.label} — ${geom.label}`, formato: `${pesoUnit.toFixed(3)} kg/u`, cantidad: Number(cantidad) || 1, peso_kg: pesoUnit })
     setDims({})
     setCantidad(1)
   }
@@ -221,7 +221,8 @@ function PesoCalculadora({ onAgregar }) {
 
 // ── Tarjeta de sub-producto ───────────────────────────────────────────────────
 function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem }) {
-  const total = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const total    = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const pesoTotal = (sp.items || []).reduce((acc, m) => acc + (Number(m.peso_kg) || 0) * (Number(m.cantidad) || 0), 0)
 
   return (
     <div className="card space-y-3">
@@ -249,6 +250,7 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
               <th className="text-left px-3 py-3 w-28">Proveedor</th>
               <th className="text-left px-3 py-3 w-24">Formato</th>
               <th className="text-right px-3 py-3 w-28">Cant.</th>
+              <th className="text-right px-3 py-3 w-24">kg/u</th>
               <th className="text-right px-3 py-3 w-40">P. Unit.</th>
               <th className="text-right px-3 py-3 w-28">Total</th>
               <th className="px-3 py-3 rounded-r-lg w-8" />
@@ -268,6 +270,7 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
                   <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
                   <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
                   <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-full" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
+                  <td className="px-3 py-2"><input type="number" min="0" step="0.001" className="input-field py-1.5 text-sm text-right w-full" placeholder="—" value={m.peso_kg || ''} onChange={e => onUpdateItem(m.id, 'peso_kg', Number(e.target.value))} /></td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5">
                       <input type="number" min="0" className="input-field py-1.5 text-sm text-right min-w-0 flex-1" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} />
@@ -286,7 +289,11 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-600">
-              <td colSpan={5} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
+              <td colSpan={4} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
+              <td className="px-3 py-2 text-right text-emerald-400 text-sm font-medium">
+                {pesoTotal > 0 ? `${pesoTotal.toFixed(2)} kg` : '—'}
+              </td>
+              <td className="px-3 py-2 text-right text-slate-400 text-sm font-medium" />
               <td className="px-3 py-2 text-right text-blue-400 font-semibold">{fmt(total)}</td>
               <td />
             </tr>
