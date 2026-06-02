@@ -269,7 +269,6 @@ export default function Cotizador() {
     return acc + hh + col
   }, 0)
   const totalServicios = (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
-  const totalPesoKg    = flatMateriales.reduce((acc, m) => acc + (Number(m.peso_kg) || 0) * (Number(m.cantidad) || 0), 0)
   const totalEmbalaje = (embalaje.activo === false) ? 0 : (
     (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (embalaje.pallets || []).reduce((accP, p) =>
@@ -676,7 +675,6 @@ export default function Cotizador() {
           onGuardar={handleGuardar} onExportPDF={handleExportPDF} exportando={exportando}
           onExportFicha={handleExportFicha} exportandoFicha={exportandoFicha}
           conMaterial={conMaterial} totalConsumibles={totalConsumibles}
-          totalPesoKg={totalPesoKg}
         />
       )}
 
