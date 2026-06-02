@@ -393,9 +393,9 @@ export const eliminarConexion = async (conexionId) => {
 }
 
 export const obtenerCotizacionesDeOwner = async (ownerUid) => {
-  const q = query(collection(db, 'usuarios', ownerUid, 'cotizaciones'), orderBy('fecha', 'desc'))
-  const snap = await getDocs(q)
-  return snap.docs.map(mapCotizacion)
+  const snap = await getDocs(collection(db, 'usuarios', ownerUid, 'cotizaciones'))
+  const cots = snap.docs.map(mapCotizacion)
+  return cots.sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
 // ── Presencia (indicador tiempo real) ────────────────────────────────────────

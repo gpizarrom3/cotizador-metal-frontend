@@ -103,16 +103,26 @@ export default function Historial() {
   useEffect(() => {
     if (!user || tabVista !== 'compartidas') return
     setLoadingCompartidas(true)
+    setError('')
     obtenerConexionesComoLector(user.uid).then(async (conexiones) => {
       const grupos = await Promise.all(
         conexiones.map(async (c) => {
-          const cots = await obtenerCotizacionesDeOwner(c.ownerUid)
-          return { conexion: c, cots }
+          try {
+            const cots = await obtenerCotizacionesDeOwner(c.ownerUid)
+            return { conexion: c, cots }
+          } catch (e) {
+            console.error('Error cargando cots de', c.ownerUid, e)
+            return { conexion: c, cots: [] }
+          }
         })
       )
       setCotizsCompartidas(grupos.filter(g => g.cots.length > 0))
       setLoadingCompartidas(false)
-    }).catch(() => setLoadingCompartidas(false))
+    }).catch((e) => {
+      console.error('Error cargando conexiones:', e)
+      setError('Error al cargar cotizaciones compartidas.')
+      setLoadingCompartidas(false)
+    })
   }, [user, tabVista])
 
   useEffect(() => { setPagina(1) }, [search, statusFilter, fechaDesde, fechaHasta, sortBy])
