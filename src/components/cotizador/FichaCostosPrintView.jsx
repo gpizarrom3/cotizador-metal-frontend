@@ -35,8 +35,8 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
   const totalIVA           = incluyeIVA ? totalNeto * 0.19 : 0
   const totalFinal         = totalNeto + totalIVA
   const totalUnidades      = cantidadLotes * unidadesPorLote
-  const costoUnitario      = totalUnidades > 0 ? totalFinal / totalUnidades : 0
-  const costoPorLote       = cantidadLotes > 1 ? totalFinal / cantidadLotes : 0
+  const costoUnitario      = totalUnidades > 0 ? (totalFinal * cantidadLotes) / totalUnidades : 0
+  const costoPorLote       = totalFinal
 
   const activeServicios    = Object.entries(servicios).filter(([, s]) => s.activo)
   const embalajeMatActivos = (embalaje.materiales || []).filter(m => Number(m.cantidad) > 0)
