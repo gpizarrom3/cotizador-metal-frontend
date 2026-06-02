@@ -21,7 +21,7 @@ export default function Catalogo() {
 
   useEffect(() => {
     if (!user) return
-    obtenerCatalogo(user.uid, user.email)
+    obtenerCatalogo(user.uid)
       .then(setItems)
       .catch(() => setError('No se pudo cargar el catálogo.'))
       .finally(() => setLoading(false))
@@ -46,10 +46,10 @@ export default function Catalogo() {
     try {
       const datos = { ...form, precio_unitario: Number(form.precio_unitario) || 0 }
       if (editando) {
-        await actualizarItemCatalogo(user.uid, editando, datos, user.email)
+        await actualizarItemCatalogo(user.uid, editando, datos)
         setItems((prev) => prev.map((i) => i.id === editando ? { ...i, ...datos } : i))
       } else {
-        const id = await guardarItemCatalogo(user.uid, datos, user.email)
+        const id = await guardarItemCatalogo(user.uid, datos)
         setItems((prev) => [...prev, { id, ...datos }].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       }
       cerrarModal()
@@ -66,7 +66,7 @@ export default function Catalogo() {
     const id = confirmDelete.id
     setConfirmDelete({ open: false, id: null })
     try {
-      await eliminarItemCatalogo(user.uid, id, user.email)
+      await eliminarItemCatalogo(user.uid, id)
       setItems((prev) => prev.filter((i) => i.id !== id))
     } catch {
       setError('Error al eliminar.')

@@ -25,7 +25,7 @@ export default function Clientes() {
 
   useEffect(() => {
     if (!user) return
-    obtenerClientes(user.uid, user.email)
+    obtenerClientes(user.uid)
       .then(setClientes)
       .catch(() => setError('No se pudieron cargar los clientes.'))
       .finally(() => setLoading(false))
@@ -33,7 +33,7 @@ export default function Clientes() {
 
   useEffect(() => {
     if (!user) return
-    obtenerCotizaciones(user.uid, user.email).then((cots) => {
+    obtenerCotizaciones(user.uid).then((cots) => {
       const stats = {}
       cots.forEach((c) => {
         const nombre = (typeof c.cliente === 'object' ? c.cliente?.nombre : c.cliente) || ''
@@ -75,10 +75,10 @@ export default function Clientes() {
     setSaving(true)
     try {
       if (editando) {
-        await actualizarCliente(user.uid, editando, form, user.email)
+        await actualizarCliente(user.uid, editando, form)
         setClientes((prev) => prev.map((c) => c.id === editando ? { ...c, ...form } : c))
       } else {
-        const id = await guardarCliente(user.uid, form, user.email)
+        const id = await guardarCliente(user.uid, form)
         setClientes((prev) => [{ id, ...form }, ...prev].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       }
       cerrarModal()
@@ -95,7 +95,7 @@ export default function Clientes() {
     const id = confirmDelete.id
     setConfirmDelete({ open: false, id: null })
     try {
-      await eliminarCliente(user.uid, id, user.email)
+      await eliminarCliente(user.uid, id)
       setClientes((prev) => prev.filter((c) => c.id !== id))
     } catch {
       setError('Error al eliminar el cliente.')

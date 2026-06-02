@@ -28,7 +28,7 @@ export default function CatalogoServicios() {
 
   useEffect(() => {
     if (!user) return
-    obtenerCatalogoServicios(user.uid, user.email)
+    obtenerCatalogoServicios(user.uid)
       .then(setItems)
       .catch(() => setError('No se pudo cargar el catálogo de servicios.'))
       .finally(() => setLoading(false))
@@ -59,10 +59,10 @@ export default function CatalogoServicios() {
     try {
       const datos = { ...form, precio_unitario: Number(form.precio_unitario) || 0 }
       if (editando) {
-        await actualizarItemCatalogoServicios(user.uid, editando, datos, user.email)
+        await actualizarItemCatalogoServicios(user.uid, editando, datos)
         setItems((prev) => prev.map((i) => i.id === editando ? { ...i, ...datos } : i))
       } else {
-        const id = await guardarItemCatalogoServicios(user.uid, datos, user.email)
+        const id = await guardarItemCatalogoServicios(user.uid, datos)
         setItems((prev) =>
           [...prev, { id, ...datos }].sort((a, b) => a.nombre.localeCompare(b.nombre))
         )
@@ -80,7 +80,7 @@ export default function CatalogoServicios() {
     const id = confirmDelete.id
     setConfirmDelete({ open: false, id: null })
     try {
-      await eliminarItemCatalogoServicios(user.uid, id, user.email)
+      await eliminarItemCatalogoServicios(user.uid, id)
       setItems((prev) => prev.filter((i) => i.id !== id))
     } catch {
       setError('Error al eliminar.')

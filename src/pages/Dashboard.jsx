@@ -102,7 +102,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return
-    const unsub = suscribirCotizaciones(user.uid, user.email, (data) => {
+    const unsub = suscribirCotizaciones(user.uid, (data) => {
       setCotizaciones(data)
       setLoading(false)
     })

@@ -313,7 +313,7 @@ export default function TabMateriales({ materiales, setMateriales }) {
 
   useEffect(() => {
     if (!user) return
-    obtenerCatalogo(user.uid, user.email).then(setCatalogo).catch(() => {})
+    obtenerCatalogo(user.uid).then(setCatalogo).catch(() => {})
   }, [user])
 
   useEffect(() => {

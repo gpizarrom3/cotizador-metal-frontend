@@ -11,13 +11,11 @@ import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import MecanicoIA from '../components/cotizador/MecanicoIA'
 import { useAuth } from '../hooks/useAuth'
-import { usePresencia } from '../hooks/usePresencia'
 import {
   guardarCotizacion, actualizarCotizacion, obtenerClientes,
   guardarPlantilla as guardarPlantillaFS,
   obtenerPlantillas as obtenerPlantillasFS,
   eliminarPlantilla as eliminarPlantillaFS,
-  suscribirPresencias, SHARED_DOMAIN,
 } from '../firebase/firestore'
 import { exportPDF } from '../utils/exportPDF'
 import { getConfigDefaults } from '../utils/configDefaults'
@@ -153,23 +151,11 @@ export default function Cotizador() {
   const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
   const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
 
-  // Presencia — solo cuentas institucionales con cotización existente
-  usePresencia(cotizacionId)
-  const isShared = user?.email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
-  const [otrosEditando, setOtrosEditando] = useState([])
-  useEffect(() => {
-    if (!cotizacionId || !isShared) return
-    return suscribirPresencias((map) => {
-      const otros = (map[cotizacionId] || []).filter((p) => p.uid !== user?.uid)
-      setOtrosEditando(otros)
-    })
-  }, [cotizacionId, user?.uid])
-
   const [clientes, setClientes] = useState([])
 
   useEffect(() => {
     if (!user) return
-    obtenerClientes(user.uid, user.email).then(setClientes).catch(() => {})
+    obtenerClientes(user.uid).then(setClientes).catch(() => {})
   }, [user])
 
   const [saving,      setSaving]      = useState(false)
@@ -188,7 +174,7 @@ export default function Cotizador() {
 
   useEffect(() => {
     if (!user) return
-    obtenerPlantillasFS(user.uid, user.email).then(setPlantillas).catch(() => {})
+    obtenerPlantillasFS(user.uid).then(setPlantillas).catch(() => {})
   }, [user])
 
   const setConfigField = (field, value) => setConfig((c) => ({ ...c, [field]: value }))
@@ -232,7 +218,7 @@ export default function Cotizador() {
       cantidadLotes, unidadesPorLote,
     }
     try {
-      const id = await guardarPlantillaFS(user.uid, datos, user.email)
+      const id = await guardarPlantillaFS(user.uid, datos)
       setPlantillas((prev) => [{ id, ...datos }, ...prev])
     } catch { /* silently ignore */ }
     setNombrePlantilla('')
@@ -254,7 +240,7 @@ export default function Cotizador() {
   const handleEliminarPlantilla = async (id) => {
     if (!user) return
     try {
-      await eliminarPlantillaFS(user.uid, id, user.email)
+      await eliminarPlantillaFS(user.uid, id)
       setPlantillas((prev) => prev.filter((p) => p.id !== id))
     } catch { /* silently ignore */ }
   }
@@ -312,9 +298,9 @@ export default function Cotizador() {
     setSaving(true); setSaveError(''); setSaveSuccess(false)
     try {
       if (cotizacionId) {
-        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa }, user.email)
+        await actualizarCotizacion(user.uid, cotizacionId, { ...cotizacionData, empresa })
       } else {
-        const { id, numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa }, user.email, user.displayName)
+        const { id, numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa })
         setNumeroCot(numero)
         setCotizacionId(id)
       }
@@ -511,15 +497,6 @@ export default function Cotizador() {
 
   return (
     <DashboardLayout>
-      {otrosEditando.length > 0 && (
-        <div className="mb-4 bg-amber-900/30 border border-amber-500/40 rounded-lg px-4 py-2.5 flex items-center gap-2.5">
-          <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse flex-shrink-0" />
-          <p className="text-amber-300 text-sm">
-            <span className="font-semibold">{otrosEditando.map(p => p.nombre).join(', ')}</span>
-            {otrosEditando.length === 1 ? ' está' : ' están'} editando esta cotización ahora mismo
-          </p>
-        </div>
-      )}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">

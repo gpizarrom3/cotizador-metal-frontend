@@ -4,7 +4,6 @@ import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import {
   suscribirCotizaciones, actualizarEstado, eliminarCotizacion,
-  migrarCotizacionesPersonales, suscribirPresencias, SHARED_DOMAIN,
   obtenerConexionesComoLector, obtenerCotizacionesDeOwner, asegurarSharedWith,
 } from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
@@ -44,11 +43,8 @@ export default function Historial() {
   const [error, setError]       = useState('')
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
   const [fichaModal, setFichaModal] = useState(null)
-  const [presencias, setPresencias] = useState({})
   const [sortBy, setSortBy] = useState('fecha_desc')
   const [pagina, setPagina] = useState(1)
-
-  const isInstitutional = user?.email?.toLowerCase().endsWith(`@${SHARED_DOMAIN}`)
 
   const [preview, setPreview]         = useState(null)
   const [exportandoPDF, setExportandoPDF] = useState(false)
@@ -73,32 +69,18 @@ export default function Historial() {
     if (!user) return
     setLoading(true)
     let unsub = () => {}
-    migrarCotizacionesPersonales(user.uid, user.email)
-      .then(() => {
-        unsub = suscribirCotizaciones(
-          user.uid,
-          user.email,
-          (data) => {
-            setCotizaciones(data)
-            setLoading(false)
-          },
-          () => {
-            // Error de permisos Firestore: mostrar lista vacía sin romper la app
-            setLoading(false)
-          }
-        )
-      })
-      .catch(() => {
-        setError('No se pudieron cargar las cotizaciones.')
+    unsub = suscribirCotizaciones(
+      user.uid,
+      (data) => {
+        setCotizaciones(data)
         setLoading(false)
-      })
+      },
+      () => {
+        setLoading(false)
+      }
+    )
     return () => unsub()
   }, [user])
-
-  useEffect(() => {
-    if (!isInstitutional) return
-    return suscribirPresencias(setPresencias)
-  }, [isInstitutional])
 
   useEffect(() => {
     if (!user || tabVista !== 'compartidas') return
@@ -131,7 +113,7 @@ export default function Historial() {
 
   const handleEstado = async (cotId, estado) => {
     try {
-      await actualizarEstado(user.uid, cotId, estado, user.email)
+      await actualizarEstado(user.uid, cotId, estado)
       setCotizaciones((prev) => prev.map((c) => c.id === cotId ? { ...c, estado } : c))
     } catch { setError('Error al actualizar estado.') }
   }
@@ -142,7 +124,7 @@ export default function Historial() {
     const id = confirmDelete.id
     setConfirmDelete({ open: false, id: null })
     try {
-      await eliminarCotizacion(user.uid, id, user.email)
+      await eliminarCotizacion(user.uid, id)
       setCotizaciones((prev) => prev.filter((c) => c.id !== id))
     } catch { setError('Error al eliminar.') }
   }
@@ -444,15 +426,6 @@ export default function Historial() {
                     {c.config?.numeroReferencia && (
                       <span className="text-slate-500 text-xs ml-2">{c.config.numeroReferencia}</span>
                     )}
-                    {(() => {
-                      const editandoArr = (presencias[c.id] || []).filter(p => p.uid !== user?.uid)
-                      return editandoArr.length > 0 ? (
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse flex-shrink-0" />
-                          <span className="text-amber-400 text-xs">{editandoArr.map(p => p.nombre).join(', ')}</span>
-                        </div>
-                      ) : null
-                    })()}
                   </div>
                   <select
                     value={c.estado || 'Pendiente'}
@@ -466,9 +439,6 @@ export default function Historial() {
                 <p className="text-slate-100 font-medium text-sm">{getNombreCliente(c)}</p>
                 {c.config?.descripcion && (
                   <p className="text-slate-400 text-xs mt-0.5 truncate">{c.config.descripcion}</p>
-                )}
-                {isInstitutional && c.creadoPor && (
-                  <p className="text-slate-500 text-xs mt-0.5">Por: {c.creadoPor}</p>
                 )}
                 {/* Fecha + Total */}
                 <div className="flex items-center justify-between mt-2.5">
@@ -519,7 +489,6 @@ export default function Historial() {
                   <th className="text-left px-4 py-3 rounded-l-lg">N°</th>
                   <th className="text-left px-4 py-3">Cliente</th>
                   <th className="text-left px-4 py-3">Fecha</th>
-                  {isInstitutional && <th className="text-left px-4 py-3">Creado por</th>}
                   <th className="text-right px-4 py-3">Total</th>
                   <th className="text-center px-4 py-3">Estado</th>
                   <th className="text-center px-4 py-3 rounded-r-lg">Acciones</th>
@@ -528,7 +497,7 @@ export default function Historial() {
               <tbody>
                 {sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={isInstitutional ? 7 : 6} className="text-center py-12 text-slate-500">
+                    <td colSpan={6} className="text-center py-12 text-slate-500">
                       {cotizaciones.length === 0
                         ? 'Aún no tienes cotizaciones guardadas. Ve al Cotizador y guarda una.'
                         : 'No se encontraron cotizaciones con esos filtros.'}
@@ -541,15 +510,6 @@ export default function Historial() {
                       {c.config?.numeroReferencia && (
                         <p className="text-slate-500 text-xs mt-0.5">{c.config.numeroReferencia}</p>
                       )}
-                      {(() => {
-                        const editando = (presencias[c.id] || []).filter(p => p.uid !== user?.uid)
-                        return editando.length > 0 ? (
-                          <div className="flex items-center gap-1 mt-1">
-                            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse flex-shrink-0" />
-                            <span className="text-amber-400 text-xs">{editando.map(p => p.nombre).join(', ')}</span>
-                          </div>
-                        ) : null
-                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-slate-200">{getNombreCliente(c)}</p>
@@ -561,9 +521,6 @@ export default function Historial() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-400">{c.fecha}</td>
-                    {isInstitutional && (
-                      <td className="px-4 py-3 text-slate-400 text-xs">{c.creadoPor || '—'}</td>
-                    )}
                     <td className="px-4 py-3 text-slate-200 text-right font-medium">
                       {fmt(c.totalFinal || c.costoTotal || 0)}
                     </td>
