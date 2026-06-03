@@ -315,9 +315,10 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
     c.nombre.toLowerCase().includes(catSearch.toLowerCase())
   )
 
-  const supM2 = modo !== 'catalogo' && modo !== 'manual'
+  const supCalc = (modo !== 'catalogo' && modo !== 'manual')
     ? calcSuperficieM2(pd.geomId || 'plancha', pd.dims || {})
     : 0
+  const supM2 = Number(pd.m2Manual) > 0 ? Number(pd.m2Manual) : supCalc
 
   return (
     <div className="mb-2 bg-slate-900/60 border border-emerald-500/20 rounded-xl p-3 space-y-2.5">
@@ -347,15 +348,36 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
               value={pd.kgManual || ''}
               onChange={e => upd({ kgManual: e.target.value })} />
           </div>
-          {peso1 > 0 && (
-            <div className="flex items-center gap-2 text-sm bg-blue-900/20 border border-blue-500/20 px-3 py-2 rounded-lg">
-              {SCALE_ICON}
-              <span className="text-blue-300 font-semibold">{peso1.toFixed(3)} kg/pieza</span>
-              {Number(item.cantidad) > 1 && (
-                <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span></span>
-              )}
-            </div>
-          )}
+          <div>
+            <p className="label text-xs mb-1">Superficie (m²)</p>
+            <input type="number" min="0" step="0.001" className="input-field text-xs py-1.5 w-36"
+              placeholder="Ej: 2.500"
+              value={pd.m2Manual || ''}
+              onChange={e => upd({ m2Manual: e.target.value })} />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {peso1 > 0 && (
+              <div className="flex items-center gap-2 text-sm bg-blue-900/20 border border-blue-500/20 px-3 py-2 rounded-lg">
+                {SCALE_ICON}
+                <span className="text-blue-300 font-semibold">{peso1.toFixed(3)} kg/pieza</span>
+                {Number(item.cantidad) > 1 && (
+                  <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span></span>
+                )}
+              </div>
+            )}
+            {supM2 > 0 && (
+              <div className="flex items-center gap-2 text-sm bg-sky-900/20 border border-sky-500/20 px-3 py-2 rounded-lg">
+                <svg className="w-4 h-4 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
+                </svg>
+                <span className="text-sky-300 font-semibold">{supM2.toFixed(3)} m²</span>
+                <span className="text-slate-500 text-xs">sup. pintura</span>
+                {Number(item.cantidad) > 1 && (
+                  <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-sky-200 font-medium">{(supM2 * (Number(item.cantidad) || 1)).toFixed(3)} m²</span></span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -388,6 +410,17 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
                   <option key={i} value={i}>{m.label} — {m.densidad} kg/m³</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <p className="label text-xs mb-1">
+                Sup. m²
+                {supCalc > 0 && !pd.m2Manual && <span className="text-slate-600 font-normal ml-1">(calculada)</span>}
+                {pd.m2Manual && <span className="text-sky-500 font-normal ml-1">(manual)</span>}
+              </p>
+              <input type="number" min="0" step="0.001" className="input-field text-xs py-1.5 w-28"
+                placeholder={supCalc > 0 ? supCalc.toFixed(3) : '0.000'}
+                value={pd.m2Manual || ''}
+                onChange={e => upd({ m2Manual: e.target.value })} />
             </div>
             <div className="flex gap-2 flex-wrap">
               {peso1 > 0 && (
@@ -467,6 +500,27 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
               )}
             </div>
           )}
+          <div className="flex items-center gap-3 flex-wrap pt-1">
+            <div>
+              <p className="label text-xs mb-1">Superficie (m²)</p>
+              <input type="number" min="0" step="0.001" className="input-field text-xs py-1.5 w-36"
+                placeholder="Ej: 2.500"
+                value={pd.m2Manual || ''}
+                onChange={e => upd({ m2Manual: e.target.value })} />
+            </div>
+            {supM2 > 0 && (
+              <div className="flex items-center gap-2 text-sm bg-sky-900/20 border border-sky-500/20 px-3 py-2 rounded-lg">
+                <svg className="w-4 h-4 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
+                </svg>
+                <span className="text-sky-300 font-semibold">{supM2.toFixed(3)} m²</span>
+                <span className="text-slate-500 text-xs">sup. pintura</span>
+                {Number(item.cantidad) > 1 && (
+                  <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-sky-200 font-medium">{(supM2 * (Number(item.cantidad) || 1)).toFixed(3)} m²</span></span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
