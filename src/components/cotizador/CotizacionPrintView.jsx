@@ -1,23 +1,19 @@
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
-const SERVICIOS_LABELS = {
-  corte_plasma: 'Corte Plasma', corte_laser: 'Corte Láser', oxicorte: 'Oxicorte',
-  tratamiento_termico: 'Tratamiento Térmico', plegado: 'Servicio de Plegado', cilindrado: 'Servicio de Cilindrado',
-}
-
 export default function CotizacionPrintView({ empresa = {}, cot }) {
   const {
     numero, fecha,
     cliente: clienteRaw = '',
-    materiales = [], roles = [], servicios = {}, bases = [],
+    materiales = [], servicios = {},
     embalaje = {},
-    cantidadLotes = 1, unidadesPorLote = 1,
+    unidadesPorLote = 1,
     totalMateriales = 0, totalHH = 0, totalServicios = 0, totalBases = 0, totalEmbalaje = 0,
     config = {},
     estado = '',
+    conMaterial,
+    totalConsumibles = 0,
   } = cot
 
-  // Compatibilidad: cliente puede ser string (legado) u objeto
   const clienteData = typeof clienteRaw === 'object' && clienteRaw !== null
     ? clienteRaw
     : { nombre: clienteRaw, rut: '', email: '', telefono: '' }
@@ -28,22 +24,8 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
     descuento = 0, tipoDescuento = 'porcentaje',
     moneda = 'CLP', tipoCambio = 1,
     markupServicios = 0,
+    descripcion = '', numeroReferencia = '',
   } = config
-
-  const { conMaterial, totalConsumibles = 0 } = cot
-  const baseSubtotal         = conMaterial === false ? totalConsumibles : totalMateriales
-  const totalMarkupServicios = totalServicios > 0 ? totalServicios * (Number(markupServicios) || 0) / 100 : 0
-  const costoSinDescuento    = baseSubtotal + totalHH + totalServicios + totalMarkupServicios + totalBases + totalEmbalaje
-  const descuentoMonto = tipoDescuento === 'porcentaje'
-    ? costoSinDescuento * (Number(descuento) || 0) / 100
-    : Number(descuento) || 0
-  const costoTotal  = costoSinDescuento - descuentoMonto
-  const totalNeto   = costoTotal + Number(flete)
-  const totalIVA    = incluyeIVA ? totalNeto * 0.19 : 0
-  const totalFinal  = totalNeto + totalIVA
-  const totalUnidades  = Number(unidadesPorLote) || 1
-  const costoUnitario  = totalUnidades > 0 ? totalFinal / totalUnidades : 0
-  const activeServicios = Object.entries(servicios).filter(([, s]) => s.activo)
 
   const tc = moneda !== 'CLP' ? Number(tipoCambio) || 1 : 1
   const fmtM = (n) => {
@@ -53,22 +35,71 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
     return fmt(n)
   }
 
+  const baseSubtotal = conMaterial === false ? totalConsumibles : totalMateriales
+  const totalMarkupServicios = totalServicios > 0 ? totalServicios * (Number(markupServicios) || 0) / 100 : 0
+  const costoSinDescuento = baseSubtotal + totalHH + totalServicios + totalMarkupServicios + totalBases + totalEmbalaje
+  const descuentoMonto = tipoDescuento === 'porcentaje'
+    ? costoSinDescuento * (Number(descuento) || 0) / 100
+    : Number(descuento) || 0
+  const costoTotal = costoSinDescuento - descuentoMonto
+  const totalNeto = costoTotal + Number(flete)
+  const totalIVA = incluyeIVA ? totalNeto * 0.19 : 0
+  const totalFinal = totalNeto + totalIVA
+  const totalUnidades = Number(unidadesPorLote) || 1
+  const costoUnitario = totalUnidades > 0 ? totalFinal / totalUnidades : 0
+
   const fechaEmision = fecha || new Date().toLocaleDateString('es-CL')
   const fechaVencimiento = (() => {
     const d = new Date(); d.setDate(d.getDate() + Number(validezDias)); return d.toLocaleDateString('es-CL')
   })()
 
-  const embalajeMatActivos = (embalaje.materiales || []).filter(m => Number(m.cantidad) > 0)
-  // Backward compat: support both old format (materialesPallet directly) and new (pallets array)
-  const isMultiPallets = Array.isArray(embalaje.pallets)
-  const embalajePallets = isMultiPallets ? embalaje.pallets : null
-  const embalajePalletActivos = isMultiPallets
-    ? embalaje.pallets.flatMap(p => (p.materialesPallet || []).filter(m => Number(m.cantidad) > 0))
-    : (embalaje.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
-  const tieneEmbalaje = totalEmbalaje > 0
-  // Sub-products detection
   const isSubprod = materiales.length > 0 && Array.isArray(materiales[0]?.items)
   const flatMateriales = isSubprod ? materiales.flatMap(sp => sp.items || []) : materiales
+  const customServicios = (servicios.custom || []).filter(s => (Number(s.cantidad) || 1) * (Number(s.precio_ref) || 0) > 0)
+  const tieneEmbalaje = totalEmbalaje > 0
+
+  // Build flat line-item list for unified table
+  const lineItems = []
+
+  if (conMaterial !== false) {
+    if (isSubprod && materiales.length > 1) {
+      materiales.forEach((sp) => {
+        const items = (sp.items || []).filter(m => Number(m.cantidad) > 0)
+        if (!items.length) return
+        lineItems.push({ type: 'group', label: sp.nombre })
+        items.forEach(m => lineItems.push({
+          type: 'item', desc: m.nombre, sub: m.formato || '',
+          cant: m.cantidad, precioUnit: m.precio_unitario,
+          total: Number(m.cantidad) * Number(m.precio_unitario),
+        }))
+      })
+    } else {
+      flatMateriales.filter(m => Number(m.cantidad) > 0).forEach(m => lineItems.push({
+        type: 'item', desc: m.nombre, sub: m.formato || '',
+        cant: m.cantidad, precioUnit: m.precio_unitario,
+        total: Number(m.cantidad) * Number(m.precio_unitario),
+      }))
+    }
+  }
+
+  if (totalHH > 0) {
+    lineItems.push({ type: 'item', desc: 'Mano de obra', sub: '', cant: null, precioUnit: null, total: totalHH })
+  }
+
+  customServicios.forEach(s => {
+    const total = (Number(s.cantidad) || 1) * (Number(s.precio_ref) || 0)
+    lineItems.push({ type: 'item', desc: s.nombre, sub: '', cant: Number(s.cantidad) || 1, precioUnit: Number(s.precio_ref) || 0, total })
+  })
+
+  if (totalMarkupServicios > 0) {
+    lineItems.push({ type: 'item', desc: `Gestión / coordinación de servicios (${markupServicios}%)`, sub: '', cant: null, precioUnit: null, total: totalMarkupServicios })
+  }
+
+  if (tieneEmbalaje) {
+    lineItems.push({ type: 'item', desc: 'Embalaje y envío', sub: '', cant: null, precioUnit: null, total: totalEmbalaje })
+  }
+
+  let rowIdx = 0
 
   return (
     <div id="cotizacion-print" style={{ background: '#fff', color: '#1e293b', fontFamily: 'Arial, sans-serif', fontSize: '11px', width: '794px', padding: '40px', boxSizing: 'border-box' }}>
@@ -94,241 +125,108 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
         </div>
       </div>
 
-      {/* Cliente */}
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px 16px', marginBottom: '20px' }}>
-        <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Cliente</div>
-        <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{clienteData.nombre || '—'}</div>
-        <div style={{ display: 'flex', gap: '24px', marginTop: '4px', flexWrap: 'wrap' }}>
-          {clienteData.rut      && <span style={{ color: '#64748b', fontSize: '10px' }}>RUT: {clienteData.rut}</span>}
-          {clienteData.email    && <span style={{ color: '#64748b', fontSize: '10px' }}>{clienteData.email}</span>}
-          {clienteData.telefono && <span style={{ color: '#64748b', fontSize: '10px' }}>Tel: {clienteData.telefono}</span>}
+      {/* Cliente + Referencia */}
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px 16px' }}>
+          <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Cliente</div>
+          <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{clienteData.nombre || '—'}</div>
+          <div style={{ display: 'flex', gap: '16px', marginTop: '4px', flexWrap: 'wrap' }}>
+            {clienteData.rut      && <span style={{ color: '#64748b', fontSize: '10px' }}>RUT: {clienteData.rut}</span>}
+            {clienteData.email    && <span style={{ color: '#64748b', fontSize: '10px' }}>{clienteData.email}</span>}
+            {clienteData.telefono && <span style={{ color: '#64748b', fontSize: '10px' }}>Tel: {clienteData.telefono}</span>}
+          </div>
         </div>
+        {(numeroReferencia || descripcion) && (
+          <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px 16px' }}>
+            <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Referencia</div>
+            {numeroReferencia && <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{numeroReferencia}</div>}
+            {descripcion && <div style={{ color: '#475569', fontSize: '11px', marginTop: '2px' }}>{descripcion}</div>}
+          </div>
+        )}
       </div>
 
-      {/* Materiales */}
-      {flatMateriales.length > 0 && (
-        <Section title="Materiales">
-          {isSubprod ? (
-            materiales.map((sp, si) => {
-              const items = sp.items || []
-              if (items.length === 0) return null
-              const spTotal = items.reduce((a, m) => a + Number(m.cantidad) * Number(m.precio_unitario), 0)
-              return (
-                <div key={sp.id || si} style={{ marginBottom: materiales.length > 1 ? '8px' : '0' }}>
-                  {materiales.length > 1 && (
-                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#475569', padding: '3px 8px', background: '#f1f5f9', borderRadius: '3px', marginBottom: '3px' }}>
-                      {sp.nombre}
-                    </div>
-                  )}
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><Th cols={['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unit.', 'Total']} /></thead>
-                    <tbody>
-                      {items.map((m, i) => (
-                        <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                          <Td>{m.nombre}</Td><Td>{m.proveedor}</Td><Td>{m.formato}</Td>
-                          <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
-                          <Td right bold>{fmtM(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {materiales.length > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '2px 8px', fontSize: '10px', color: '#64748b', borderTop: '1px dashed #e2e8f0' }}>
-                      <span>Subtotal {sp.nombre}:</span>
-                      <strong>{fmtM(spTotal)}</strong>
-                    </div>
-                  )}
-                </div>
-              )
-            })
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><Th cols={['Material', 'Proveedor', 'Formato', 'Cant.', 'P. Unit.', 'Total']} /></thead>
-              <tbody>
-                {materiales.map((m, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                    <Td>{m.nombre}</Td><Td>{m.proveedor}</Td><Td>{m.formato}</Td>
-                    <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
-                    <Td right bold>{fmtM(m.cantidad * m.precio_unitario)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <TotalRow label="Subtotal materiales" value={fmtM(totalMateriales)} />
-        </Section>
-      )}
-
-      {/* Horas Hombre */}
-      {roles.some(r => r.horas > 0) && (
-        <Section title="Horas Hombre">
+      {/* Detalle */}
+      {lineItems.length > 0 && (
+        <Section title="Detalle de la cotización">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><Th cols={['Cargo', 'P./hora', 'Personas', 'Horas', 'Colación', 'Total']} /></thead>
+            <thead>
+              <tr style={{ background: '#1e3a5f' }}>
+                <th style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', textAlign: 'center', width: '32px' }}>N°</th>
+                <th style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', textAlign: 'left' }}>Descripción</th>
+                <th style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', textAlign: 'right', width: '60px' }}>Cant.</th>
+                <th style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', textAlign: 'right', width: '100px' }}>P. Unit.</th>
+                <th style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', textAlign: 'right', width: '110px' }}>Total</th>
+              </tr>
+            </thead>
             <tbody>
-              {roles.filter(r => r.horas > 0 || r.precio_hora > 0).map((r, i) => {
-                const hh  = (r.precio_hora * r.horas * r.cantidad) || 0
-                const col = r.colacion ? (r.valor_colacion * r.cantidad) || 0 : 0
+              {lineItems.map((item, idx) => {
+                if (item.type === 'group') {
+                  return (
+                    <tr key={idx}>
+                      <td colSpan={5} style={{ padding: '5px 8px', background: '#e2e8f0', fontWeight: 'bold', fontSize: '10px', color: '#1e3a5f', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {item.label}
+                      </td>
+                    </tr>
+                  )
+                }
+                const n = ++rowIdx
+                const bg = n % 2 === 1 ? '#f8fafc' : '#fff'
                 return (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                    <Td>{r.nombre}</Td><Td right>{fmtM(r.precio_hora)}</Td>
-                    <Td right>{r.cantidad}</Td><Td right>{r.horas}</Td>
-                    <Td right>{r.colacion ? fmtM(r.valor_colacion) : '—'}</Td>
-                    <Td right bold>{fmtM(hh + col)}</Td>
+                  <tr key={idx} style={{ background: bg }}>
+                    <td style={{ padding: '5px 8px', textAlign: 'center', color: '#94a3b8', fontSize: '10px', borderBottom: '1px solid #f1f5f9' }}>{n}</td>
+                    <td style={{ padding: '5px 8px', borderBottom: '1px solid #f1f5f9' }}>
+                      <div>{item.desc}</div>
+                      {item.sub && <div style={{ color: '#94a3b8', fontSize: '9px', marginTop: '1px' }}>{item.sub}</div>}
+                    </td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', color: '#475569' }}>
+                      {item.cant !== null ? item.cant : '—'}
+                    </td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', color: '#475569' }}>
+                      {item.precioUnit !== null ? fmtM(item.precioUnit) : '—'}
+                    </td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 'bold', borderBottom: '1px solid #f1f5f9' }}>
+                      {fmtM(item.total)}
+                    </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
-          <TotalRow label="Subtotal HH" value={fmtM(totalHH)} />
         </Section>
       )}
 
-      {/* Servicios */}
-      {totalServicios > 0 && (
-        <Section title="Servicios Externos">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><Th cols={['Servicio', 'Monto']} /></thead>
-            <tbody>
-              {activeServicios.map(([key, s], i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                  <Td>{SERVICIOS_LABELS[key] || key}</Td><Td right bold>{fmtM(s.precio)}</Td>
-                </tr>
-              ))}
-              {(servicios.custom || []).map((s, i) => (
-                <tr key={`custom-${i}`} style={{ background: (activeServicios.length + i) % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                  <Td>{s.nombre}</Td><Td right bold>{fmtM((s.cantidad || 1) * (s.precio_ref || 0))}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <TotalRow label="Subtotal servicios" value={fmtM(totalServicios)} />
-          {totalMarkupServicios > 0 && (
-            <TotalRow label={`Gestión / coordinación (${markupServicios}%)`} value={fmtM(totalMarkupServicios)} />
-          )}
-        </Section>
-      )}
-
-      {/* Embalaje y Envío */}
-      {tieneEmbalaje && (
-        <Section title="Embalaje y Envío">
-          {isMultiPallets && embalajePallets.length > 1 ? (
-            embalajePallets.map((p, pi) => {
-              const pMats = (p.materialesPallet || []).filter(m => Number(m.cantidad) > 0)
-              if (pMats.length === 0) return null
-              return (
-                <div key={p.id || pi} style={{ marginBottom: '6px' }}>
-                  <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>Pallet {pi + 1} — Fabricación</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
-                    <thead><Th cols={['Material', 'Unid.', 'Cant.', 'P. Unit.', 'Total']} /></thead>
-                    <tbody>
-                      {pMats.map((m, i) => (
-                        <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                          <Td>{m.nombre}</Td><Td>{m.unidad}</Td>
-                          <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
-                          <Td right bold>{fmtM(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            })
-          ) : embalajePalletActivos.length > 0 && (
-            <>
-              <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>Fabricación de pallet</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px' }}>
-                <thead><Th cols={['Material', 'Unid.', 'Cant.', 'P. Unit.', 'Total']} /></thead>
-                <tbody>
-                  {embalajePalletActivos.map((m, i) => (
-                    <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                      <Td>{m.nombre}</Td><Td>{m.unidad}</Td>
-                      <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
-                      <Td right bold>{fmtM(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
-          {embalajeMatActivos.length > 0 && (
-            <>
-              <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', fontStyle: 'italic' }}>Materiales de embalaje</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px' }}>
-                <thead><Th cols={['Material', 'Unid.', 'Cant.', 'P. Unit.', 'Total']} /></thead>
-                <tbody>
-                  {embalajeMatActivos.map((m, i) => (
-                    <tr key={i} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff' }}>
-                      <Td>{m.nombre}</Td><Td>{m.unidad}</Td>
-                      <Td right>{m.cantidad}</Td><Td right>{fmtM(m.precio_unitario)}</Td>
-                      <Td right bold>{fmtM(Number(m.cantidad) * Number(m.precio_unitario))}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
-          {Number(embalaje.costoEnvio) > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: '#f8fafc' }}>
-              <span>Envío{embalaje.ciudadOrigen && embalaje.ciudadDestino ? ` (${embalaje.ciudadOrigen} → ${embalaje.ciudadDestino})` : ''}</span>
-              <strong>{fmtM(embalaje.costoEnvio)}</strong>
+      {/* Totales */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+        <div style={{ width: '280px' }}>
+          <div style={{ borderTop: '2px solid #1e3a5f', paddingTop: '10px' }}>
+            {descuentoMonto > 0 && (
+              <>
+                <TotRow label="Subtotal" value={fmtM(costoSinDescuento)} />
+                <TotRow label={`Descuento${tipoDescuento === 'porcentaje' ? ` (${descuento}%)` : ''}`} value={`- ${fmtM(descuentoMonto)}`} accent />
+              </>
+            )}
+            {Number(flete) > 0 && <TotRow label="Flete / transporte" value={fmtM(flete)} />}
+            <TotRow label="NETO" value={fmtM(totalNeto)} bold />
+            {incluyeIVA && <TotRow label="IVA (19%)" value={fmtM(totalIVA)} />}
+            <div style={{ background: '#1e3a5f', borderRadius: '4px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+              <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>TOTAL</span>
+              <span style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '15px' }}>{fmtM(totalFinal)}</span>
             </div>
-          )}
-          <TotalRow label="Subtotal embalaje y envío" value={fmtM(totalEmbalaje)} />
-        </Section>
-      )}
-
-      {/* Resumen de costos — solo categorías visibles, sin márgenes internos */}
-      <Section title="Resumen de costos">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-
-          {/* Categorías visibles para el cliente */}
-          {conMaterial === false
-            ? (totalConsumibles > 0 && <CostRow label="Consumibles de taller" value={fmtM(totalConsumibles)} />)
-            : (totalMateriales  > 0 && <CostRow label="Materiales"             value={fmtM(totalMateriales)} />)
-          }
-          {totalHH > 0 && <CostRow label="Mano de obra" value={fmtM(totalHH)} />}
-          {totalServicios > 0 && (
-            <CostRow
-              label={totalMarkupServicios > 0 ? `Servicios externos (incl. gestión)` : 'Servicios externos'}
-              value={fmtM(totalServicios + totalMarkupServicios)}
-            />
-          )}
-          {tieneEmbalaje && <CostRow label="Embalaje y Envío" value={fmtM(totalEmbalaje)} />}
-
-          {/* Descuento */}
-          {descuentoMonto > 0 && (
-            <CostRow
-              label={`Descuento${tipoDescuento === 'porcentaje' ? ` (${descuento}%)` : ''}`}
-              value={`-${fmtM(descuentoMonto)}`}
-            />
-          )}
-
-          {/* Flete */}
-          {Number(flete) > 0 && <CostRow label="Flete / transporte" value={fmtM(flete)} />}
-
-          {/* Neto + IVA + Total */}
-          <div style={{ borderTop: '2px solid #1e3a5f', marginTop: '6px', paddingTop: '8px' }}>
-            <CostRow label="NETO" value={fmtM(totalNeto)} bold />
+            {totalUnidades > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 2px 0', color: '#64748b', fontSize: '10px' }}>
+                <span>Precio por unidad ({totalUnidades} unidades)</span>
+                <span style={{ fontWeight: 'bold', color: '#059669' }}>{fmtM(costoUnitario)}</span>
+              </div>
+            )}
           </div>
-          {incluyeIVA && <CostRow label="IVA (19%)" value={fmtM(totalIVA)} />}
-          <div style={{ background: '#1e3a5f', borderRadius: '4px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>TOTAL</span>
-            <span style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '15px' }}>{fmtM(totalFinal)}</span>
-          </div>
-          {totalUnidades > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#64748b' }}>
-              <span>Precio por unidad ({totalUnidades} unidades)</span>
-              <span style={{ fontWeight: 'bold', color: '#059669' }}>{fmtM(costoUnitario)}</span>
-            </div>
-          )}
         </div>
-      </Section>
+      </div>
 
-      {/* Condiciones */}
+      {/* Condiciones comerciales */}
       {(condicionesPago || plazoEntrega || notas) && (
-        <Section title="Condiciones">
+        <Section title="Condiciones comerciales">
           {condicionesPago && <InfoRow label="Condiciones de pago" value={condicionesPago} />}
-          {plazoEntrega && <InfoRow label="Plazo de entrega" value={plazoEntrega} />}
+          {plazoEntrega    && <InfoRow label="Plazo de entrega"    value={plazoEntrega} />}
           {notas && (
             <div style={{ marginTop: '8px' }}>
               <div style={{ fontWeight: 'bold', color: '#64748b', fontSize: '10px', textTransform: 'uppercase', marginBottom: '2px' }}>Notas</div>
@@ -357,34 +255,16 @@ function Section({ title, children }) {
     </div>
   )
 }
-function Th({ cols }) {
+
+function TotRow({ label, value, bold, accent }) {
   return (
-    <tr style={{ background: '#1e3a5f' }}>
-      {cols.map((c, i) => (
-        <th key={i} style={{ color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '5px 8px', textAlign: i >= cols.length - 2 ? 'right' : 'left' }}>{c}</th>
-      ))}
-    </tr>
-  )
-}
-function Td({ children, right, bold }) {
-  return <td style={{ padding: '4px 8px', textAlign: right ? 'right' : 'left', fontWeight: bold ? 'bold' : 'normal', borderBottom: '1px solid #f1f5f9' }}>{children}</td>
-}
-function TotalRow({ label, value }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #e2e8f0' }}>
-      <span style={{ color: '#64748b', fontWeight: 'bold' }}>{label}:</span>
-      <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{value}</span>
-    </div>
-  )
-}
-function CostRow({ label, value, bold, indent }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', paddingLeft: indent ? '16px' : '0', color: bold ? '#1e293b' : '#475569' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 2px', color: accent ? '#dc2626' : (bold ? '#1e293b' : '#475569') }}>
       <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
       <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{value}</span>
     </div>
   )
 }
+
 function InfoRow({ label, value }) {
   return (
     <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
@@ -393,6 +273,7 @@ function InfoRow({ label, value }) {
     </div>
   )
 }
+
 function SignatureBox({ label }) {
   return (
     <div style={{ textAlign: 'center', width: '200px' }}>
