@@ -1,31 +1,10 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useUserData } from '../contexts/UserDataContext'
-import { useAuth } from '../hooks/useAuth'
-import { migrarDatosEmpresa } from '../firebase/firestore'
 
 
 export default function Configuracion() {
   const { empresa, configDefaults, saveEmpresa, saveConfigDefaults } = useUserData()
-  const { user } = useAuth()
-  const [migrando, setMigrando] = useState(false)
-  const [resultadoMigracion, setResultadoMigracion] = useState(null)
-  const [errorMigracion, setErrorMigracion] = useState('')
-
-  const handleMigrar = async () => {
-    if (!user) return
-    setMigrando(true)
-    setErrorMigracion('')
-    setResultadoMigracion(null)
-    try {
-      const r = await migrarDatosEmpresa(user.uid)
-      setResultadoMigracion(r)
-    } catch (e) {
-      setErrorMigracion(e?.message || 'Error al migrar')
-    } finally {
-      setMigrando(false)
-    }
-  }
 
   const [form, setForm] = useState(() => ({
     nombre: '', rut: '', giro: '', direccion: '', telefono: '', email: '', logo: null,
@@ -279,31 +258,6 @@ export default function Configuracion() {
         </div>
       </div>
 
-      {/* Migración de datos del sistema anterior */}
-      <div className="card mt-8">
-        <h2 className="text-lg font-semibold text-white mb-1">Migración de datos</h2>
-        <p className="text-slate-400 text-sm mb-4">
-          Importa catálogo de materiales, catálogo de servicios y clientes desde el sistema anterior (innovattech.org).
-          Puedes ejecutarlo más de una vez sin problema — solo agrega los registros que faltan.
-        </p>
-
-        {resultadoMigracion && (
-          <div className="mb-4 bg-green-900/20 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3">
-            Migración completada — Catálogo: {resultadoMigracion.catalogo} items · Servicios: {resultadoMigracion.catalogo_servicios} items · Clientes: {resultadoMigracion.clientes} registros
-          </div>
-        )}
-        {errorMigracion && (
-          <div className="mb-4 bg-red-900/30 border border-red-500/50 text-red-400 text-sm rounded-lg px-4 py-3">{errorMigracion}</div>
-        )}
-
-        <button
-          onClick={handleMigrar}
-          disabled={migrando}
-          className="btn-primary disabled:opacity-50"
-        >
-          {migrando ? 'Migrando...' : 'Migrar catálogo, servicios y clientes'}
-        </button>
-      </div>
     </DashboardLayout>
   )
 }
