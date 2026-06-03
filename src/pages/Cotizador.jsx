@@ -258,6 +258,7 @@ export default function Cotizador() {
     return acc + hh + col
   }, 0)
   const totalServicios = (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
+  const pesoServicios  = (servicios.custom || []).filter(s => s.agregaPeso).reduce((acc, s) => acc + (Number(s.pesoKg) || 0), 0)
   const totalEmbalaje = (embalaje.activo === false) ? 0 : (
     (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (embalaje.pallets || []).reduce((accP, p) =>
@@ -641,7 +642,7 @@ export default function Cotizador() {
         ))}
       </div>
 
-      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} cantidadLotes={cantidadLotes} unidadesPorLote={unidadesPorLote} />}
+      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} cantidadLotes={cantidadLotes} unidadesPorLote={unidadesPorLote} pesoServicios={pesoServicios} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
       {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}

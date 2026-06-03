@@ -234,6 +234,42 @@ export default function TabServicios({ servicios, setServicios }) {
                     </button>
                   </div>
                 </div>
+
+                {/* Peso que agrega el servicio */}
+                <div className="mt-2.5 pt-2.5 border-t border-slate-800 flex items-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => updateCustom(s.id, 'agregaPeso', !s.agregaPeso)}
+                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      s.agregaPeso
+                        ? 'bg-emerald-900/30 border-emerald-500/40 text-emerald-400'
+                        : 'border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                    </svg>
+                    Agrega peso a la pieza
+                  </button>
+                  {s.agregaPeso && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        className="input-field text-xs py-1 w-28 text-right"
+                        placeholder="0"
+                        value={s.pesoKg || ''}
+                        onChange={(e) => updateCustom(s.id, 'pesoKg', Number(e.target.value))}
+                      />
+                      <span className="text-slate-500 text-xs whitespace-nowrap">kg total</span>
+                      {Number(s.pesoKg) > 0 && (
+                        <span className="text-emerald-400 text-xs font-medium">
+                          +{Number(s.pesoKg).toFixed(3)} kg
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
 
