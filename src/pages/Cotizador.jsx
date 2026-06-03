@@ -117,8 +117,12 @@ export default function Cotizador() {
   const { empresa, configDefaults } = useUserData()
   const printRef  = useRef(null)
 
-  // Landing / version comparison state — always show landing on mount so user can choose to continue or start fresh
-  const [cotizadorIniciado, setCotizadorIniciado] = useState(false)
+  // Skip landing when navigating from Historial "Editar"; show it in all other cases
+  const [cotizadorIniciado, setCotizadorIniciado] = useState(() => {
+    const fromEdit = localStorage.getItem('cotizador_from_edit')
+    if (fromEdit) { localStorage.removeItem('cotizador_from_edit'); return true }
+    return false
+  })
 
   const [conMaterial, setConMaterial] = useState(() => {
     const d = getDraft()

@@ -25,6 +25,7 @@ const STATUS_STYLE = {
 }
 
 const DRAFT_KEY = 'cotizador_draft'
+const getDraft  = () => { try { const s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : null } catch { return null } }
 
 export default function Historial() {
   const { user }   = useAuth()
@@ -44,6 +45,7 @@ export default function Historial() {
   const [fechaHasta, setFechaHasta] = useState('')
   const [error, setError]       = useState('')
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, definitivo: false })
+  const [pendingEdit, setPendingEdit] = useState(null)
   const [fichaModal, setFichaModal] = useState(null)
   const [sortBy, setSortBy] = useState('fecha_desc')
   const [pagina, setPagina] = useState(1)
@@ -171,6 +173,13 @@ export default function Historial() {
     } catch { setError('Error al restaurar.') }
   }
 
+  const abrirDirecto = (draft, original) => {
+    localStorage.setItem('cotizador_from_edit', '1')
+    if (original) localStorage.setItem('cotizador_original', JSON.stringify(original))
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    navigate('/cotizador')
+  }
+
   const handleAbrir = (cot, ownerUid = null) => {
     const clienteObj = typeof cot.cliente === 'object' && cot.cliente !== null
       ? cot.cliente
@@ -191,9 +200,27 @@ export default function Historial() {
       config:          cot.config          || {},
       embalaje:        cot.embalaje        || {},
     }
-    localStorage.setItem('cotizador_original', JSON.stringify(cot))
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-    navigate('/cotizador')
+
+    const existing = getDraft()
+    const hasMeaningfulDraft = existing && existing.cotizacionId !== cot.id && (
+      existing.cotizacionId ||
+      (existing.cliente && existing.cliente.nombre) ||
+      (existing.materiales && existing.materiales.length > 0) ||
+      existing.conMaterial !== undefined
+    )
+
+    if (hasMeaningfulDraft) {
+      setPendingEdit({ draft, original: cot })
+      return
+    }
+
+    abrirDirecto(draft, cot)
+  }
+
+  const ejecutarEdicion = () => {
+    const { draft, original } = pendingEdit
+    setPendingEdit(null)
+    abrirDirecto(draft, original)
   }
 
   const handleDuplicar = (cot) => {
@@ -217,8 +244,7 @@ export default function Historial() {
       numeroCot:       '',
       estado:          'Pendiente',
     }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-    navigate('/cotizador')
+    abrirDirecto(draft, null)
   }
 
   const handleArchivosUpdate = (cotId, archivos) => {
@@ -735,6 +761,14 @@ export default function Historial() {
           : 'La cotización se moverá a la papelera. Puedes restaurarla cuando quieras.'}
         onConfirm={ejecutarEliminar}
         onCancel={() => setConfirmDelete({ open: false, id: null, definitivo: false })}
+      />
+      <ConfirmModal
+        open={!!pendingEdit}
+        title="Tienes un borrador activo"
+        message="Si abres esta cotización, perderás el trabajo no guardado del borrador actual. ¿Continuar de todas formas?"
+        confirmLabel="Continuar"
+        onConfirm={ejecutarEdicion}
+        onCancel={() => setPendingEdit(null)}
       />
       </>)}
 
