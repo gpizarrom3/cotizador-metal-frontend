@@ -264,7 +264,7 @@ function PesoCalculadora({ onAgregar }) {
 }
 
 // Calcula kg por pieza desde pesoData (cualquier modo)
-function calcPesoFromPesoData(pd) {
+export function calcPesoFromPesoData(pd) {
   if (!pd) return 0
   if (pd.modo === 'catalogo') return (Number(pd.catPesoPorMetro) || 0) * (Number(pd.metros) || 0)
   const mat = MATERIALES_PESO[pd.densidadIdx ?? 0]
@@ -523,7 +523,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, onUpdateNombre, onRemove, 
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export default function TabMateriales({ materiales, setMateriales, cantidadLotes = 1, unidadesPorLote = 1, pesoServicios = 0 }) {
+export default function TabMateriales({ materiales, setMateriales, cantidadLotes = 1, unidadesPorLote = 1 }) {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm]   = useState('')
   const [searching, setSearching]     = useState(false)
@@ -600,13 +600,6 @@ export default function TabMateriales({ materiales, setMateriales, cantidadLotes
   const catalogoPesos = catalogo.filter(c => Number(c.peso_por_metro) > 0 && c.tipo !== 'plancha')
 
   const totalGeneral = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
-
-  // Peso total estimado (solo ítems con peso calculado)
-  const pesoTotalEstructura = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => {
-    if (!m.pesoData) return acc
-    return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
-  }, 0)
-  const unidadesTotales = (Number(cantidadLotes) || 1) * (Number(unidadesPorLote) || 1)
 
   return (
     <div className="space-y-6">
@@ -754,41 +747,6 @@ export default function TabMateriales({ materiales, setMateriales, cantidadLotes
         <span className="text-amber-600/60 text-xs font-normal">(Material Base, Pintura, EPP, etc.)</span>
       </button>
 
-      {/* Resumen de peso estimado */}
-      {(pesoTotalEstructura > 0 || pesoServicios > 0) && (() => {
-        const pesoTotal    = pesoTotalEstructura + pesoServicios
-        const pesoUnitFin  = unidadesTotales > 0 ? pesoTotal / unidadesTotales : 0
-        const mostrarDesglose = pesoTotalEstructura > 0 && pesoServicios > 0
-        return (
-          <div className="card border-emerald-500/20 bg-slate-800">
-            <div className="flex items-center gap-2 mb-3">
-              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-              </svg>
-              <h3 className="text-sm font-semibold text-emerald-400">Peso estimado de la estructura</h3>
-            </div>
-            <div className="flex gap-8 flex-wrap">
-              <div>
-                <p className="text-slate-500 text-xs mb-0.5">Peso total (todos los lotes)</p>
-                <p className="text-white font-bold text-xl">{pesoTotal.toFixed(2)} <span className="text-slate-400 text-sm font-normal">kg</span></p>
-              </div>
-              {unidadesTotales > 1 && (
-                <div>
-                  <p className="text-slate-500 text-xs mb-0.5">Peso por unidad ({unidadesTotales} un.)</p>
-                  <p className="text-emerald-400 font-bold text-xl">{pesoUnitFin.toFixed(2)} <span className="text-emerald-600 text-sm font-normal">kg/un.</span></p>
-                </div>
-              )}
-            </div>
-            {mostrarDesglose && (
-              <div className="mt-3 pt-3 border-t border-slate-700 flex gap-6 flex-wrap text-xs text-slate-500">
-                <span>Materiales: <span className="text-slate-300">{pesoTotalEstructura.toFixed(2)} kg</span></span>
-                <span>Servicios: <span className="text-emerald-400">{pesoServicios.toFixed(2)} kg</span></span>
-              </div>
-            )}
-            <p className="text-slate-700 text-xs mt-2">* Incluye materiales con dimensiones calculadas (⚖) y servicios con peso definido</p>
-          </div>
-        )
-      })()}
 
       {/* Total general (solo si hay múltiples sub-productos) */}
       {materiales.length > 1 && (

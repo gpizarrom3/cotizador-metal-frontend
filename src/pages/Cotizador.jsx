@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
-import TabMateriales, { emptyMaterial, emptySubproducto } from '../components/cotizador/TabMateriales'
+import TabMateriales, { emptyMaterial, emptySubproducto, calcPesoFromPesoData } from '../components/cotizador/TabMateriales'
 import TabConsumibles, { DEFAULT_CONSUMIBLES } from '../components/cotizador/TabConsumibles'
 import TabHorasHombre from '../components/cotizador/TabHorasHombre'
 import TabServicios from '../components/cotizador/TabServicios'
@@ -257,8 +257,12 @@ export default function Cotizador() {
     const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
     return acc + hh + col
   }, 0)
-  const totalServicios = (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
-  const pesoServicios  = (servicios.custom || []).filter(s => s.agregaPeso).reduce((acc, s) => acc + (Number(s.pesoKg) || 0), 0)
+  const totalServicios      = (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
+  const pesoServicios       = (servicios.custom || []).filter(s => s.agregaPeso).reduce((acc, s) => acc + (Number(s.pesoKg) || 0), 0)
+  const pesoTotalEstructura = flatMateriales.reduce((acc, m) => {
+    if (!m.pesoData) return acc
+    return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
+  }, 0)
   const totalEmbalaje = (embalaje.activo === false) ? 0 : (
     (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
     (embalaje.pallets || []).reduce((accP, p) =>
@@ -642,7 +646,7 @@ export default function Cotizador() {
         ))}
       </div>
 
-      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} cantidadLotes={cantidadLotes} unidadesPorLote={unidadesPorLote} pesoServicios={pesoServicios} />}
+      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} cantidadLotes={cantidadLotes} unidadesPorLote={unidadesPorLote} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
       {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
@@ -670,6 +674,7 @@ export default function Cotizador() {
           onGuardar={handleGuardar} onExportPDF={handleExportPDF} exportando={exportando}
           onExportFicha={handleExportFicha} exportandoFicha={exportandoFicha}
           conMaterial={conMaterial} totalConsumibles={totalConsumibles}
+          pesoMateriales={pesoTotalEstructura} pesoServicios={pesoServicios}
         />
       )}
 

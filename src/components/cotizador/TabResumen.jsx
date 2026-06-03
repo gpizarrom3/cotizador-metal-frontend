@@ -27,6 +27,7 @@ export default function TabResumen({
   onGuardar, onExportPDF, exportando,
   onExportFicha, exportandoFicha,
   conMaterial, totalConsumibles = 0,
+  pesoMateriales = 0, pesoServicios = 0,
 }) {
   const {
     flete = 0, incluyeIVA = false, validezDias = 30,
@@ -437,6 +438,41 @@ export default function TabResumen({
           {moneda !== 'CLP' && <p className="text-slate-500 text-xs mt-1">{fmt(costoUnitario)} CLP</p>}
         </div>
       </div>
+
+      {/* Peso estimado */}
+      {(pesoMateriales > 0 || pesoServicios > 0) && (() => {
+        const pesoTotal   = pesoMateriales + pesoServicios
+        const totalUnid   = (Number(cantidadLotes) || 1) * (Number(unidadesPorLote) || 1)
+        const pesoUnitario = totalUnid > 0 ? pesoTotal / totalUnid : 0
+        return (
+          <div className="card border-emerald-500/20 bg-emerald-600/5">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+              </svg>
+              <h3 className="text-sm font-semibold text-emerald-400">Peso estimado de la estructura</h3>
+            </div>
+            <div className="flex gap-8 flex-wrap">
+              <div>
+                <p className="text-slate-500 text-xs mb-0.5">Peso total (todos los lotes)</p>
+                <p className="text-white font-bold text-2xl">{pesoTotal.toFixed(2)} <span className="text-slate-400 text-sm font-normal">kg</span></p>
+              </div>
+              {totalUnid > 1 && (
+                <div>
+                  <p className="text-slate-500 text-xs mb-0.5">Peso por unidad ({totalUnid} un.)</p>
+                  <p className="text-emerald-400 font-bold text-2xl">{pesoUnitario.toFixed(2)} <span className="text-emerald-600 text-sm font-normal">kg/un.</span></p>
+                </div>
+              )}
+            </div>
+            {pesoMateriales > 0 && pesoServicios > 0 && (
+              <div className="mt-3 pt-3 border-t border-emerald-500/10 flex gap-6 flex-wrap text-xs text-slate-500">
+                <span>Materiales: <span className="text-slate-300">{pesoMateriales.toFixed(2)} kg</span></span>
+                <span>Servicios: <span className="text-emerald-400">{pesoServicios.toFixed(2)} kg</span></span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Condiciones de pago */}
       <div className="card">
