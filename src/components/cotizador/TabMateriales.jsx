@@ -110,6 +110,25 @@ function calcPesoKg(geomId, dims, densidad) {
   return vol * rho
 }
 
+function calcSuperficieM2(geomId, dims) {
+  const d = (k) => Number(dims[k]) || 0
+  switch (geomId) {
+    case 'plancha':       return (d('largo') * d('ancho')) / 1e6
+    case 'barra_redonda': return (Math.PI * d('diametro') * d('largo')) / 1e6
+    case 'barra_cuad':    return (4 * d('lado') * d('largo')) / 1e6
+    case 'barra_plana':   return (2 * (d('ancho') + d('espesor')) * d('largo')) / 1e6
+    case 'barra_hex':     return (6 * d('diagonal') * d('largo')) / 1e6
+    case 'tubo_redondo':  return (Math.PI * d('diametro_ext') * d('largo')) / 1e6
+    case 'tubo_cuad':     return (4 * d('lado_ext') * d('largo')) / 1e6
+    case 'tubo_rect':     return (2 * (d('largo_ext') + d('ancho_ext')) * d('largo')) / 1e6
+    case 'perfil_l':      return ((d('ala1') + d('ala2')) * d('largo')) / 1e6
+    case 'perfil_c':      return ((d('alto') + 2 * d('ala')) * d('largo')) / 1e6
+    case 'perfil_t':      return ((d('ala') + d('alto')) * d('largo')) / 1e6
+    case 'viga_i':        return ((2 * d('ala') + 2 * (d('alto') - 2 * d('esp_brida')) + 4 * d('esp_brida')) * d('largo')) / 1e6
+    default: return 0
+  }
+}
+
 // ── Verificador de precios de referencia ─────────────────────────────────────
 const PRECIO_REF_KG = [
   { keywords: ['a36', 'a572', 'gr50', 'estructural'],                         min: 700,   max: 2500,  label: 'Acero A36 / estructural' },
@@ -266,6 +285,7 @@ function PesoCalculadora({ onAgregar }) {
 // Calcula kg por pieza desde pesoData (cualquier modo)
 export function calcPesoFromPesoData(pd) {
   if (!pd) return 0
+  if (pd.modo === 'manual')   return Number(pd.kgManual) || 0
   if (pd.modo === 'catalogo') return (Number(pd.catPesoPorMetro) || 0) * (Number(pd.metros) || 0)
   const mat = MATERIALES_PESO[pd.densidadIdx ?? 0]
   return calcPesoKg(pd.geomId || 'plancha', pd.dims || {}, mat.densidad)
@@ -295,22 +315,52 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
     c.nombre.toLowerCase().includes(catSearch.toLowerCase())
   )
 
+  const supM2 = modo !== 'catalogo' && modo !== 'manual'
+    ? calcSuperficieM2(pd.geomId || 'plancha', pd.dims || {})
+    : 0
+
   return (
     <div className="mb-2 bg-slate-900/60 border border-emerald-500/20 rounded-xl p-3 space-y-2.5">
       {/* Selector de modo */}
       <div className="flex gap-1 bg-slate-950/80 rounded-lg p-0.5 w-fit">
         <button onClick={() => upd({ modo: 'dimensiones' })}
-          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo !== 'catalogo' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'dimensiones' || (!modo && modo !== 'catalogo' && modo !== 'manual') ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
           Dimensiones
         </button>
         <button onClick={() => upd({ modo: 'catalogo' })}
           className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'catalogo' ? 'bg-emerald-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
           Catálogo (m lineales)
         </button>
+        <button onClick={() => upd({ modo: 'manual' })}
+          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'manual' ? 'bg-blue-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+          Manual (kg)
+        </button>
       </div>
 
+      {/* Modo manual */}
+      {modo === 'manual' && (
+        <div className="flex items-center gap-4 flex-wrap">
+          <div>
+            <p className="label text-xs mb-1">Peso por pieza (kg)</p>
+            <input type="number" min="0" step="0.01" className="input-field text-xs py-1.5 w-36"
+              placeholder="Ej: 12.5"
+              value={pd.kgManual || ''}
+              onChange={e => upd({ kgManual: e.target.value })} />
+          </div>
+          {peso1 > 0 && (
+            <div className="flex items-center gap-2 text-sm bg-blue-900/20 border border-blue-500/20 px-3 py-2 rounded-lg">
+              {SCALE_ICON}
+              <span className="text-blue-300 font-semibold">{peso1.toFixed(3)} kg/pieza</span>
+              {Number(item.cantidad) > 1 && (
+                <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span></span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Modo dimensiones */}
-      {modo !== 'catalogo' && (
+      {(modo === 'dimensiones' || (!modo && modo !== 'catalogo' && modo !== 'manual')) && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
             <div>
@@ -339,16 +389,31 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
                 ))}
               </select>
             </div>
-            {peso1 > 0 ? (
-              <div className="flex items-center gap-2 text-sm bg-emerald-900/20 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                {SCALE_ICON}
-                <span className="text-emerald-300 font-semibold">{peso1.toFixed(3)} kg/pieza</span>
-                {Number(item.cantidad) > 1 && (
-                  <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span></span>
-                )}
-              </div>
-            ) : (
-              <p className="text-slate-600 text-xs italic">Ingresa dimensiones para calcular el peso</p>
+            <div className="flex gap-2 flex-wrap">
+              {peso1 > 0 && (
+                <div className="flex items-center gap-2 text-sm bg-emerald-900/20 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                  {SCALE_ICON}
+                  <span className="text-emerald-300 font-semibold">{peso1.toFixed(3)} kg/pieza</span>
+                  {Number(item.cantidad) > 1 && (
+                    <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span></span>
+                  )}
+                </div>
+              )}
+              {supM2 > 0 && (
+                <div className="flex items-center gap-2 text-sm bg-sky-900/20 border border-sky-500/20 px-3 py-2 rounded-lg" title="Superficie lateral aproximada (cara exterior)">
+                  <svg className="w-4 h-4 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
+                  </svg>
+                  <span className="text-sky-300 font-semibold">{supM2.toFixed(3)} m²</span>
+                  <span className="text-slate-500 text-xs">sup. pintura</span>
+                  {Number(item.cantidad) > 1 && (
+                    <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-sky-200 font-medium">{(supM2 * (Number(item.cantidad) || 1)).toFixed(3)} m²</span></span>
+                  )}
+                </div>
+              )}
+            </div>
+            {!peso1 && !supM2 && (
+              <p className="text-slate-600 text-xs italic">Ingresa dimensiones para calcular</p>
             )}
           </div>
         </>
@@ -409,10 +474,12 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
 }
 
 // ── Tarjeta de sub-producto ───────────────────────────────────────────────────
-function SubproductoCard({ sp, isOnly, catalogoPesos, onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem }) {
+function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem, onFillItem }) {
   const total = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
   const [pesosOpen, setPesosOpen] = useState(new Set())
   const togglePeso = (id) => setPesosOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const [catalogPickerId, setCatalogPickerId] = useState(null)
+  const [catalogPickerSearch, setCatalogPickerSearch] = useState('')
   const pesoGrupo = (sp.items || []).reduce((acc, m) => {
     if (!m.pesoData) return acc
     return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
@@ -467,7 +534,45 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, onUpdateNombre, onRemove, 
                 return (
                   <Fragment key={m.id}>
                     <tr className="border-b border-slate-700">
-                      <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} /></td>
+                      <td className="px-3 py-2 relative">
+                        <div className="flex items-center gap-1">
+                          <input type="text" className="input-field py-1.5 text-sm flex-1 min-w-0" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} />
+                          {catalogo.length > 0 && (
+                            <button
+                              onClick={() => { setCatalogPickerId(catalogPickerId === m.id ? null : m.id); setCatalogPickerSearch('') }}
+                              title="Seleccionar desde catálogo"
+                              className={`flex-shrink-0 p-1 rounded transition-colors ${catalogPickerId === m.id ? 'text-violet-300 bg-violet-900/40' : 'text-slate-500 hover:text-violet-400'}`}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        {catalogPickerId === m.id && (
+                          <div className="absolute left-0 top-full mt-1 w-80 bg-slate-900 border border-violet-500/40 rounded-xl shadow-2xl z-50 p-2 space-y-2">
+                            <input type="text" className="input-field text-xs py-1.5" placeholder="Filtrar catálogo..."
+                              value={catalogPickerSearch} onChange={e => setCatalogPickerSearch(e.target.value)} autoFocus />
+                            <div className="max-h-52 overflow-y-auto space-y-1 pr-0.5">
+                              {catalogo
+                                .filter(c => c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) || (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase()))
+                                .map(c => (
+                                  <button key={c.id}
+                                    onClick={() => { onFillItem(m.id, { nombre: c.nombre, proveedor: c.proveedor || '', formato: c.formato || '', precio_unitario: c.precio_unitario || 0 }); setCatalogPickerId(null); setCatalogPickerSearch('') }}
+                                    className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors bg-slate-950 border border-slate-700 hover:border-violet-500/40 hover:bg-violet-900/10"
+                                  >
+                                    <p className="text-white font-medium">{c.nombre}</p>
+                                    {c.proveedor && <p className="text-slate-400">{c.proveedor}</p>}
+                                    <p className="text-violet-400 font-semibold mt-0.5">{fmt(c.precio_unitario)}{c.unidad ? ` / ${c.unidad}` : ''}</p>
+                                  </button>
+                                ))}
+                              {catalogo.filter(c => c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) || (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase())).length === 0 && (
+                                <p className="text-center text-slate-600 py-3">Sin resultados</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
                       <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
                       <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-full" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
@@ -533,8 +638,6 @@ export default function TabMateriales({ materiales, setMateriales }) {
   const [results, setResults]         = useState([])
   const [searchError, setSearchError] = useState('')
   const [catalogo, setCatalogo]       = useState([])
-  const [catSearch, setCatSearch]     = useState('')
-  const [catOpen, setCatOpen]         = useState(false)
   const [iaOpen, setIaOpen]           = useState(false)
   const [targetSpId, setTargetSpId]   = useState(() => materiales[0]?.id ?? null)
 
@@ -579,6 +682,9 @@ export default function TabMateriales({ materiales, setMateriales }) {
   const updateItem = (spId, itemId, field, value) =>
     setMateriales(prev => prev.map(sp => sp.id === spId ? { ...sp, items: sp.items.map(m => m.id === itemId ? { ...m, [field]: value } : m) } : sp))
 
+  const fillItem = (spId, itemId, fields) =>
+    setMateriales(prev => prev.map(sp => sp.id === spId ? { ...sp, items: sp.items.map(m => m.id === itemId ? { ...m, ...fields } : m) } : sp))
+
   // ── Add from tools (calculadora / IA / catálogo) ──────────────────────────
   const addFromTool = (item) => {
     const spId = targetSpId || materiales[0]?.id
@@ -609,44 +715,6 @@ export default function TabMateriales({ materiales, setMateriales }) {
 
       {/* Calculadora de peso */}
       <PesoCalculadora onAgregar={addFromTool} />
-
-      {/* Catálogo guardado */}
-      {catalogo.length > 0 && (
-        <div className="card border-violet-500/30 bg-slate-800">
-          <button className="w-full flex items-center justify-between" onClick={() => setCatOpen(v => !v)}>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-violet-600/30 border border-violet-500/30 rounded flex items-center justify-center flex-shrink-0">
-                <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-semibold text-violet-400">Desde catálogo</h3>
-              <span className="text-xs text-slate-500">({catalogo.length} items)</span>
-            </div>
-            <svg className={`w-4 h-4 text-slate-400 transition-transform ${catOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {catOpen && (
-            <div className="mt-4 space-y-3">
-              <input type="text" className="input-field" placeholder="Filtrar catálogo..." value={catSearch} onChange={e => setCatSearch(e.target.value)} />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                {catalogo
-                  .filter(i => i.nombre?.toLowerCase().includes(catSearch.toLowerCase()) || i.proveedor?.toLowerCase().includes(catSearch.toLowerCase()))
-                  .map(i => (
-                    <button key={i.id} onClick={() => addFromTool({ nombre: i.nombre, proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || 0 })}
-                      className="text-left bg-slate-950 border border-slate-600 hover:border-violet-500/50 rounded-lg p-3 transition-colors">
-                      <p className="text-white font-medium text-sm leading-tight">{i.nombre}</p>
-                      {i.proveedor && <p className="text-slate-400 text-xs mt-0.5">{i.proveedor}</p>}
-                      <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(i.precio_unitario)}{i.unidad ? ` / ${i.unidad}` : ''}</p>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Búsqueda IA */}
       <div className="card border-blue-500/30 bg-slate-800">
@@ -730,11 +798,13 @@ export default function TabMateriales({ materiales, setMateriales }) {
           sp={sp}
           isOnly={materiales.length === 1}
           catalogoPesos={catalogoPesos}
+          catalogo={catalogo}
           onUpdateNombre={nombre => updateSpNombre(sp.id, nombre)}
           onRemove={() => removeSubproducto(sp.id)}
           onAddItem={() => addItem(sp.id)}
           onRemoveItem={itemId => removeItem(sp.id, itemId)}
           onUpdateItem={(itemId, field, value) => updateItem(sp.id, itemId, field, value)}
+          onFillItem={(itemId, fields) => fillItem(sp.id, itemId, fields)}
         />
       ))}
 
