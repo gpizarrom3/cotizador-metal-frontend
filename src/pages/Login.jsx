@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loginWithEmail, loginWithGoogle, getGoogleRedirectResult } from '../firebase/auth'
+import { loginWithEmail, loginWithGoogle } from '../firebase/auth'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
@@ -14,12 +14,6 @@ export default function Login() {
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true })
   }, [user, navigate])
-
-  useEffect(() => {
-    getGoogleRedirectResult().catch((err) => {
-      if (err?.code) setError(getFirebaseError(err.code))
-    })
-  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -40,9 +34,10 @@ export default function Login() {
     setLoading(true)
     try {
       await loginWithGoogle()
-      // Redirect to Google happens — page navigates away, no result here
+      navigate('/dashboard')
     } catch (err) {
       setError(getFirebaseError(err.code))
+    } finally {
       setLoading(false)
     }
   }
