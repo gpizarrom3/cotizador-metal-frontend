@@ -512,6 +512,19 @@ export default function Cotizador() {
                 Sin materiales
               </span>
             )}
+            {conMaterial !== null && (
+              <button
+                onClick={() => {
+                  const next = !conMaterial
+                  setConMaterial(next)
+                  setActiveTab(next ? 'materiales' : 'consumibles')
+                }}
+                className="text-xs text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-500 px-2.5 py-1 rounded-full transition-colors"
+                title={conMaterial ? 'Cambiar a sin materiales' : 'Cambiar a con materiales'}
+              >
+                {conMaterial ? 'Transformar a sin materiales' : 'Transformar a con materiales'}
+              </button>
+            )}
           </div>
           <p className="text-slate-400 mt-1 text-sm">
             {cotizacionId ? 'Guardará los cambios en la cotización existente' : 'El borrador se guarda automáticamente'}

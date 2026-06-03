@@ -199,6 +199,8 @@ export default function Historial() {
       unidadesPorLote: cot.unidadesPorLote || 1,
       config:          cot.config          || {},
       embalaje:        cot.embalaje        || {},
+      conMaterial:     cot.conMaterial     ?? true,
+      consumibles:     cot.consumibles     || [],
     }
 
     const existing = getDraft()
