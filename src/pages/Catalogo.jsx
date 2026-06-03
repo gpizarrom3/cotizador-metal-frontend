@@ -237,7 +237,7 @@ export default function Catalogo() {
               <div className={form.tipo !== 'plancha' ? 'grid grid-cols-2 gap-3' : ''}>
                 <div>
                   <label className="label">Precio referencial (CLP)</label>
-                  <input type="number" min="0" className="input-field" placeholder="0"
+                  <input type="number" min="0" className="input-field" placeholder="Ej: 1500.50"
                     value={form.precio_unitario} onChange={(e) => setForm({ ...form, precio_unitario: e.target.value })} />
                 </div>
                 {form.tipo !== 'plancha' && (
@@ -248,6 +248,10 @@ export default function Catalogo() {
                   </div>
                 )}
               </div>
+              <p className="text-[11px] text-slate-600 -mt-1">
+                Punto <strong className="text-slate-500">(·)</strong> para decimales,
+                sin separador de miles — ej: <span className="text-slate-500">1500.50</span> o <span className="text-slate-500">3.56</span>
+              </p>
               <div className="flex gap-3 pt-2">
                 <button onClick={cerrarModal} className="btn-secondary flex-1">Cancelar</button>
                 <button onClick={handleGuardar} className="btn-primary flex-1" disabled={saving || !form.nombre.trim()}>

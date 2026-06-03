@@ -215,11 +215,15 @@ export default function TabServicios({ servicios, setServicios }) {
                       {s.unidad && <span className="text-slate-500 text-xs">{s.unidad}</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400 text-xs whitespace-nowrap">Precio ref.</span>
+                      <div>
+                        <span className="text-slate-400 text-xs whitespace-nowrap">Precio ref.</span>
+                        <p className="text-[10px] text-slate-600 leading-none mt-0.5">decimal: punto (.)</p>
+                      </div>
                       <input
                         type="number"
                         min="0"
                         className="input-field text-sm py-2 w-28 text-right"
+                        placeholder="Ej: 1500.50"
                         value={s.precio_ref || ''}
                         onChange={(e) => updateCustom(s.id, 'precio_ref', Number(e.target.value))}
                       />
@@ -315,8 +319,9 @@ export default function TabServicios({ servicios, setServicios }) {
                 </div>
                 <div>
                   <label className="label">Precio ref. (CLP)</label>
-                  <input type="number" min="0" className="input-field" placeholder="0"
+                  <input type="number" min="0" className="input-field" placeholder="Ej: 1500.50"
                     value={nuevoForm.precio_ref} onChange={(e) => setNuevoForm({ ...nuevoForm, precio_ref: e.target.value })} />
+                  <p className="text-[11px] text-slate-600 mt-1">Punto (.) para decimales</p>
                 </div>
               </div>
               <div>

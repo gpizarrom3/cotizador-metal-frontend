@@ -444,7 +444,10 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, onUpdateNombre, onRemove, 
               <th className="text-left px-3 py-3 w-28">Proveedor</th>
               <th className="text-left px-3 py-3 w-24">Formato</th>
               <th className="text-right px-3 py-3 w-28">Cant.</th>
-              <th className="text-right px-3 py-3 w-40">P. Unit.</th>
+              <th className="text-right px-3 py-3 w-40">
+                <span>P. Unit.</span>
+                <span className="block text-[10px] text-slate-600 font-normal leading-none mt-0.5">decimal: punto (.)</span>
+              </th>
               <th className="text-right px-3 py-3 w-28">Total</th>
               <th className="px-2 py-3 rounded-r-lg w-16 text-center text-slate-500 font-normal text-xs">⚖ Peso</th>
             </tr>

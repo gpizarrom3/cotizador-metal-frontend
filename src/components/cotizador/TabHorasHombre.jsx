@@ -79,12 +79,15 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [] }) {
 
               {/* Precio/hora */}
               <div>
-                <label className="label">Precio / hora</label>
+                <label className="label">
+                  Precio / hora
+                  <span className="text-[10px] text-slate-600 font-normal ml-1">decimal: (.)</span>
+                </label>
                 <input
                   type="number"
                   min="0"
                   className="input-field text-sm py-2"
-                  placeholder="0"
+                  placeholder="Ej: 1500.50"
                   value={r.precio_hora || ''}
                   onChange={(e) => update(r.id, 'precio_hora', Number(e.target.value))}
                 />
