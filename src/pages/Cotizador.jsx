@@ -673,6 +673,7 @@ export default function Cotizador() {
           onVerCotizacion={() => setShowCotizacionPreview(true)}
           conMaterial={conMaterial} totalConsumibles={totalConsumibles}
           pesoMateriales={pesoTotalEstructura} pesoServicios={pesoServicios}
+          materiales={materiales}
         />
       )}
 

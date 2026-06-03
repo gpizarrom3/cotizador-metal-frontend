@@ -282,6 +282,14 @@ function PesoCalculadora({ onAgregar }) {
   )
 }
 
+// Calcula m² de superficie desde pesoData (para pintura)
+export function calcM2FromPesoData(pd) {
+  if (!pd) return 0
+  if (Number(pd.m2Manual) > 0) return Number(pd.m2Manual)
+  if (pd.modo === 'catalogo' || pd.modo === 'manual') return 0
+  return calcSuperficieM2(pd.geomId || 'plancha', pd.dims || {})
+}
+
 // Calcula kg por pieza desde pesoData (cualquier modo)
 export function calcPesoFromPesoData(pd) {
   if (!pd) return 0
@@ -588,7 +596,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                 return (
                   <Fragment key={m.id}>
                     <tr className="border-b border-slate-700">
-                      <td className="px-3 py-2 relative">
+                      <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
                           <input type="text" className="input-field py-1.5 text-sm flex-1 min-w-0" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} />
                           {catalogo.length > 0 && (
@@ -603,29 +611,6 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                             </button>
                           )}
                         </div>
-                        {catalogPickerId === m.id && (
-                          <div className="absolute left-0 top-full mt-1 w-80 bg-slate-900 border border-violet-500/40 rounded-xl shadow-2xl z-50 p-2 space-y-2">
-                            <input type="text" className="input-field text-xs py-1.5" placeholder="Filtrar catálogo..."
-                              value={catalogPickerSearch} onChange={e => setCatalogPickerSearch(e.target.value)} autoFocus />
-                            <div className="max-h-52 overflow-y-auto space-y-1 pr-0.5">
-                              {catalogo
-                                .filter(c => c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) || (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase()))
-                                .map(c => (
-                                  <button key={c.id}
-                                    onClick={() => { onFillItem(m.id, { nombre: c.nombre, proveedor: c.proveedor || '', formato: c.formato || '', precio_unitario: c.precio_unitario || 0 }); setCatalogPickerId(null); setCatalogPickerSearch('') }}
-                                    className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors bg-slate-950 border border-slate-700 hover:border-violet-500/40 hover:bg-violet-900/10"
-                                  >
-                                    <p className="text-white font-medium">{c.nombre}</p>
-                                    {c.proveedor && <p className="text-slate-400">{c.proveedor}</p>}
-                                    <p className="text-violet-400 font-semibold mt-0.5">{fmt(c.precio_unitario)}{c.unidad ? ` / ${c.unidad}` : ''}</p>
-                                  </button>
-                                ))}
-                              {catalogo.filter(c => c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) || (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase())).length === 0 && (
-                                <p className="text-center text-slate-600 py-3">Sin resultados</p>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </td>
                       <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
                       <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
@@ -680,6 +665,75 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
         </table>
       </div>
       <button onClick={onAddItem} className="btn-secondary text-sm py-1.5">+ Agregar fila</button>
+
+      {/* Modal selección desde catálogo */}
+      {catalogPickerId && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => { setCatalogPickerId(null); setCatalogPickerSearch('') }}
+        >
+          <div
+            className="bg-slate-900 border border-violet-500/40 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-800">
+              <h3 className="text-sm font-semibold text-violet-300">Seleccionar desde catálogo</h3>
+              <button
+                onClick={() => { setCatalogPickerId(null); setCatalogPickerSearch('') }}
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-5 pt-3 pb-2">
+              <input
+                type="text"
+                className="input-field text-sm py-1.5"
+                placeholder="Filtrar catálogo..."
+                value={catalogPickerSearch}
+                onChange={e => setCatalogPickerSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="max-h-96 overflow-y-auto px-5 pb-5 space-y-1.5">
+              {catalogo
+                .filter(c =>
+                  c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) ||
+                  (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase())
+                )
+                .map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      onFillItem(catalogPickerId, {
+                        nombre: c.nombre,
+                        proveedor: c.proveedor || '',
+                        formato: c.formato || '',
+                        precio_unitario: c.precio_unitario || 0,
+                      })
+                      setCatalogPickerId(null)
+                      setCatalogPickerSearch('')
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl text-sm transition-colors bg-slate-950 border border-slate-700 hover:border-violet-500/40 hover:bg-violet-900/10"
+                  >
+                    <p className="text-white font-medium">{c.nombre}</p>
+                    {c.proveedor && <p className="text-slate-400 text-xs mt-0.5">{c.proveedor}</p>}
+                    <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(c.precio_unitario)}{c.unidad ? ` / ${c.unidad}` : ''}</p>
+                  </button>
+                ))
+              }
+              {catalogo.filter(c =>
+                c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) ||
+                (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase())
+              ).length === 0 && (
+                <p className="text-center text-slate-600 text-sm py-8">Sin resultados</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

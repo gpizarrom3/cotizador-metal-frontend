@@ -1,4 +1,5 @@
 import Toggle from '../ui/Toggle'
+import { calcM2FromPesoData } from './TabMateriales'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -28,6 +29,7 @@ export default function TabResumen({
   onVerCotizacion,
   conMaterial, totalConsumibles = 0,
   pesoMateriales = 0, pesoServicios = 0,
+  materiales = [],
 }) {
   const {
     flete = 0, incluyeIVA = false, validezDias = 30,
@@ -455,6 +457,46 @@ export default function TabResumen({
               <div className="mt-3 pt-3 border-t border-emerald-500/10 flex gap-6 flex-wrap text-xs text-slate-500">
                 <span>Materiales: <span className="text-slate-300">{pesoMateriales.toFixed(2)} kg</span></span>
                 <span>Servicios: <span className="text-emerald-400">{pesoServicios.toFixed(2)} kg</span></span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Superficie estimada para pintura */}
+      {(() => {
+        const m2Grupos = materiales.map(sp => ({
+          nombre: sp.nombre,
+          m2: (sp.items || []).reduce((acc, m) => acc + calcM2FromPesoData(m.pesoData) * (Number(m.cantidad) || 1), 0)
+        })).filter(g => g.m2 > 0)
+        const m2Total = m2Grupos.reduce((acc, g) => acc + g.m2, 0)
+        if (m2Total <= 0) return null
+        const totalUnid = Number(unidadesPorLote) || 1
+        return (
+          <div className="card border-sky-500/20 bg-sky-600/5">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
+              </svg>
+              <h3 className="text-sm font-semibold text-sky-400">Superficie estimada para pintura</h3>
+            </div>
+            <div className="flex gap-8 flex-wrap">
+              <div>
+                <p className="text-slate-500 text-xs mb-0.5">Total</p>
+                <p className="text-white font-bold text-2xl">{m2Total.toFixed(3)} <span className="text-slate-400 text-sm font-normal">m²</span></p>
+              </div>
+              {totalUnid > 1 && (
+                <div>
+                  <p className="text-slate-500 text-xs mb-0.5">Por unidad ({totalUnid} un.)</p>
+                  <p className="text-sky-400 font-bold text-2xl">{(m2Total / totalUnid).toFixed(3)} <span className="text-sky-600 text-sm font-normal">m²/un.</span></p>
+                </div>
+              )}
+            </div>
+            {m2Grupos.length > 1 && (
+              <div className="mt-3 pt-3 border-t border-sky-500/10 flex gap-6 flex-wrap text-xs text-slate-500">
+                {m2Grupos.map(g => (
+                  <span key={g.nombre}>{g.nombre}: <span className="text-slate-300">{g.m2.toFixed(3)} m²</span></span>
+                ))}
               </div>
             )}
           </div>
