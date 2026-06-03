@@ -493,7 +493,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
         <h2 className="text-lg font-semibold text-white mb-4">Caja / Cajón</h2>
         <div className="space-y-4">
           <div>
-            <label className="label">Tipo de contenedor</label>
+            <label className="label">Tipo de contenedor <span className="text-slate-600 font-normal">(opcional)</span></label>
             <select className="input-field"
               value={caja.tipo || ''}
               onChange={(e) => setCaja('tipo')(e.target.value)}>
@@ -501,46 +501,15 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
               {TIPOS_CAJA.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="label">Largo (cm)</label>
-              <input type="number" min="0" className="input-field" placeholder="Ej: 60"
-                value={caja.largoCm || ''}
-                onChange={(e) => setCaja('largoCm')(e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Ancho (cm)</label>
-              <input type="number" min="0" className="input-field" placeholder="Ej: 40"
-                value={caja.anchoCm || ''}
-                onChange={(e) => setCaja('anchoCm')(e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Alto (cm)</label>
-              <input type="number" min="0" className="input-field" placeholder="Ej: 30"
-                value={caja.altoCm || ''}
-                onChange={(e) => setCaja('altoCm')(e.target.value)} />
-            </div>
-          </div>
-          {caja.largoCm && caja.anchoCm && caja.altoCm && (
-            <p className="text-slate-500 text-xs">
-              Volumen: <span className="text-slate-300">{((Number(caja.largoCm) * Number(caja.anchoCm) * Number(caja.altoCm)) / 1000000).toFixed(3)} m³</span>
-              {' · '}Peso vol. terrestre: <span className="text-slate-300">{Math.ceil((Number(caja.largoCm) * Number(caja.anchoCm) * Number(caja.altoCm)) / 6000)} kg</span>
-            </p>
-          )}
           <div>
-            <label className="label">Cantidad de cajas</label>
-            <input type="number" min="1" className="input-field max-w-[120px]"
-              value={caja.cantidad || 1}
-              onChange={(e) => setCaja('cantidad')(Math.max(1, Number(e.target.value)))} />
-          </div>
-          <div>
-            <label className="label">Notas del contenedor</label>
+            <label className="label">Notas <span className="text-slate-600 font-normal">(opcional)</span></label>
             <input type="text" className="input-field"
               placeholder="Ej: frágil, no apilar, requiere grúa..."
               value={caja.notas || ''}
               onChange={(e) => setCaja('notas')(e.target.value)} />
           </div>
         </div>
+        <p className="text-slate-600 text-xs mt-4">El costo de envío se ingresa en la sección Envíos más abajo.</p>
       </div>
       )}
 

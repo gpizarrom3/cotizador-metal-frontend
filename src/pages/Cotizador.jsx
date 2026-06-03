@@ -54,7 +54,7 @@ const DEFAULT_EMBALAJE = {
   activo: true,
   tipoEnvio: 'sin_especificar',
   pallets: [],
-  caja: { tipo: '', largoCm: '', anchoCm: '', altoCm: '', cantidad: 1, notas: '' },
+  caja: { tipo: '', notas: '' },
   materiales: [],
   costoEnvio: '', ciudadOrigen: '', ciudadDestino: '', notas: '',
 }
