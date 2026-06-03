@@ -5,7 +5,7 @@ import { guardarItemCatalogo, obtenerCatalogo, actualizarItemCatalogo, eliminarI
 import ConfirmModal from '../components/ui/ConfirmModal'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
-const EMPTY_FORM = { nombre: '', proveedor: '', formato: '', precio_unitario: '', unidad: '' }
+const EMPTY_FORM = { nombre: '', proveedor: '', formato: '', precio_unitario: '', unidad: '', peso_por_metro: '' }
 
 export default function Catalogo() {
   const { user } = useAuth()
@@ -35,7 +35,7 @@ export default function Catalogo() {
   const abrirNuevo = () => { setEditando(null); setForm(EMPTY_FORM); setShowModal(true) }
   const abrirEditar = (i) => {
     setEditando(i.id)
-    setForm({ nombre: i.nombre || '', proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || '', unidad: i.unidad || '' })
+    setForm({ nombre: i.nombre || '', proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || '', unidad: i.unidad || '', peso_por_metro: i.peso_por_metro || '' })
     setShowModal(true)
   }
   const cerrarModal = () => { setShowModal(false); setEditando(null); setForm(EMPTY_FORM) }
@@ -44,7 +44,7 @@ export default function Catalogo() {
     if (!form.nombre.trim()) return
     setSaving(true)
     try {
-      const datos = { ...form, precio_unitario: Number(form.precio_unitario) || 0 }
+      const datos = { ...form, precio_unitario: Number(form.precio_unitario) || 0, peso_por_metro: Number(form.peso_por_metro) || 0 }
       if (editando) {
         await actualizarItemCatalogo(user.uid, editando, datos)
         setItems((prev) => prev.map((i) => i.id === editando ? { ...i, ...datos } : i))
@@ -112,6 +112,7 @@ export default function Catalogo() {
                   <th className="text-left px-4 py-3">Proveedor</th>
                   <th className="text-left px-4 py-3">Formato</th>
                   <th className="text-left px-4 py-3">Unidad</th>
+                  <th className="text-right px-4 py-3">kg/m lineal</th>
                   <th className="text-right px-4 py-3">Precio ref.</th>
                   <th className="text-center px-4 py-3 rounded-r-lg">Acciones</th>
                 </tr>
@@ -119,7 +120,7 @@ export default function Catalogo() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-10 text-slate-500">
+                    <td colSpan={7} className="text-center py-10 text-slate-500">
                       {items.length === 0
                         ? 'Aún no hay materiales en el catálogo. Agrega uno para usarlo en el cotizador.'
                         : 'No se encontraron materiales.'}
@@ -131,6 +132,11 @@ export default function Catalogo() {
                     <td className="px-4 py-3 text-slate-400 text-xs">{i.proveedor || '—'}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{i.formato || '—'}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{i.unidad || '—'}</td>
+                    <td className="px-4 py-3 text-right">
+                      {i.peso_por_metro > 0
+                        ? <span className="text-emerald-400 font-medium text-sm">{i.peso_por_metro} kg/m</span>
+                        : <span className="text-slate-700">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-slate-200 text-right font-medium">{fmt(i.precio_unitario)}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
@@ -188,10 +194,17 @@ export default function Catalogo() {
                     value={form.unidad} onChange={(e) => setForm({ ...form, unidad: e.target.value })} />
                 </div>
               </div>
-              <div>
-                <label className="label">Precio referencial (CLP)</label>
-                <input type="number" min="0" className="input-field" placeholder="0"
-                  value={form.precio_unitario} onChange={(e) => setForm({ ...form, precio_unitario: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Precio referencial (CLP)</label>
+                  <input type="number" min="0" className="input-field" placeholder="0"
+                    value={form.precio_unitario} onChange={(e) => setForm({ ...form, precio_unitario: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">Peso lineal (kg/m) <span className="text-slate-600 font-normal">opcional</span></label>
+                  <input type="number" min="0" step="0.001" className="input-field" placeholder="Ej: 3.56"
+                    value={form.peso_por_metro} onChange={(e) => setForm({ ...form, peso_por_metro: e.target.value })} />
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={cerrarModal} className="btn-secondary flex-1">Cancelar</button>

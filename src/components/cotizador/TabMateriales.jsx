@@ -263,75 +263,159 @@ function PesoCalculadora({ onAgregar }) {
   )
 }
 
+// Calcula kg por pieza desde pesoData (cualquier modo)
+function calcPesoFromPesoData(pd) {
+  if (!pd) return 0
+  if (pd.modo === 'catalogo') return (Number(pd.catPesoPorMetro) || 0) * (Number(pd.metros) || 0)
+  const mat = MATERIALES_PESO[pd.densidadIdx ?? 0]
+  return calcPesoKg(pd.geomId || 'plancha', pd.dims || {}, mat.densidad)
+}
+
+const SCALE_ICON = (
+  <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+  </svg>
+)
+
 // ── Peso por fila ─────────────────────────────────────────────────────────────
-function PesoSubRow({ item, onUpdate }) {
-  const pd  = item.pesoData || { geomId: 'plancha', dims: {}, densidadIdx: 0 }
+function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
+  const [catSearch, setCatSearch] = useState('')
+  const pd   = item.pesoData || { geomId: 'plancha', dims: {}, densidadIdx: 0 }
+  const modo = pd.modo || 'dimensiones'
   const geom = GEOMETRIAS.find(g => g.id === pd.geomId) || GEOMETRIAS[0]
   const mat  = MATERIALES_PESO[pd.densidadIdx ?? 0]
-  const pesoUnit  = calcPesoKg(pd.geomId, pd.dims || {}, mat.densidad)
-  const pesoTotal = pesoUnit * (Number(item.cantidad) || 1)
+
+  const peso1     = calcPesoFromPesoData(pd)
+  const pesoTotal = peso1 * (Number(item.cantidad) || 1)
 
   const upd    = (changes) => onUpdate('pesoData', { ...pd, ...changes })
   const setDim = (campo, v) => upd({ dims: { ...(pd.dims || {}), [campo]: v } })
 
+  const catFiltered = catalogoPesos.filter(c =>
+    c.nombre.toLowerCase().includes(catSearch.toLowerCase())
+  )
+
   return (
     <div className="mb-2 bg-slate-900/60 border border-emerald-500/20 rounded-xl p-3 space-y-2.5">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-        <div>
-          <p className="label text-xs mb-1">Tipo de perfil</p>
-          <select className="input-field text-xs py-1.5" value={pd.geomId}
-            onChange={e => upd({ geomId: e.target.value, dims: {} })}>
-            {GEOMETRIAS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-          </select>
-        </div>
-        {geom.campos.map(campo => (
-          <div key={campo}>
-            <p className="label text-xs mb-1">{CAMPO_LABELS[campo]}</p>
-            <input type="number" min="0" className="input-field text-xs py-1.5" placeholder="0"
-              value={(pd.dims || {})[campo] || ''}
-              onChange={e => setDim(campo, e.target.value)} />
-          </div>
-        ))}
+      {/* Selector de modo */}
+      <div className="flex gap-1 bg-slate-950/80 rounded-lg p-0.5 w-fit">
+        <button onClick={() => upd({ modo: 'dimensiones' })}
+          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo !== 'catalogo' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+          Dimensiones
+        </button>
+        <button onClick={() => upd({ modo: 'catalogo' })}
+          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'catalogo' ? 'bg-emerald-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+          Catálogo (m lineales)
+        </button>
       </div>
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex-1 min-w-52">
-          <p className="label text-xs mb-1">Material (densidad)</p>
-          <select className="input-field text-xs py-1.5" value={pd.densidadIdx ?? 0}
-            onChange={e => upd({ densidadIdx: Number(e.target.value) })}>
-            {MATERIALES_PESO.map((m, i) => (
-              <option key={i} value={i}>{m.label} — {m.densidad} kg/m³</option>
+
+      {/* Modo dimensiones */}
+      {modo !== 'catalogo' && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+            <div>
+              <p className="label text-xs mb-1">Tipo de perfil</p>
+              <select className="input-field text-xs py-1.5" value={pd.geomId || 'plancha'}
+                onChange={e => upd({ geomId: e.target.value, dims: {} })}>
+                {GEOMETRIAS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+              </select>
+            </div>
+            {geom.campos.map(campo => (
+              <div key={campo}>
+                <p className="label text-xs mb-1">{CAMPO_LABELS[campo]}</p>
+                <input type="number" min="0" className="input-field text-xs py-1.5" placeholder="0"
+                  value={(pd.dims || {})[campo] || ''}
+                  onChange={e => setDim(campo, e.target.value)} />
+              </div>
             ))}
-          </select>
-        </div>
-        {pesoUnit > 0 ? (
-          <div className="flex items-center gap-2 text-sm bg-emerald-900/20 border border-emerald-500/20 px-3 py-2 rounded-lg">
-            <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-            </svg>
-            <span className="text-emerald-300 font-semibold">{pesoUnit.toFixed(3)} kg/pieza</span>
-            {Number(item.cantidad) > 1 && (
-              <span className="text-slate-400 text-xs">
-                × {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span>
-              </span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-52">
+              <p className="label text-xs mb-1">Material (densidad)</p>
+              <select className="input-field text-xs py-1.5" value={pd.densidadIdx ?? 0}
+                onChange={e => upd({ densidadIdx: Number(e.target.value) })}>
+                {MATERIALES_PESO.map((m, i) => (
+                  <option key={i} value={i}>{m.label} — {m.densidad} kg/m³</option>
+                ))}
+              </select>
+            </div>
+            {peso1 > 0 ? (
+              <div className="flex items-center gap-2 text-sm bg-emerald-900/20 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                {SCALE_ICON}
+                <span className="text-emerald-300 font-semibold">{peso1.toFixed(3)} kg/pieza</span>
+                {Number(item.cantidad) > 1 && (
+                  <span className="text-slate-400 text-xs">× {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span></span>
+                )}
+              </div>
+            ) : (
+              <p className="text-slate-600 text-xs italic">Ingresa dimensiones para calcular el peso</p>
             )}
           </div>
-        ) : (
-          <p className="text-slate-600 text-xs italic">Ingresa dimensiones para calcular el peso</p>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* Modo catálogo */}
+      {modo === 'catalogo' && (
+        <div className="space-y-2">
+          <input type="text" className="input-field text-xs py-1.5" placeholder="Buscar material en catálogo..."
+            value={catSearch} onChange={e => setCatSearch(e.target.value)} />
+
+          {catFiltered.length === 0 ? (
+            <p className="text-slate-600 text-xs italic py-2 text-center">
+              {catalogoPesos.length === 0
+                ? 'No hay materiales con kg/m en el catálogo. Agrégalos desde "Cat. Materiales".'
+                : 'Sin resultados.'}
+            </p>
+          ) : (
+            <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+              {catFiltered.map(c => (
+                <button key={c.id}
+                  onClick={() => { upd({ catItemId: c.id, catNombre: c.nombre, catPesoPorMetro: c.peso_por_metro }); setCatSearch('') }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${pd.catItemId === c.id ? 'bg-emerald-900/30 border-emerald-500/40 text-emerald-200' : 'bg-slate-950 border-slate-700 hover:border-emerald-500/40 text-slate-200'}`}
+                >
+                  <span className="font-medium">{c.nombre}</span>
+                  {c.proveedor && <span className="text-slate-500 ml-2">{c.proveedor}</span>}
+                  <span className="text-emerald-400 font-semibold ml-2">{c.peso_por_metro} kg/m</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {pd.catItemId && (
+            <div className="flex items-center gap-3 flex-wrap pt-1">
+              <div>
+                <p className="label text-xs mb-1">Metros por pieza</p>
+                <input type="number" min="0" step="0.01" className="input-field text-xs py-1.5 w-28"
+                  placeholder="0"
+                  value={pd.metros || ''}
+                  onChange={e => upd({ metros: e.target.value })} />
+              </div>
+              {peso1 > 0 && (
+                <div className="flex items-center gap-2 bg-emerald-900/20 border border-emerald-500/20 px-3 py-2 rounded-lg text-xs flex-wrap">
+                  {SCALE_ICON}
+                  <span className="text-slate-400">{pd.catNombre} · {pd.catPesoPorMetro} kg/m × {pd.metros} m =</span>
+                  <span className="text-emerald-300 font-semibold">{peso1.toFixed(3)} kg/pieza</span>
+                  {Number(item.cantidad) > 1 && (
+                    <span className="text-slate-400">× {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span></span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Tarjeta de sub-producto ───────────────────────────────────────────────────
-function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem }) {
+function SubproductoCard({ sp, isOnly, catalogoPesos, onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem }) {
   const total = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
   const [pesosOpen, setPesosOpen] = useState(new Set())
   const togglePeso = (id) => setPesosOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   const pesoGrupo = (sp.items || []).reduce((acc, m) => {
     if (!m.pesoData) return acc
-    const mat = MATERIALES_PESO[m.pesoData.densidadIdx ?? 0]
-    return acc + calcPesoKg(m.pesoData.geomId, m.pesoData.dims || {}, mat.densidad) * (Number(m.cantidad) || 1)
+    return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
   }, 0)
 
   return (
@@ -374,9 +458,7 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
               </tr>
             ) : (
               (sp.items || []).map((m) => {
-                const pesoCalc = m.pesoData
-                  ? calcPesoKg(m.pesoData.geomId, m.pesoData.dims || {}, MATERIALES_PESO[m.pesoData.densidadIdx ?? 0].densidad)
-                  : 0
+                const pesoCalc = calcPesoFromPesoData(m.pesoData)
                 const hasWeight = pesoCalc > 0
                 const open = pesosOpen.has(m.id)
                 return (
@@ -413,7 +495,7 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
                     {open && (
                       <tr className="border-b border-slate-700/40">
                         <td colSpan={7} className="px-3 pt-0 pb-1">
-                          <PesoSubRow item={m} onUpdate={(field, val) => onUpdateItem(m.id, field, val)} />
+                          <PesoSubRow item={m} onUpdate={(field, val) => onUpdateItem(m.id, field, val)} catalogoPesos={catalogoPesos} />
                         </td>
                       </tr>
                     )}
@@ -515,13 +597,14 @@ export default function TabMateriales({ materiales, setMateriales, cantidadLotes
     finally { setSearching(false) }
   }
 
+  const catalogoPesos = catalogo.filter(c => Number(c.peso_por_metro) > 0)
+
   const totalGeneral = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
 
-  // Peso total estimado (solo ítems con dimensiones calculadas)
+  // Peso total estimado (solo ítems con peso calculado)
   const pesoTotalEstructura = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => {
     if (!m.pesoData) return acc
-    const mat = MATERIALES_PESO[m.pesoData.densidadIdx ?? 0]
-    return acc + calcPesoKg(m.pesoData.geomId, m.pesoData.dims || {}, mat.densidad) * (Number(m.cantidad) || 1)
+    return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
   }, 0)
   const unidadesTotales   = (Number(cantidadLotes) || 1) * (Number(unidadesPorLote) || 1)
   const pesoUnitario      = pesoTotalEstructura / unidadesTotales
@@ -651,6 +734,7 @@ export default function TabMateriales({ materiales, setMateriales, cantidadLotes
           key={sp.id}
           sp={sp}
           isOnly={materiales.length === 1}
+          catalogoPesos={catalogoPesos}
           onUpdateNombre={nombre => updateSpNombre(sp.id, nombre)}
           onRemove={() => removeSubproducto(sp.id)}
           onAddItem={() => addItem(sp.id)}
