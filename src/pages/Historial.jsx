@@ -4,6 +4,7 @@ import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import {
   suscribirCotizaciones, actualizarEstado, eliminarCotizacion,
+  restaurarCotizacion, eliminarCotizacionDefinitivo,
   obtenerConexionesComoLector, obtenerConexionesComoOwner, obtenerCotizacionesDeOwner, asegurarSharedWith,
 } from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
@@ -33,6 +34,7 @@ export default function Historial() {
 
   const [tabVista, setTabVista] = useState('propias')
   const [cotizaciones, setCotizaciones] = useState([])
+  const [papelera, setPapelera]         = useState([])
   const [cotizsCompartidas, setCotizsCompartidas] = useState([])
   const [loadingCompartidas, setLoadingCompartidas] = useState(false)
   const [loading, setLoading]   = useState(true)
@@ -41,7 +43,7 @@ export default function Historial() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [error, setError]       = useState('')
-  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, definitivo: false })
   const [fichaModal, setFichaModal] = useState(null)
   const [sortBy, setSortBy] = useState('fecha_desc')
   const [pagina, setPagina] = useState(1)
@@ -71,8 +73,9 @@ export default function Historial() {
     let unsub = () => {}
     unsub = suscribirCotizaciones(
       user.uid,
-      (data) => {
+      (data, eliminadas) => {
         setCotizaciones(data)
+        setPapelera(eliminadas)
         setLoading(false)
       },
       (err) => {
@@ -148,15 +151,24 @@ export default function Historial() {
     } catch { setError('Error al actualizar estado.') }
   }
 
-  const handleEliminar = (cotId) => setConfirmDelete({ open: true, id: cotId })
+  const handleEliminar = (cotId) => setConfirmDelete({ open: true, id: cotId, definitivo: false })
 
   const ejecutarEliminar = async () => {
-    const id = confirmDelete.id
-    setConfirmDelete({ open: false, id: null })
+    const { id, definitivo } = confirmDelete
+    setConfirmDelete({ open: false, id: null, definitivo: false })
     try {
-      await eliminarCotizacion(user.uid, id)
-      setCotizaciones((prev) => prev.filter((c) => c.id !== id))
+      if (definitivo) {
+        await eliminarCotizacionDefinitivo(user.uid, id)
+      } else {
+        await eliminarCotizacion(user.uid, id)
+      }
     } catch { setError('Error al eliminar.') }
+  }
+
+  const handleRestaurar = async (cotId) => {
+    try {
+      await restaurarCotizacion(user.uid, cotId)
+    } catch { setError('Error al restaurar.') }
   }
 
   const handleAbrir = (cot, ownerUid = null) => {
@@ -666,6 +678,45 @@ export default function Historial() {
           )}
           </>
         )}
+
+        {/* Papelera */}
+        {papelera.length > 0 && (
+          <details className="mt-6 group">
+            <summary className="flex items-center gap-2 text-slate-500 text-sm cursor-pointer select-none hover:text-slate-400 transition-colors list-none">
+              <svg className="w-4 h-4 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              Papelera ({papelera.length})
+            </summary>
+            <div className="mt-3 space-y-2">
+              {papelera.map((c) => (
+                <div key={c.id} className="flex items-center justify-between gap-3 p-3 bg-slate-800/40 rounded-lg border border-slate-700/40 opacity-60 hover:opacity-80 transition-opacity">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {c.numero && <span className="text-slate-400 font-mono text-xs line-through">{c.numero}</span>}
+                      <span className="text-slate-400 text-sm truncate">{getNombreCliente(c)}</span>
+                    </div>
+                    <p className="text-slate-600 text-xs mt-0.5">{c.fecha || '—'}</p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleRestaurar(c.id)}
+                      className="text-xs text-green-400 hover:text-green-300 px-3 py-1.5 rounded-lg border border-green-500/30 hover:bg-green-900/20 transition-colors"
+                    >
+                      Restaurar
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete({ open: true, id: c.id, definitivo: true })}
+                      className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg border border-red-500/30 hover:bg-red-900/20 transition-colors"
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
 
       {fichaModal && (
@@ -678,10 +729,12 @@ export default function Historial() {
 
       <ConfirmModal
         open={confirmDelete.open}
-        title="Eliminar cotización"
-        message="Esta acción no se puede deshacer. La cotización será eliminada permanentemente."
+        title={confirmDelete.definitivo ? 'Eliminar definitivamente' : 'Mover a papelera'}
+        message={confirmDelete.definitivo
+          ? 'Esta acción no se puede deshacer. La cotización será eliminada para siempre.'
+          : 'La cotización se moverá a la papelera. Puedes restaurarla cuando quieras.'}
         onConfirm={ejecutarEliminar}
-        onCancel={() => setConfirmDelete({ open: false, id: null })}
+        onCancel={() => setConfirmDelete({ open: false, id: null, definitivo: false })}
       />
       </>)}
 

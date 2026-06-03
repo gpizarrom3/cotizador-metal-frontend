@@ -66,13 +66,21 @@ export const guardarCotizacion = async (uid, datos) => {
 
 export const obtenerCotizaciones = async (uid) => {
   const snap = await getDocs(collection(db, 'usuarios', uid, 'cotizaciones'))
-  return snap.docs.map(mapCotizacion).sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
+  return snap.docs.map(mapCotizacion)
+    .filter(c => !c.deleted)
+    .sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
 export const suscribirCotizaciones = (uid, callback, onError) => {
   return onSnapshot(
     collection(db, 'usuarios', uid, 'cotizaciones'),
-    (snap) => callback(snap.docs.map(mapCotizacion)),
+    (snap) => {
+      const all = snap.docs.map(mapCotizacion)
+      callback(
+        all.filter(c => !c.deleted),
+        all.filter(c => c.deleted).sort((a, b) => (b.deletedAt?.toDate?.() || 0) - (a.deletedAt?.toDate?.() || 0))
+      )
+    },
     onError || (() => {})
   )
 }
@@ -91,6 +99,20 @@ export const actualizarCotizacion = async (uid, cotId, datos) => {
 }
 
 export const eliminarCotizacion = async (uid, cotId) => {
+  await updateDoc(doc(db, 'usuarios', uid, 'cotizaciones', cotId), {
+    deleted: true,
+    deletedAt: serverTimestamp(),
+  })
+}
+
+export const restaurarCotizacion = async (uid, cotId) => {
+  await updateDoc(doc(db, 'usuarios', uid, 'cotizaciones', cotId), {
+    deleted: deleteField(),
+    deletedAt: deleteField(),
+  })
+}
+
+export const eliminarCotizacionDefinitivo = async (uid, cotId) => {
   await deleteDoc(doc(db, 'usuarios', uid, 'cotizaciones', cotId))
 }
 
@@ -344,7 +366,8 @@ export const asegurarSharedWith = async (ownerUid, readerUid, permiso) => {
 
 export const obtenerCotizacionesDeOwner = async (ownerUid) => {
   const snap = await getDocs(collection(db, 'usuarios', ownerUid, 'cotizaciones'))
-  const cots = snap.docs.map(mapCotizacion)
-  return cots.sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
+  return snap.docs.map(mapCotizacion)
+    .filter(c => !c.deleted)
+    .sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
