@@ -65,14 +65,16 @@ export const guardarCotizacion = async (uid, datos) => {
 }
 
 export const obtenerCotizaciones = async (uid) => {
-  const q = query(collection(db, 'usuarios', uid, 'cotizaciones'), orderBy('fecha', 'desc'))
-  const snap = await getDocs(q)
-  return snap.docs.map(mapCotizacion)
+  const snap = await getDocs(collection(db, 'usuarios', uid, 'cotizaciones'))
+  return snap.docs.map(mapCotizacion).sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
 export const suscribirCotizaciones = (uid, callback, onError) => {
-  const q = query(collection(db, 'usuarios', uid, 'cotizaciones'), orderBy('fecha', 'desc'))
-  return onSnapshot(q, (snap) => callback(snap.docs.map(mapCotizacion)), onError || (() => {}))
+  return onSnapshot(
+    collection(db, 'usuarios', uid, 'cotizaciones'),
+    (snap) => callback(snap.docs.map(mapCotizacion)),
+    onError || (() => {})
+  )
 }
 
 export const actualizarEstado = async (uid, cotId, estado) => {
