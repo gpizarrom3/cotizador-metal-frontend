@@ -348,25 +348,3 @@ export const obtenerCotizacionesDeOwner = async (ownerUid) => {
   return cots.sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
-export const migrarCotizacionesEmpresa = async (uid, empresaId = 'innovattech.org') => {
-  const oldSnap = await getDocs(collection(db, 'empresas', empresaId, 'cotizaciones'))
-  if (oldSnap.empty) return 0
-
-  let batch = writeBatch(db)
-  let batchCount = 0
-  let total = 0
-
-  for (const docSnap of oldSnap.docs) {
-    const newRef = doc(collection(db, 'usuarios', uid, 'cotizaciones'))
-    batch.set(newRef, docSnap.data())
-    batchCount++
-    total++
-    if (batchCount === 499) {
-      await batch.commit()
-      batch = writeBatch(db)
-      batchCount = 0
-    }
-  }
-  if (batchCount > 0) await batch.commit()
-  return total
-}

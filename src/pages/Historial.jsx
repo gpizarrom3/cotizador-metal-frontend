@@ -5,7 +5,6 @@ import { useAuth } from '../hooks/useAuth'
 import {
   suscribirCotizaciones, actualizarEstado, eliminarCotizacion,
   obtenerConexionesComoLector, obtenerConexionesComoOwner, obtenerCotizacionesDeOwner, asegurarSharedWith,
-  migrarCotizacionesEmpresa,
 } from '../firebase/firestore'
 import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
@@ -47,29 +46,9 @@ export default function Historial() {
   const [sortBy, setSortBy] = useState('fecha_desc')
   const [pagina, setPagina] = useState(1)
 
-  const [migrando, setMigrando] = useState(false)
-  const [migrado, setMigrado]   = useState(false)
-
   const [preview, setPreview]         = useState(null)
   const [exportandoPDF, setExportandoPDF] = useState(false)
   const previewRef = useRef(null)
-
-  const handleMigrar = async () => {
-    setMigrando(true)
-    setError('')
-    try {
-      const total = await migrarCotizacionesEmpresa(user.uid)
-      setMigrado(true)
-      setError('')
-      if (total === 0) {
-        setError('No se encontraron cotizaciones antiguas para migrar.')
-      }
-    } catch (e) {
-      setError('Error al migrar: ' + (e?.message || 'inténtalo de nuevo'))
-    } finally {
-      setMigrando(false)
-    }
-  }
 
   const handlePreview = (cot, tipo) => setPreview({ cot, tipo })
   const cerrarPreview = () => setPreview(null)
@@ -321,27 +300,6 @@ export default function Historial() {
           Compartidas
         </button>
       </div>
-
-      {!migrado && (
-        <div className="mb-4 flex items-center justify-between gap-4 bg-amber-900/20 border border-amber-500/30 rounded-lg px-4 py-3">
-          <div>
-            <p className="text-amber-300 text-sm font-medium">Cotizaciones antiguas encontradas</p>
-            <p className="text-amber-400/70 text-xs mt-0.5">Tus cotizaciones del sistema anterior están en <span className="font-mono">empresas/innovattech.org</span>. Haz clic para moverlas a tu cuenta.</p>
-          </div>
-          <button
-            onClick={handleMigrar}
-            disabled={migrando}
-            className="shrink-0 text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            {migrando ? 'Migrando...' : 'Migrar cotizaciones'}
-          </button>
-        </div>
-      )}
-      {migrado && (
-        <div className="mb-4 bg-green-900/20 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3">
-          Migración completada. Tus cotizaciones antiguas ya aparecen en el historial.
-        </div>
-      )}
 
       {error && <div className="bg-red-900/30 border border-red-500/50 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">{error}</div>}
 
