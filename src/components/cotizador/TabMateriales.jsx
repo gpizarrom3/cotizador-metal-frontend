@@ -597,7 +597,7 @@ export default function TabMateriales({ materiales, setMateriales, cantidadLotes
     finally { setSearching(false) }
   }
 
-  const catalogoPesos = catalogo.filter(c => Number(c.peso_por_metro) > 0)
+  const catalogoPesos = catalogo.filter(c => Number(c.peso_por_metro) > 0 && c.tipo !== 'plancha')
 
   const totalGeneral = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
 

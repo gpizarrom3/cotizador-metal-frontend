@@ -5,7 +5,24 @@ import { guardarItemCatalogo, obtenerCatalogo, actualizarItemCatalogo, eliminarI
 import ConfirmModal from '../components/ui/ConfirmModal'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
-const EMPTY_FORM = { nombre: '', proveedor: '', formato: '', precio_unitario: '', unidad: '', peso_por_metro: '' }
+const EMPTY_FORM = { nombre: '', proveedor: '', formato: '', precio_unitario: '', unidad: '', tipo: '', peso_por_metro: '' }
+
+const TIPOS_MATERIAL = [
+  { value: '',        label: 'Sin especificar' },
+  { value: 'plancha', label: 'Plancha / Lámina' },
+  { value: 'barra',   label: 'Barra' },
+  { value: 'tubo',    label: 'Tubo' },
+  { value: 'perfil',  label: 'Perfil (L / C / T)' },
+  { value: 'viga',    label: 'Viga (I / H)' },
+]
+
+const TIPO_BADGE = {
+  plancha: { label: 'Plancha',  cls: 'bg-slate-700 text-slate-300' },
+  barra:   { label: 'Barra',    cls: 'bg-blue-900/60 text-blue-300' },
+  tubo:    { label: 'Tubo',     cls: 'bg-cyan-900/60 text-cyan-300' },
+  perfil:  { label: 'Perfil',   cls: 'bg-amber-900/60 text-amber-300' },
+  viga:    { label: 'Viga',     cls: 'bg-orange-900/60 text-orange-300' },
+}
 
 export default function Catalogo() {
   const { user } = useAuth()
@@ -35,7 +52,7 @@ export default function Catalogo() {
   const abrirNuevo = () => { setEditando(null); setForm(EMPTY_FORM); setShowModal(true) }
   const abrirEditar = (i) => {
     setEditando(i.id)
-    setForm({ nombre: i.nombre || '', proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || '', unidad: i.unidad || '', peso_por_metro: i.peso_por_metro || '' })
+    setForm({ nombre: i.nombre || '', proveedor: i.proveedor || '', formato: i.formato || '', precio_unitario: i.precio_unitario || '', unidad: i.unidad || '', tipo: i.tipo || '', peso_por_metro: i.peso_por_metro || '' })
     setShowModal(true)
   }
   const cerrarModal = () => { setShowModal(false); setEditando(null); setForm(EMPTY_FORM) }
@@ -44,7 +61,11 @@ export default function Catalogo() {
     if (!form.nombre.trim()) return
     setSaving(true)
     try {
-      const datos = { ...form, precio_unitario: Number(form.precio_unitario) || 0, peso_por_metro: Number(form.peso_por_metro) || 0 }
+      const datos = {
+        ...form,
+        precio_unitario: Number(form.precio_unitario) || 0,
+        peso_por_metro: form.tipo === 'plancha' ? 0 : (Number(form.peso_por_metro) || 0),
+      }
       if (editando) {
         await actualizarItemCatalogo(user.uid, editando, datos)
         setItems((prev) => prev.map((i) => i.id === editando ? { ...i, ...datos } : i))
@@ -109,6 +130,7 @@ export default function Catalogo() {
               <thead>
                 <tr className="table-header">
                   <th className="text-left px-4 py-3 rounded-l-lg">Material</th>
+                  <th className="text-left px-4 py-3">Tipo</th>
                   <th className="text-left px-4 py-3">Proveedor</th>
                   <th className="text-left px-4 py-3">Formato</th>
                   <th className="text-left px-4 py-3">Unidad</th>
@@ -120,7 +142,7 @@ export default function Catalogo() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-10 text-slate-500">
+                    <td colSpan={8} className="text-center py-10 text-slate-500">
                       {items.length === 0
                         ? 'Aún no hay materiales en el catálogo. Agrega uno para usarlo en el cotizador.'
                         : 'No se encontraron materiales.'}
@@ -129,6 +151,11 @@ export default function Catalogo() {
                 ) : filtered.map((i) => (
                   <tr key={i.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
                     <td className="px-4 py-3 text-slate-200 font-medium">{i.nombre}</td>
+                    <td className="px-4 py-3">
+                      {i.tipo && TIPO_BADGE[i.tipo]
+                        ? <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TIPO_BADGE[i.tipo].cls}`}>{TIPO_BADGE[i.tipo].label}</span>
+                        : <span className="text-slate-700">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{i.proveedor || '—'}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{i.formato || '—'}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{i.unidad || '—'}</td>
@@ -178,6 +205,19 @@ export default function Catalogo() {
                   value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
               </div>
               <div>
+                <label className="label">Tipo de material</label>
+                <select
+                  className="input-field"
+                  value={form.tipo}
+                  onChange={(e) => {
+                    const tipo = e.target.value
+                    setForm({ ...form, tipo, ...(tipo === 'plancha' ? { peso_por_metro: '' } : {}) })
+                  }}
+                >
+                  {TIPOS_MATERIAL.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="label">Proveedor</label>
                 <input type="text" className="input-field" placeholder="Ej: Aceros Santiago"
                   value={form.proveedor} onChange={(e) => setForm({ ...form, proveedor: e.target.value })} />
@@ -194,17 +234,19 @@ export default function Catalogo() {
                     value={form.unidad} onChange={(e) => setForm({ ...form, unidad: e.target.value })} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className={form.tipo !== 'plancha' ? 'grid grid-cols-2 gap-3' : ''}>
                 <div>
                   <label className="label">Precio referencial (CLP)</label>
                   <input type="number" min="0" className="input-field" placeholder="0"
                     value={form.precio_unitario} onChange={(e) => setForm({ ...form, precio_unitario: e.target.value })} />
                 </div>
-                <div>
-                  <label className="label">Peso lineal (kg/m) <span className="text-slate-600 font-normal">opcional</span></label>
-                  <input type="number" min="0" step="0.001" className="input-field" placeholder="Ej: 3.56"
-                    value={form.peso_por_metro} onChange={(e) => setForm({ ...form, peso_por_metro: e.target.value })} />
-                </div>
+                {form.tipo !== 'plancha' && (
+                  <div>
+                    <label className="label">Peso lineal (kg/m) <span className="text-slate-600 font-normal">opcional</span></label>
+                    <input type="number" min="0" step="0.001" className="input-field" placeholder="Ej: 3.56"
+                      value={form.peso_por_metro} onChange={(e) => setForm({ ...form, peso_por_metro: e.target.value })} />
+                  </div>
+                )}
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={cerrarModal} className="btn-secondary flex-1">Cancelar</button>
