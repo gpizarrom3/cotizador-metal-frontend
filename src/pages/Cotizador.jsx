@@ -117,11 +117,8 @@ export default function Cotizador() {
   const { empresa, configDefaults } = useUserData()
   const printRef  = useRef(null)
 
-  // Landing / version comparison state
-  const [cotizadorIniciado, setCotizadorIniciado] = useState(() => {
-    const d = getDraft()
-    return !!(d.cotizacionId || (d.materiales && d.materiales.length > 0) || (d.cliente && d.cliente.nombre) || d.conMaterial !== undefined)
-  })
+  // Landing / version comparison state — always show landing on mount so user can choose to continue or start fresh
+  const [cotizadorIniciado, setCotizadorIniciado] = useState(false)
 
   const [conMaterial, setConMaterial] = useState(() => {
     const d = getDraft()
@@ -375,7 +372,7 @@ export default function Cotizador() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
-                Continuar borrador
+                Seguir editando
               </button>
             )}
           </div>
