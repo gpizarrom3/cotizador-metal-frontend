@@ -274,7 +274,6 @@ export default function Historial() {
         <div>
           <h1 className="text-2xl font-bold text-white">Historial de cotizaciones</h1>
           <p className="text-slate-400 mt-1">{cotizaciones.length} cotizaciones en total</p>
-          <p className="text-slate-600 mt-1 text-xs font-mono">UID: {user?.uid}</p>
         </div>
       </div>
 
