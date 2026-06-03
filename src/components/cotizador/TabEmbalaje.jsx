@@ -138,6 +138,14 @@ function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
     ...pallet,
     materialesPallet: materialesPallet.map((m) => (m.id === id ? { ...m, [f]: v } : m)),
   })
+  const addMatPallet = () => onChange({
+    ...pallet,
+    materialesPallet: [...materialesPallet, { id: Date.now() + Math.random(), nombre: '', unidad: 'unid.', cantidad: 1, precio_unitario: 0 }],
+  })
+  const removeMatPallet = (id) => onChange({
+    ...pallet,
+    materialesPallet: materialesPallet.filter((m) => m.id !== id),
+  })
 
   const recomendacion = useMemo(
     () => recomendarPallet(largoCm, anchoCm, cargaKg, alturaCm),
@@ -306,23 +314,36 @@ function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
         </div>
 
         {/* Fabricación de pallet */}
-        {palletId && materialesPallet.length > 0 && (
+        {palletId && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Fabricación de pallet</p>
-              <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded px-2 py-0.5 flex-shrink-0">
-                Subtotal: {fmt(totalPallet)}
-              </span>
+              <div className="flex items-center gap-2">
+                {totalPallet > 0 && (
+                  <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded px-2 py-0.5">
+                    Subtotal: {fmt(totalPallet)}
+                  </span>
+                )}
+                <button onClick={addMatPallet} className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600 rounded-lg px-2.5 py-1 transition-colors">
+                  + Agregar ítem
+                </button>
+              </div>
             </div>
+            {materialesPallet.length === 0 ? (
+              <div className="border border-dashed border-slate-700 rounded-lg py-6 text-center">
+                <p className="text-slate-500 text-sm">Sin ítems. Selecciona un tipo de pallet para autocompletar, o agrega manualmente.</p>
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm table-fixed">
                 <thead>
                   <tr className="table-header">
                     <th className="text-left px-3 py-2 rounded-l-lg">Material</th>
-                    <th className="text-center px-3 py-2 w-28">Unid.</th>
-                    <th className="text-center px-3 py-2 w-28">Cant.</th>
+                    <th className="text-center px-3 py-2 w-24">Unid.</th>
+                    <th className="text-center px-3 py-2 w-24">Cant.</th>
                     <th className="text-right px-3 py-2 w-36">P. Unit.</th>
-                    <th className="text-right px-3 py-2 rounded-r-lg w-32">Total</th>
+                    <th className="text-right px-3 py-2 w-28">Total</th>
+                    <th className="px-2 py-2 rounded-r-lg w-8" />
                   </tr>
                 </thead>
                 <tbody>
@@ -330,7 +351,7 @@ function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
                     <tr key={m.id} className="border-b border-slate-700">
                       <td className="px-3 py-2">
                         <input type="text" className="input-field text-sm py-1.5 w-full"
-                          value={m.nombre} onChange={(e) => updateMatPallet(m.id, 'nombre', e.target.value)} />
+                          placeholder="Nombre" value={m.nombre} onChange={(e) => updateMatPallet(m.id, 'nombre', e.target.value)} />
                       </td>
                       <td className="px-3 py-2">
                         <input type="text" className="input-field text-sm py-1.5 text-center w-full"
@@ -347,11 +368,19 @@ function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
                       <td className="px-3 py-2 text-right font-medium text-slate-200">
                         {fmt(Number(m.cantidad) * Number(m.precio_unitario))}
                       </td>
+                      <td className="px-2 py-2 text-center">
+                        <button onClick={() => removeMatPallet(m.id)} className="text-slate-500 hover:text-red-400 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         )}
       </div>
