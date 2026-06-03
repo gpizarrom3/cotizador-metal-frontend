@@ -56,7 +56,8 @@ const DEFAULT_EMBALAJE = {
   pallets: [],
   caja: { tipo: '', notas: '' },
   materiales: [],
-  costoEnvio: '', ciudadOrigen: '', ciudadDestino: '', notas: '',
+  costoEnvio: '', costoEmbalajeSimple: '', costoPalletizadoSimple: '',
+  ciudadOrigen: '', ciudadDestino: '', notas: '',
 }
 
 const DRAFT_KEY      = 'cotizador_draft'
@@ -148,6 +149,7 @@ export default function Cotizador() {
   const [unidadesPorLote,setUnidadesPorLote]= useState(() => getDraft().unidadesPorLote ?? 1)
   const [config,         setConfig]         = useState(() => ({ ...DEFAULT_CONFIG, ...(getDraft().config ?? {}) }))
   const [embalaje,       setEmbalaje]       = useState(() => migrarEmbalaje(getDraft().embalaje))
+  const [modo,           setModo]           = useState(() => getDraft().modo ?? 'avanzado')
   const [numeroCot,      setNumeroCot]      = useState(() => getDraft().numeroCot ?? '')
   const [cotizacionId,   setCotizacionId]   = useState(() => getDraft().cotizacionId ?? '')
   const [ownerUid,       setOwnerUid]       = useState(() => getDraft().ownerUid ?? null)
@@ -186,7 +188,7 @@ export default function Cotizador() {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       cliente, estado, materiales, roles, servicios, bases,
       cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
-      conMaterial, consumibles, ownerUid,
+      conMaterial, consumibles, ownerUid, modo,
     }))
   }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles, ownerUid])
 
@@ -208,6 +210,7 @@ export default function Cotizador() {
     setSaveError('')
     setConMaterial(null)
     setConsumibles([...DEFAULT_CONSUMIBLES])
+    setModo('estandar')
   }
 
   // Plantillas handlers
@@ -262,10 +265,12 @@ export default function Cotizador() {
     return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
   }, 0)
   const totalEmbalaje = (embalaje.activo === false) ? 0 : (
-    (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
-    (embalaje.pallets || []).reduce((accP, p) =>
-      accP + (p.materialesPallet || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0), 0) +
-    (Number(embalaje.costoEnvio) || 0)
+    modo === 'estandar'
+      ? (Number(embalaje.costoEmbalajeSimple) || 0) + (Number(embalaje.costoPalletizadoSimple) || 0) + (Number(embalaje.costoEnvio) || 0)
+      : (embalaje.materiales || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0) +
+        (embalaje.pallets || []).reduce((accP, p) =>
+          accP + (p.materialesPallet || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0), 0) +
+        (Number(embalaje.costoEnvio) || 0)
   )
   // Sin material: consumibles replace materials in the base calculation
   // Base = Mat (o Consumibles) + HH — los servicios externos NO forman parte de la base
@@ -288,7 +293,7 @@ export default function Cotizador() {
     cliente, estado,
     materiales, roles, servicios, bases, config, embalaje,
     cantidadLotes, unidadesPorLote,
-    conMaterial,
+    conMaterial, modo,
     consumibles: conMaterial === false ? consumibles : [],
     totalMateriales: conMaterial === false ? 0 : totalMateriales,
     totalConsumibles: conMaterial === false ? totalConsumibles : 0,
@@ -528,6 +533,20 @@ export default function Cotizador() {
                 {conMaterial ? 'Transformar a sin materiales' : 'Transformar a con materiales'}
               </button>
             )}
+            <div className="flex items-center bg-slate-800 border border-slate-700 rounded-full p-0.5">
+              <button
+                onClick={() => setModo('estandar')}
+                className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${modo === 'estandar' ? 'bg-amber-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Estándar
+              </button>
+              <button
+                onClick={() => setModo('avanzado')}
+                className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${modo === 'avanzado' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Avanzado
+              </button>
+            </div>
           </div>
           <p className="text-slate-400 mt-1 text-sm">
             {cotizacionId ? 'Guardará los cambios en la cotización existente' : 'El borrador se guarda automáticamente'}
@@ -644,7 +663,7 @@ export default function Cotizador() {
         ))}
       </div>
 
-      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
+      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} modo={modo} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
       {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
@@ -655,7 +674,7 @@ export default function Cotizador() {
           conMaterial={conMaterial} totalConsumibles={totalConsumibles}
         />
       )}
-      {activeTab === 'embalaje'    && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} />}
+      {activeTab === 'embalaje'    && <TabEmbalaje embalaje={embalaje} setEmbalaje={setEmbalaje} modo={modo} />}
       {activeTab === 'resumen'     && (
         <TabResumen
           cliente={cliente} setCliente={setCliente} clientes={clientes}

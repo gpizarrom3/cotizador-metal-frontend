@@ -403,13 +403,13 @@ const TIPOS_CAJA = [
   'Otro',
 ]
 
-export default function TabEmbalaje({ embalaje, setEmbalaje }) {
+export default function TabEmbalaje({ embalaje, setEmbalaje, modo = 'avanzado' }) {
   const {
     activo = true,
     tipoEnvio = 'sin_especificar',
     pallets = [],
     caja = {},
-    materiales = [], costoEnvio = '', notas = '',
+    materiales = [], costoEnvio = '', costoEmbalajeSimple = '', costoPalletizadoSimple = '', notas = '',
   } = embalaje
 
   const set = (field) => (v) => setEmbalaje((e) => ({ ...e, [field]: v }))
@@ -454,7 +454,50 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
         </div>
       )}
 
-      {activo && <>
+      {activo && modo === 'estandar' && (
+        <div className="card space-y-4">
+          <h2 className="text-base font-semibold text-white">Costos de embalaje y envío</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="label text-xs mb-1">Embalaje / materiales</label>
+              <input
+                type="number" min="0" className="input-field"
+                placeholder="Ej: 15000"
+                value={costoEmbalajeSimple}
+                onChange={e => setEmbalaje(em => ({ ...em, costoEmbalajeSimple: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label text-xs mb-1">Palletizado / encajado</label>
+              <input
+                type="number" min="0" className="input-field"
+                placeholder="Ej: 8000"
+                value={costoPalletizadoSimple}
+                onChange={e => setEmbalaje(em => ({ ...em, costoPalletizadoSimple: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label text-xs mb-1">Envío / flete</label>
+              <input
+                type="number" min="0" className="input-field"
+                placeholder="Ej: 25000"
+                value={costoEnvio}
+                onChange={e => setEmbalaje(em => ({ ...em, costoEnvio: e.target.value }))}
+              />
+            </div>
+          </div>
+          {(() => {
+            const total = (Number(costoEmbalajeSimple) || 0) + (Number(costoPalletizadoSimple) || 0) + (Number(costoEnvio) || 0)
+            return total > 0 ? (
+              <p className="text-right text-blue-400 font-semibold text-sm">
+                Total embalaje: {fmt(total)}
+              </p>
+            ) : null
+          })()}
+        </div>
+      )}
+
+      {activo && modo === 'avanzado' && <>
 
       {/* ── Tipo de envío ── */}
       <div className="card">
@@ -708,6 +751,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
       )}
 
       </>}
+
     </div>
   )
 }

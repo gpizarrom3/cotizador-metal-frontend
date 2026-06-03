@@ -536,7 +536,7 @@ function M2SubRow({ item, onUpdate }) {
 }
 
 // ── Tarjeta de sub-producto ───────────────────────────────────────────────────
-function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem, onFillItem }) {
+function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem, onFillItem, modo = 'avanzado' }) {
   const total = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
   const [pesosOpen, setPesosOpen] = useState(new Set())
   const togglePeso = (id) => setPesosOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -584,14 +584,20 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                 <span className="block text-[10px] text-slate-600 font-normal leading-none mt-0.5">decimal: punto (.)</span>
               </th>
               <th className="text-right px-3 py-3 w-28">Total</th>
-              <th className="px-2 py-3 w-12 text-center text-slate-500 font-normal text-xs">⚖ Peso</th>
-              <th className="px-2 py-3 rounded-r-lg w-12 text-center text-sky-700 font-normal text-xs">m²</th>
+              {modo === 'avanzado' ? (
+                <>
+                  <th className="px-2 py-3 w-12 text-center text-slate-500 font-normal text-xs">⚖ Peso</th>
+                  <th className="px-2 py-3 rounded-r-lg w-12 text-center text-sky-700 font-normal text-xs">m²</th>
+                </>
+              ) : (
+                <th className="px-2 py-3 rounded-r-lg w-10" />
+              )}
             </tr>
           </thead>
           <tbody>
             {(sp.items || []).length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-slate-500 text-sm">
+                <td colSpan={modo === 'avanzado' ? 8 : 7} className="text-center py-8 text-slate-500 text-sm">
                   Sin materiales. Agrega una fila o usa las herramientas de arriba.
                 </td>
               </tr>
@@ -606,7 +612,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
                           <input type="text" className="input-field py-1.5 text-sm flex-1 min-w-0" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} />
-                          {catalogo.length > 0 && (
+                          {modo === 'avanzado' && catalogo.length > 0 && (
                             <button
                               onClick={() => { setCatalogPickerId(catalogPickerId === m.id ? null : m.id); setCatalogPickerSearch('') }}
                               title="Seleccionar desde catálogo"
@@ -629,50 +635,62 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
-                      <td className="px-2 py-2">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => togglePeso(m.id)}
-                            title={hasWeight ? `${(pesoCalc * (Number(m.cantidad) || 1)).toFixed(2)} kg` : 'Calcular peso'}
-                            className={`transition-colors p-0.5 rounded ${open ? 'text-emerald-400' : hasWeight ? 'text-emerald-500 hover:text-emerald-300' : 'text-slate-600 hover:text-emerald-400'}`}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                            </svg>
-                          </button>
-                          <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex items-center justify-center">
-                          {(() => {
-                            const m2Val = calcM2FromPesoData(m.pesoData)
-                            const m2IsOpen = m2Open.has(m.id)
-                            return (
+                      {modo === 'avanzado' ? (
+                        <>
+                          <td className="px-2 py-2">
+                            <div className="flex items-center justify-center gap-1">
                               <button
-                                onClick={() => toggleM2(m.id)}
-                                title={m2Val > 0 ? `${(m2Val * (Number(m.cantidad) || 1)).toFixed(3)} m²` : 'Ingresar m²'}
-                                className={`transition-colors p-0.5 rounded ${m2IsOpen ? 'text-sky-400' : m2Val > 0 ? 'text-sky-500 hover:text-sky-300' : 'text-slate-600 hover:text-sky-400'}`}
+                                onClick={() => togglePeso(m.id)}
+                                title={hasWeight ? `${(pesoCalc * (Number(m.cantidad) || 1)).toFixed(2)} kg` : 'Calcular peso'}
+                                className={`transition-colors p-0.5 rounded ${open ? 'text-emerald-400' : hasWeight ? 'text-emerald-500 hover:text-emerald-300' : 'text-slate-600 hover:text-emerald-400'}`}
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                                 </svg>
                               </button>
-                            )
-                          })()}
-                        </div>
-                      </td>
+                              <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex items-center justify-center">
+                              {(() => {
+                                const m2Val = calcM2FromPesoData(m.pesoData)
+                                const m2IsOpen = m2Open.has(m.id)
+                                return (
+                                  <button
+                                    onClick={() => toggleM2(m.id)}
+                                    title={m2Val > 0 ? `${(m2Val * (Number(m.cantidad) || 1)).toFixed(3)} m²` : 'Ingresar m²'}
+                                    className={`transition-colors p-0.5 rounded ${m2IsOpen ? 'text-sky-400' : m2Val > 0 ? 'text-sky-500 hover:text-sky-300' : 'text-slate-600 hover:text-sky-400'}`}
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
+                                    </svg>
+                                  </button>
+                                )
+                              })()}
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <td className="px-2 py-2">
+                          <div className="flex items-center justify-center">
+                            <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
-                    {open && (
+                    {modo === 'avanzado' && open && (
                       <tr className="border-b border-slate-700/40">
                         <td colSpan={8} className="px-3 pt-0 pb-1">
                           <PesoSubRow item={m} onUpdate={(field, val) => onUpdateItem(m.id, field, val)} catalogoPesos={catalogoPesos} />
                         </td>
                       </tr>
                     )}
-                    {m2Open.has(m.id) && (
+                    {modo === 'avanzado' && m2Open.has(m.id) && (
                       <tr className="border-b border-slate-700/40">
                         <td colSpan={8} className="px-3 pt-0 pb-1">
                           <M2SubRow item={m} onUpdate={(field, val) => onUpdateItem(m.id, field, val)} />
@@ -688,16 +706,22 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
             <tr className="border-t border-slate-600">
               <td colSpan={5} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
               <td className="px-3 py-2 text-right text-blue-400 font-semibold">{fmt(total)}</td>
-              <td className="px-3 py-2 text-right">
-                {pesoGrupo > 0 && (
-                  <span className="text-emerald-500 text-xs font-medium">{pesoGrupo.toFixed(2)} kg</span>
-                )}
-              </td>
-              <td className="px-3 py-2 text-right">
-                {m2Grupo > 0 && (
-                  <span className="text-sky-500 text-xs font-medium">{m2Grupo.toFixed(3)} m²</span>
-                )}
-              </td>
+              {modo === 'avanzado' ? (
+                <>
+                  <td className="px-3 py-2 text-right">
+                    {pesoGrupo > 0 && (
+                      <span className="text-emerald-500 text-xs font-medium">{pesoGrupo.toFixed(2)} kg</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {m2Grupo > 0 && (
+                      <span className="text-sky-500 text-xs font-medium">{m2Grupo.toFixed(3)} m²</span>
+                    )}
+                  </td>
+                </>
+              ) : (
+                <td />
+              )}
             </tr>
           </tfoot>
         </table>
@@ -777,7 +801,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export default function TabMateriales({ materiales, setMateriales }) {
+export default function TabMateriales({ materiales, setMateriales, modo = 'avanzado' }) {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm]   = useState('')
   const [searching, setSearching]     = useState(false)
@@ -860,10 +884,10 @@ export default function TabMateriales({ materiales, setMateriales }) {
     <div className="space-y-6">
 
       {/* Calculadora de peso */}
-      <PesoCalculadora onAgregar={addFromTool} />
+      {modo === 'avanzado' && <PesoCalculadora onAgregar={addFromTool} />}
 
       {/* Búsqueda IA */}
-      <div className="card border-blue-500/30 bg-slate-800">
+      {modo === 'avanzado' && <div className="card border-blue-500/30 bg-slate-800">
         <button className="w-full flex items-center justify-between" onClick={() => setIaOpen(v => !v)}>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
@@ -923,7 +947,7 @@ export default function TabMateriales({ materiales, setMateriales }) {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Selector de grupo destino (solo si hay múltiples sub-productos) */}
       {materiales.length > 1 && (
@@ -951,6 +975,7 @@ export default function TabMateriales({ materiales, setMateriales }) {
           onRemoveItem={itemId => removeItem(sp.id, itemId)}
           onUpdateItem={(itemId, field, value) => updateItem(sp.id, itemId, field, value)}
           onFillItem={(itemId, fields) => fillItem(sp.id, itemId, fields)}
+          modo={modo}
         />
       ))}
 
