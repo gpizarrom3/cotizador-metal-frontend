@@ -166,6 +166,7 @@ export default function Cotizador() {
   const [showPrint,   setShowPrint]   = useState(false)
   const [exportandoFicha, setExportandoFicha] = useState(false)
   const [showFicha,       setShowFicha]       = useState(false)
+  const [showCotizacionPreview, setShowCotizacionPreview] = useState(false)
 
   // Plantillas
   const [plantillas,           setPlantillas]           = useState([])
@@ -669,6 +670,7 @@ export default function Cotizador() {
           saving={saving} saveSuccess={saveSuccess} saveError={saveError}
           onGuardar={handleGuardar} onExportPDF={handleExportPDF} exportando={exportando}
           onExportFicha={handleExportFicha} exportandoFicha={exportandoFicha}
+          onVerCotizacion={() => setShowCotizacionPreview(true)}
           conMaterial={conMaterial} totalConsumibles={totalConsumibles}
           pesoMateriales={pesoTotalEstructura} pesoServicios={pesoServicios}
         />
@@ -698,6 +700,41 @@ export default function Cotizador() {
           totalHH, totalServicios, totalBases, totalEmbalaje, totalFinal,
         }}
       />
+
+      {/* Modal: preview cotización actual */}
+      {showCotizacionPreview && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col">
+          <div className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-700 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="text-white font-semibold text-sm">
+                Cotización — <span className="text-blue-400 font-mono">{numeroCot || 'BORRADOR'}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setShowCotizacionPreview(false); handleExportPDF() }}
+                disabled={exportando}
+                className="btn-primary text-sm py-1.5 px-4 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Descargar PDF
+              </button>
+              <button onClick={() => setShowCotizacionPreview(false)} className="text-slate-400 hover:text-white transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-slate-200 p-6 flex justify-center">
+            <div className="w-full max-w-4xl">
+              <CotizacionPrintView empresa={empresa} cot={cotizacionData} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: versión guardada */}
       {showVersionGuardada && versionGuardada && (
