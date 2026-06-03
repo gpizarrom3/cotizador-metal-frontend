@@ -50,23 +50,12 @@ const DEFAULT_CONFIG = {
 
 const DEFAULT_CLIENTE = { nombre: '', rut: '', email: '', telefono: '' }
 
-const DEFAULT_EMBALAJE_MATERIALES = [
-  { id: 3,  nombre: 'Strech film 500mm × 300m (23 µm)',           unidad: 'rollo',   precio_ref: 4200,  cantidad: 1, precio_unitario: 4200 },
-  { id: 4,  nombre: 'Cinta de zuncho plástico 16mm × 200m',       unidad: 'rollo',   precio_ref: 9800,  cantidad: 1, precio_unitario: 9800 },
-  { id: 5,  nombre: 'Cantonera de cartón 35×35×3mm (x100 unid.)', unidad: 'paquete', precio_ref: 5200,  cantidad: 1, precio_unitario: 5200 },
-  { id: 6,  nombre: 'Zuncho metálico 19mm (rollo 200m)',           unidad: 'rollo',   precio_ref: 28500, cantidad: 0, precio_unitario: 28500 },
-  { id: 7,  nombre: 'Lámina de cartón corrugado 1200×1000 mm',    unidad: 'unid.',   precio_ref: 850,   cantidad: 4, precio_unitario: 850 },
-  { id: 8,  nombre: 'Espuma polietileno 10mm (plancha 1×2m)',      unidad: 'unid.',   precio_ref: 3200,  cantidad: 0, precio_unitario: 3200 },
-  { id: 9,  nombre: 'Bolsa VCI anticorrosión 1200×1000mm',         unidad: 'unid.',   precio_ref: 1800,  cantidad: 0, precio_unitario: 1800 },
-  { id: 10, nombre: 'Silica gel 100g (caja x25 sobres)',           unidad: 'caja',    precio_ref: 4500,  cantidad: 0, precio_unitario: 4500 },
-  { id: 11, nombre: 'Caja de cartón corrugado (triple pared)',     unidad: 'unid.',   precio_ref: 3500,  cantidad: 0, precio_unitario: 3500 },
-  { id: 12, nombre: 'Flejes metálicos con hebillas (x100)',        unidad: 'kit',     precio_ref: 6800,  cantidad: 0, precio_unitario: 6800 },
-]
-
 const DEFAULT_EMBALAJE = {
   activo: true,
+  tipoEnvio: 'sin_especificar',
   pallets: [],
-  materiales: DEFAULT_EMBALAJE_MATERIALES,
+  caja: { tipo: '', largoCm: '', anchoCm: '', altoCm: '', cantidad: 1, notas: '' },
+  materiales: [],
   costoEnvio: '', ciudadOrigen: '', ciudadDestino: '', notas: '',
 }
 
@@ -94,14 +83,24 @@ const migrarMateriales = (mats) => {
 const migrarEmbalaje = (emb) => {
   if (!emb) return { ...DEFAULT_EMBALAJE }
   if (Array.isArray(emb.pallets)) {
-    return { ...DEFAULT_EMBALAJE, ...emb, materiales: emb.materiales ?? DEFAULT_EMBALAJE_MATERIALES }
+    const hasPalletData = (emb.pallets || []).some(p => p.palletId || p.cargaKg || p.largoCm)
+    const tipoEnvio = emb.tipoEnvio ?? (hasPalletData ? 'pallet' : 'sin_especificar')
+    return {
+      ...DEFAULT_EMBALAJE,
+      ...emb,
+      tipoEnvio,
+      caja: emb.caja ?? DEFAULT_EMBALAJE.caja,
+      materiales: emb.materiales ?? [],
+    }
   }
   const { palletId, cargaKg, largoCm, anchoCm, alturaCm, largo, ancho, alto_max, carga_max, materialesPallet, ...rest } = emb
   const hasPallet = palletId || cargaKg || largoCm || anchoCm || alturaCm
   return {
     ...DEFAULT_EMBALAJE,
     ...rest,
-    materiales: emb.materiales ?? DEFAULT_EMBALAJE_MATERIALES,
+    tipoEnvio: emb.tipoEnvio ?? (hasPallet ? 'pallet' : 'sin_especificar'),
+    caja: emb.caja ?? DEFAULT_EMBALAJE.caja,
+    materiales: emb.materiales ?? [],
     pallets: hasPallet ? [{
       id: Date.now() + Math.random(),
       palletId: palletId || '', cargaKg: cargaKg || '',

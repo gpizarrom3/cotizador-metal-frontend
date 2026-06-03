@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import Toggle from '../ui/Toggle'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
@@ -360,14 +360,31 @@ function PalletCard({ pallet, onChange, onRemove, showRemove, index }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+const TIPOS_ENVIO = [
+  { id: 'pallet',          label: 'Pallet',        icon: '🏗' },
+  { id: 'caja',            label: 'Caja / Cajón',  icon: '📦' },
+  { id: 'sin_especificar', label: 'Sin especificar', icon: '—' },
+]
+
+const TIPOS_CAJA = [
+  'Caja de cartón',
+  'Cajón de madera',
+  'Crate metálico',
+  'Maletín / estuche',
+  'Otro',
+]
+
 export default function TabEmbalaje({ embalaje, setEmbalaje }) {
   const {
     activo = true,
+    tipoEnvio = 'sin_especificar',
     pallets = [],
+    caja = {},
     materiales = [], costoEnvio = '', notas = '',
   } = embalaje
 
   const set = (field) => (v) => setEmbalaje((e) => ({ ...e, [field]: v }))
+  const setCaja = (field) => (v) => setEmbalaje((e) => ({ ...e, caja: { ...(e.caja || {}), [field]: v } }))
 
   const addPallet    = () => setEmbalaje((e) => ({ ...e, pallets: [...(e.pallets || []), newPallet()] }))
   const removePallet = (id) => setEmbalaje((e) => ({ ...e, pallets: (e.pallets || []).filter((p) => p.id !== id) }))
@@ -376,24 +393,6 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
   const updateMaterial  = (id, f, v) => setEmbalaje((e) => ({ ...e, materiales: (e.materiales || []).map((m) => (m.id === id ? { ...m, [f]: v } : m)) }))
   const addMaterial     = ()          => setEmbalaje((e) => ({ ...e, materiales: [...(e.materiales || []), { id: Date.now(), nombre: '', unidad: 'unid.', cantidad: 1, precio_unitario: 0 }] }))
   const removeMaterial  = (id)        => setEmbalaje((e) => ({ ...e, materiales: (e.materiales || []).filter((m) => m.id !== id) }))
-
-  // Auto-calculate packaging material quantities from first pallet
-  const p0 = pallets[0]
-  useEffect(() => {
-    if (!p0?.palletId) return
-    const auto = calcCantidadesEmbalaje(p0.palletId, p0.largo, p0.ancho, p0.alturaCm, p0.cargaKg)
-    if (!auto) return
-    setEmbalaje((e) => ({
-      ...e,
-      materiales: (e.materiales || []).map((m) => {
-        if (m.id === 3) return { ...m, cantidad: auto.rollosFilm }
-        if (m.id === 4) return { ...m, cantidad: auto.rollosZunchoPlastico }
-        if (m.id === 5) return { ...m, cantidad: auto.cantoneras }
-        if (m.id === 6) return { ...m, cantidad: auto.rollosZunchoMetal }
-        return m
-      }),
-    }))
-  }, [p0?.palletId, p0?.alturaCm, p0?.cargaKg, p0?.largo, p0?.ancho]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPallets  = pallets.reduce((acc, p) =>
     acc + (p.materialesPallet || []).reduce((a, m) => a + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0), 0)
@@ -428,7 +427,31 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
 
       {activo && <>
 
-      {/* ── Pallets ── */}
+      {/* ── Tipo de envío ── */}
+      <div className="card">
+        <h2 className="text-lg font-semibold text-white mb-1">Tipo de envío</h2>
+        <p className="text-slate-500 text-xs mb-4">Selecciona el contenedor principal de despacho</p>
+        <div className="grid grid-cols-3 gap-2">
+          {TIPOS_ENVIO.map((t) => {
+            const isSelected = tipoEnvio === t.id
+            return (
+              <button key={t.id} onClick={() => set('tipoEnvio')(t.id)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-sm font-medium transition-all ${isSelected ? 'border-blue-500 bg-blue-600/10 text-blue-300' : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200'}`}>
+                <span className="text-lg leading-none">{t.icon}</span>
+                <span>{t.label}</span>
+                {isSelected && (
+                  <svg className="w-3.5 h-3.5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Pallets (solo si tipoEnvio === 'pallet') ── */}
+      {tipoEnvio === 'pallet' && (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Pallets</h2>
@@ -462,19 +485,78 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
           Agregar pallet
         </button>
       </div>
+      )}
+
+      {/* ── Caja / Cajón ── */}
+      {tipoEnvio === 'caja' && (
+      <div className="card">
+        <h2 className="text-lg font-semibold text-white mb-4">Caja / Cajón</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="label">Tipo de contenedor</label>
+            <select className="input-field"
+              value={caja.tipo || ''}
+              onChange={(e) => setCaja('tipo')(e.target.value)}>
+              <option value="">Seleccionar...</option>
+              {TIPOS_CAJA.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="label">Largo (cm)</label>
+              <input type="number" min="0" className="input-field" placeholder="Ej: 60"
+                value={caja.largoCm || ''}
+                onChange={(e) => setCaja('largoCm')(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Ancho (cm)</label>
+              <input type="number" min="0" className="input-field" placeholder="Ej: 40"
+                value={caja.anchoCm || ''}
+                onChange={(e) => setCaja('anchoCm')(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Alto (cm)</label>
+              <input type="number" min="0" className="input-field" placeholder="Ej: 30"
+                value={caja.altoCm || ''}
+                onChange={(e) => setCaja('altoCm')(e.target.value)} />
+            </div>
+          </div>
+          {caja.largoCm && caja.anchoCm && caja.altoCm && (
+            <p className="text-slate-500 text-xs">
+              Volumen: <span className="text-slate-300">{((Number(caja.largoCm) * Number(caja.anchoCm) * Number(caja.altoCm)) / 1000000).toFixed(3)} m³</span>
+              {' · '}Peso vol. terrestre: <span className="text-slate-300">{Math.ceil((Number(caja.largoCm) * Number(caja.anchoCm) * Number(caja.altoCm)) / 6000)} kg</span>
+            </p>
+          )}
+          <div>
+            <label className="label">Cantidad de cajas</label>
+            <input type="number" min="1" className="input-field max-w-[120px]"
+              value={caja.cantidad || 1}
+              onChange={(e) => setCaja('cantidad')(Math.max(1, Number(e.target.value)))} />
+          </div>
+          <div>
+            <label className="label">Notas del contenedor</label>
+            <input type="text" className="input-field"
+              placeholder="Ej: frágil, no apilar, requiere grúa..."
+              value={caja.notas || ''}
+              onChange={(e) => setCaja('notas')(e.target.value)} />
+          </div>
+        </div>
+      </div>
+      )}
 
       {/* ── Materiales de embalaje ── */}
       <div className="card">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Materiales de embalaje</h2>
-            {p0?.palletId && p0?.alturaCm && (
-              <p className="text-xs text-blue-400 mt-0.5">✓ Cantidades estimadas automáticamente según pallet 1</p>
-            )}
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Materiales de embalaje</h2>
           <button onClick={addMaterial} className="btn-secondary text-sm py-2">+ Agregar</button>
         </div>
-        <p className="text-slate-500 text-xs mb-4">Precios referencia mercado chileno (mayo 2026) · Edita según tu cotización real</p>
+
+        {(materiales || []).length === 0 ? (
+          <div className="border-2 border-dashed border-slate-700 rounded-xl text-center py-8 mb-2">
+            <p className="text-slate-500 text-sm">No hay materiales agregados.</p>
+            <p className="text-slate-600 text-xs mt-1">Ej: stretch film, zuncho, cantoneras, silica gel…</p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed">
             <thead>
@@ -489,9 +571,10 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
             </thead>
             <tbody>
               {(materiales || []).map((m) => (
-                <tr key={m.id} className={`border-b border-slate-700 ${Number(m.cantidad) === 0 ? 'opacity-40' : ''}`}>
+                <tr key={m.id} className="border-b border-slate-700">
                   <td className="px-4 py-2">
                     <input type="text" className="input-field text-sm py-1.5 w-full"
+                      placeholder="Nombre del material"
                       value={m.nombre} onChange={(e) => updateMaterial(m.id, 'nombre', e.target.value)} />
                   </td>
                   <td className="px-4 py-2">
@@ -530,6 +613,7 @@ export default function TabEmbalaje({ embalaje, setEmbalaje }) {
             </tfoot>
           </table>
         </div>
+        )}
       </div>
 
       {/* ── Envíos ── */}
