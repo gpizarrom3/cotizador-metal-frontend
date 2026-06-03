@@ -268,7 +268,7 @@ export default function TabServicios({ servicios, setServicios }) {
                       <span className="text-slate-500 text-xs whitespace-nowrap">kg total</span>
                       {Number(s.pesoKg) > 0 && (
                         <span className="text-emerald-400 text-xs font-medium">
-                          +{Number(s.pesoKg).toFixed(3)} kg
+                          +{Number(s.pesoKg).toFixed(2)} kg
                         </span>
                       )}
                     </div>
