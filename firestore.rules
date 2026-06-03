@@ -60,6 +60,11 @@ service cloud.firestore {
         resource.data.fromUid == request.auth.uid;
     }
 
+    // Migración temporal: leer cotizaciones del modelo institucional antiguo
+    match /empresas/{empresaId}/cotizaciones/{cotId} {
+      allow read: if request.auth != null;
+    }
+
     // Aceptaciones: el receptor crea; ambos pueden leer y eliminar
     match /aceptaciones/{conexionId} {
       allow create: if request.auth != null &&
