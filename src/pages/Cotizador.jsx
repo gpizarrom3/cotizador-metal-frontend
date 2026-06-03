@@ -197,7 +197,6 @@ export default function Cotizador() {
     setRoles(makeDefaultRoles(configDefaults))
     setServicios(makeDefaultServicios(configDefaults))
     setBases(makeDefaultBases(configDefaults))
-    setCantidadLotes(1)
     setUnidadesPorLote(1)
     setConfig(DEFAULT_CONFIG)
     setEmbalaje({ ...DEFAULT_EMBALAJE })
