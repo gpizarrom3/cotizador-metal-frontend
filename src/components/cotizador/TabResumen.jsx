@@ -163,15 +163,17 @@ export default function TabResumen({
 
       {/* Unidades */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Unidades de la cotización</h2>
-        <div className="max-w-xs">
-          <label className="label">Cantidad de unidades</label>
-          <div className="flex items-center gap-2">
-            <input type="number" min="1" className="input-field" value={unidadesPorLote}
-              onChange={(e) => setUnidadesPorLote(Math.max(1, Number(e.target.value)))} />
-            <span className="text-slate-400 text-sm whitespace-nowrap">unid.</span>
-          </div>
-          <p className="text-slate-500 text-xs mt-1">Ej: 10 bombas → calcula el costo unitario.</p>
+        <h2 className="text-lg font-semibold text-white mb-1">Alcance de la cubicación</h2>
+        <p className="text-slate-500 text-xs mb-4">
+          Los materiales, HH y servicios ingresados corresponden a la fabricación de:
+        </p>
+        <div className="flex items-center gap-3">
+          <input type="number" min="1" className="input-field max-w-[96px] text-center text-lg font-bold" value={unidadesPorLote}
+            onChange={(e) => setUnidadesPorLote(Math.max(1, Number(e.target.value)))} />
+          <span className="text-slate-300 text-sm font-medium">unidades</span>
+          {unidadesPorLote > 1 && (
+            <span className="text-slate-500 text-xs">→ se calculará el costo por unidad</span>
+          )}
         </div>
       </div>
 
