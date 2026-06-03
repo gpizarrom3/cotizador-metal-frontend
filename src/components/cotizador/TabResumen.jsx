@@ -18,7 +18,6 @@ export default function TabResumen({
   estado, setEstado,
   totalMateriales, totalHH, totalServicios, totalBases, totalEmbalaje = 0,
   bases,
-  cantidadLotes, setCantidadLotes,
   unidadesPorLote, setUnidadesPorLote,
   config, setConfigField,
   servicios,
@@ -57,9 +56,8 @@ export default function TabResumen({
   const totalNeto = costoTotal + Number(flete)
   const totalIVA = incluyeIVA ? totalNeto * 0.19 : 0
   const totalFinal = totalNeto + totalIVA
-  const costoTotalLotes = totalFinal * cantidadLotes
-  const totalUnidades = cantidadLotes * unidadesPorLote
-  const costoUnitario = totalUnidades > 0 ? costoTotalLotes / totalUnidades : 0
+  const totalUnidades = Number(unidadesPorLote) || 1
+  const costoUnitario = totalUnidades > 0 ? totalFinal / totalUnidades : 0
   const activeServicios = Object.entries(servicios).filter(([, s]) => s.activo)
 
   return (
@@ -163,28 +161,17 @@ export default function TabResumen({
         </div>
       </div>
 
-      {/* Lotes y unidades */}
+      {/* Unidades */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Lotes y unidades</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="label">Cantidad de lotes</label>
-            <div className="flex items-center gap-2">
-              <input type="number" min="1" className="input-field" value={cantidadLotes}
-                onChange={(e) => setCantidadLotes(Math.max(1, Number(e.target.value)))} />
-              <span className="text-slate-400 text-sm whitespace-nowrap">lote(s)</span>
-            </div>
-            <p className="text-slate-500 text-xs mt-1">Los costos ingresados corresponden a 1 lote.</p>
+        <h2 className="text-lg font-semibold text-white mb-4">Unidades de la cotización</h2>
+        <div className="max-w-xs">
+          <label className="label">Cantidad de unidades</label>
+          <div className="flex items-center gap-2">
+            <input type="number" min="1" className="input-field" value={unidadesPorLote}
+              onChange={(e) => setUnidadesPorLote(Math.max(1, Number(e.target.value)))} />
+            <span className="text-slate-400 text-sm whitespace-nowrap">unid.</span>
           </div>
-          <div>
-            <label className="label">Unidades por lote</label>
-            <div className="flex items-center gap-2">
-              <input type="number" min="1" className="input-field" value={unidadesPorLote}
-                onChange={(e) => setUnidadesPorLote(Math.max(1, Number(e.target.value)))} />
-              <span className="text-slate-400 text-sm whitespace-nowrap">unid.</span>
-            </div>
-            <p className="text-slate-500 text-xs mt-1">Ej: 10 bombas por lote → costo unitario.</p>
-          </div>
+          <p className="text-slate-500 text-xs mt-1">Ej: 10 bombas → calcula el costo unitario.</p>
         </div>
       </div>
 
@@ -419,21 +406,18 @@ export default function TabResumen({
       {/* Totales finales */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="card border-blue-500/40 bg-blue-600/5">
-          <p className="text-blue-300 font-semibold mb-1">
-            Total — {cantidadLotes} {cantidadLotes === 1 ? 'lote' : 'lotes'}
-          </p>
-          {cantidadLotes > 1 && (
-            <p className="text-slate-500 text-xs mb-2">{fmtM(totalFinal)} × {cantidadLotes} lotes</p>
-          )}
-          <p className="text-blue-400 font-bold text-3xl">{fmtM(costoTotalLotes)}</p>
+          <p className="text-blue-300 font-semibold mb-1">Total cotización</p>
+          <p className="text-blue-400 font-bold text-3xl">{fmtM(totalFinal)}</p>
           {incluyeIVA && <p className="text-slate-500 text-xs mt-1">IVA incluido</p>}
-          {moneda !== 'CLP' && <p className="text-slate-500 text-xs mt-1">{fmt(costoTotalLotes)} CLP</p>}
+          {moneda !== 'CLP' && <p className="text-slate-500 text-xs mt-1">{fmt(totalFinal)} CLP</p>}
         </div>
         <div className="card border-emerald-500/40 bg-emerald-600/5">
           <p className="text-emerald-300 font-semibold mb-1">Costo por unidad</p>
-          <p className="text-slate-500 text-xs mb-2">
-            {fmtM(costoTotalLotes)} ÷ {totalUnidades} unid.
-          </p>
+          {totalUnidades > 1 && (
+            <p className="text-slate-500 text-xs mb-2">
+              {fmtM(totalFinal)} ÷ {totalUnidades} unid.
+            </p>
+          )}
           <p className="text-emerald-400 font-bold text-3xl">{fmtM(costoUnitario)}</p>
           {moneda !== 'CLP' && <p className="text-slate-500 text-xs mt-1">{fmt(costoUnitario)} CLP</p>}
         </div>
@@ -442,7 +426,7 @@ export default function TabResumen({
       {/* Peso estimado */}
       {(pesoMateriales > 0 || pesoServicios > 0) && (() => {
         const pesoTotal   = pesoMateriales + pesoServicios
-        const totalUnid   = (Number(cantidadLotes) || 1) * (Number(unidadesPorLote) || 1)
+        const totalUnid   = Number(unidadesPorLote) || 1
         const pesoUnitario = totalUnid > 0 ? pesoTotal / totalUnid : 0
         return (
           <div className="card border-emerald-500/20 bg-emerald-600/5">

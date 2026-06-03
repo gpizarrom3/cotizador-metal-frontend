@@ -34,9 +34,8 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
   const totalNeto          = costoTotal + Number(flete)
   const totalIVA           = incluyeIVA ? totalNeto * 0.19 : 0
   const totalFinal         = totalNeto + totalIVA
-  const totalUnidades      = cantidadLotes * unidadesPorLote
-  const costoUnitario      = totalUnidades > 0 ? (totalFinal * cantidadLotes) / totalUnidades : 0
-  const costoPorLote       = totalFinal
+  const totalUnidades      = Number(unidadesPorLote) || 1
+  const costoUnitario      = totalUnidades > 0 ? totalFinal / totalUnidades : 0
 
   const activeServicios    = Object.entries(servicios).filter(([, s]) => s.activo)
   const embalajeMatActivos = (embalaje.materiales || []).filter(m => Number(m.cantidad) > 0)
@@ -89,9 +88,7 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
         <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px 14px' }}>
           <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '3px' }}>Producción</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '11px' }}><strong>Lotes:</strong> {cantidadLotes}</span>
-            <span style={{ fontSize: '11px' }}><strong>Unid./lote:</strong> {unidadesPorLote}</span>
-            <span style={{ fontSize: '11px' }}><strong>Total unidades:</strong> {totalUnidades}</span>
+            <span style={{ fontSize: '11px' }}><strong>Unidades:</strong> {totalUnidades}</span>
           </div>
         </div>
       </div>
@@ -319,27 +316,19 @@ export default function FichaCostosPrintView({ empresa = {}, cot }) {
             <SummaryRow label="NETO"     value={fmt(totalNeto)} bold />
             {incluyeIVA && <SummaryRow label="IVA (19%)" value={fmt(totalIVA)} />}
             <tr style={{ background: '#991b1b' }}>
-              <td style={{ padding: '8px 12px', color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>
-                TOTAL {cantidadLotes > 1 ? `(${cantidadLotes} lotes)` : ''}
-              </td>
+              <td style={{ padding: '8px 12px', color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>TOTAL</td>
               <td style={{ padding: '8px 12px', color: '#fca5a5', fontWeight: 'bold', fontSize: '14px', textAlign: 'right' }}>
-                {fmt(totalFinal * cantidadLotes)}
+                {fmt(totalFinal)}
               </td>
             </tr>
           </tbody>
         </table>
 
         {/* Costo unitario */}
-        {(totalUnidades > 1 || cantidadLotes > 1) && (
+        {totalUnidades > 1 && (
           <div style={{ marginTop: '10px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '10px 14px' }}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#9a3412', textTransform: 'uppercase', marginBottom: '6px' }}>Desglose por unidad</div>
             <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
-              {cantidadLotes > 1 && (
-                <div>
-                  <div style={{ color: '#64748b', fontSize: '10px' }}>Costo por lote</div>
-                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#1e293b' }}>{fmt(costoPorLote)}</div>
-                </div>
-              )}
               {totalUnidades > 1 && (
                 <div>
                   <div style={{ color: '#64748b', fontSize: '10px' }}>Costo por unidad ({totalUnidades} und.)</div>

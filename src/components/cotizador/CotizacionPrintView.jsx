@@ -41,8 +41,8 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
   const totalNeto   = costoTotal + Number(flete)
   const totalIVA    = incluyeIVA ? totalNeto * 0.19 : 0
   const totalFinal  = totalNeto + totalIVA
-  const totalUnidades  = cantidadLotes * unidadesPorLote
-  const costoUnitario  = totalUnidades > 0 ? totalFinal * cantidadLotes / totalUnidades : 0
+  const totalUnidades  = Number(unidadesPorLote) || 1
+  const costoUnitario  = totalUnidades > 0 ? totalFinal / totalUnidades : 0
   const activeServicios = Object.entries(servicios).filter(([, s]) => s.activo)
 
   const tc = moneda !== 'CLP' ? Number(tipoCambio) || 1 : 1
@@ -312,10 +312,8 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
           </div>
           {incluyeIVA && <CostRow label="IVA (19%)" value={fmtM(totalIVA)} />}
           <div style={{ background: '#1e3a5f', borderRadius: '4px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>
-              TOTAL {cantidadLotes > 1 ? `(${cantidadLotes} lotes)` : ''}
-            </span>
-            <span style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '15px' }}>{fmtM(totalFinal * cantidadLotes)}</span>
+            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>TOTAL</span>
+            <span style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '15px' }}>{fmtM(totalFinal)}</span>
           </div>
           {totalUnidades > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#64748b' }}>

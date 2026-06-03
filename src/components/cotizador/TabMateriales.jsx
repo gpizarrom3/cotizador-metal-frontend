@@ -526,7 +526,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, onUpdateNombre, onRemove, 
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export default function TabMateriales({ materiales, setMateriales, cantidadLotes = 1, unidadesPorLote = 1 }) {
+export default function TabMateriales({ materiales, setMateriales }) {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm]   = useState('')
   const [searching, setSearching]     = useState(false)

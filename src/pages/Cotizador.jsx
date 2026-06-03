@@ -145,7 +145,7 @@ export default function Cotizador() {
   const [roles,          setRoles]          = useState(() => getDraft().roles          ?? makeDefaultRoles(getConfigDefaults()))
   const [servicios,      setServicios]      = useState(() => mergeServicios(getDraft().servicios))
   const [bases,          setBases]          = useState(() => getDraft().bases          ?? makeDefaultBases(getConfigDefaults()))
-  const [cantidadLotes,  setCantidadLotes]  = useState(() => getDraft().cantidadLotes ?? 1)
+  const cantidadLotes = 1
   const [unidadesPorLote,setUnidadesPorLote]= useState(() => getDraft().unidadesPorLote ?? 1)
   const [config,         setConfig]         = useState(() => ({ ...DEFAULT_CONFIG, ...(getDraft().config ?? {}) }))
   const [embalaje,       setEmbalaje]       = useState(() => migrarEmbalaje(getDraft().embalaje))
@@ -234,7 +234,6 @@ export default function Cotizador() {
     setServicios(p.servicios || makeDefaultServicios())
     setBases(p.bases || makeDefaultBases(configDefaults))
     setConfig((c) => ({ ...c, ...(p.config || {}) }))
-    setCantidadLotes(p.cantidadLotes || 1)
     setUnidadesPorLote(p.unidadesPorLote || 1)
     setShowPlantillas(false)
     setShowGuardarPlantilla(false)
@@ -646,7 +645,7 @@ export default function Cotizador() {
         ))}
       </div>
 
-      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} cantidadLotes={cantidadLotes} unidadesPorLote={unidadesPorLote} />}
+      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
       {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
@@ -665,7 +664,6 @@ export default function Cotizador() {
           totalMateriales={totalMateriales} totalHH={totalHH}
           totalServicios={totalServicios} totalBases={totalBases} totalEmbalaje={totalEmbalaje}
           bases={bases}
-          cantidadLotes={cantidadLotes} setCantidadLotes={setCantidadLotes}
           unidadesPorLote={unidadesPorLote} setUnidadesPorLote={setUnidadesPorLote}
           config={config} setConfigField={setConfigField}
           servicios={servicios}
