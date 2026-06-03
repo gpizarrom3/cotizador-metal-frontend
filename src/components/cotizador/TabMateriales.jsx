@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { obtenerCatalogo } from '../../firebase/firestore'
 
@@ -17,52 +17,96 @@ export const emptySubproducto = (nombre = 'MATERIALES') => ({
 
 // ── Calculadora de peso ───────────────────────────────────────────────────────
 const MATERIALES_PESO = [
-  { label: 'Acero A36',        densidad: 7850 },
-  { label: 'Acero A572 Gr50',  densidad: 7850 },
-  { label: 'Acero Inox 304',   densidad: 7900 },
-  { label: 'Acero Inox 316',   densidad: 7980 },
-  { label: 'Aluminio 6061',    densidad: 2700 },
-  { label: 'Aluminio 5052',    densidad: 2680 },
-  { label: 'Cobre',            densidad: 8960 },
-  { label: 'Bronce',           densidad: 8500 },
-  { label: 'Fundición gris',   densidad: 7200 },
+  // Aceros al carbono
+  { label: 'Acero A36',                densidad: 7850 },
+  { label: 'Acero A572 Gr50',          densidad: 7850 },
+  { label: 'Acero SAE 1020',           densidad: 7860 },
+  { label: 'Acero SAE 1045',           densidad: 7860 },
+  { label: 'Acero SAE 4140',           densidad: 7850 },
+  { label: 'Acero Hardox 400',         densidad: 7800 },
+  { label: 'Acero galvanizado',        densidad: 7850 },
+  // Aceros inoxidables
+  { label: 'Acero Inox 304',           densidad: 7900 },
+  { label: 'Acero Inox 316',           densidad: 7980 },
+  { label: 'Acero Inox 430',           densidad: 7700 },
+  { label: 'Acero Inox 2205 (Duplex)', densidad: 7805 },
+  // Aluminio
+  { label: 'Aluminio 1100',            densidad: 2710 },
+  { label: 'Aluminio 3003',            densidad: 2730 },
+  { label: 'Aluminio 5052',            densidad: 2680 },
+  { label: 'Aluminio 6061',            densidad: 2700 },
+  { label: 'Aluminio 6063',            densidad: 2690 },
+  { label: 'Aluminio 7075',            densidad: 2810 },
+  // Cobre y aleaciones
+  { label: 'Cobre electrolítico',      densidad: 8960 },
+  { label: 'Bronce SAE 660',           densidad: 8900 },
+  { label: 'Latón CuZn37',            densidad: 8440 },
+  // Otros metales industriales
+  { label: 'Titanio Gr1',             densidad: 4510 },
+  { label: 'Titanio Gr5 (Ti-6Al-4V)', densidad: 4430 },
+  { label: 'Fundición gris GG20',     densidad: 7200 },
+  { label: 'Fundición nodular GGG40', densidad: 7100 },
+  { label: 'Zinc',                    densidad: 7133 },
+  { label: 'Plomo',                   densidad: 11340 },
+  { label: 'Níquel 200',              densidad: 8900 },
+  { label: 'Magnesio AZ31',           densidad: 1770 },
 ]
 
 const GEOMETRIAS = [
-  { id: 'plancha',       label: 'Plancha / Lámina',     campos: ['largo', 'ancho', 'espesor'] },
-  { id: 'barra_redonda', label: 'Barra redonda',        campos: ['diametro', 'largo'] },
-  { id: 'barra_cuad',   label: 'Barra cuadrada',       campos: ['lado', 'largo'] },
-  { id: 'barra_plana',  label: 'Barra plana / Rect.',  campos: ['ancho', 'espesor', 'largo'] },
-  { id: 'tubo_redondo', label: 'Tubo redondo',         campos: ['diametro_ext', 'espesor_pared', 'largo'] },
-  { id: 'tubo_cuad',    label: 'Tubo cuadrado',        campos: ['lado_ext', 'espesor_pared', 'largo'] },
-  { id: 'perfil_l',     label: 'Perfil L (Ángulo)',    campos: ['ala1', 'ala2', 'espesor', 'largo'] },
+  { id: 'plancha',       label: 'Plancha / Lámina',    campos: ['largo', 'ancho', 'espesor'] },
+  { id: 'barra_redonda', label: 'Barra redonda',       campos: ['diametro', 'largo'] },
+  { id: 'barra_cuad',    label: 'Barra cuadrada',      campos: ['lado', 'largo'] },
+  { id: 'barra_plana',   label: 'Barra plana / Rect.', campos: ['ancho', 'espesor', 'largo'] },
+  { id: 'barra_hex',     label: 'Barra hexagonal',     campos: ['diagonal', 'largo'] },
+  { id: 'tubo_redondo',  label: 'Tubo redondo',        campos: ['diametro_ext', 'espesor_pared', 'largo'] },
+  { id: 'tubo_cuad',     label: 'Tubo cuadrado',       campos: ['lado_ext', 'espesor_pared', 'largo'] },
+  { id: 'tubo_rect',     label: 'Tubo rectangular',    campos: ['largo_ext', 'ancho_ext', 'espesor_pared', 'largo'] },
+  { id: 'perfil_l',      label: 'Perfil L (Ángulo)',   campos: ['ala1', 'ala2', 'espesor', 'largo'] },
+  { id: 'perfil_c',      label: 'Perfil C / U (Canal)',campos: ['alto', 'ala', 'espesor', 'largo'] },
+  { id: 'perfil_t',      label: 'Perfil T',            campos: ['ala', 'alto', 'espesor', 'largo'] },
+  { id: 'viga_i',        label: 'Viga I / H (IPE/HEB)',campos: ['alto', 'ala', 'esp_alma', 'esp_brida', 'largo'] },
 ]
 
 const CAMPO_LABELS = {
   largo: 'Largo (mm)', ancho: 'Ancho (mm)', espesor: 'Espesor (mm)',
-  diametro: 'Diámetro (mm)', lado: 'Lado (mm)',
-  diametro_ext: 'Diám. ext (mm)', espesor_pared: 'Espesor pared (mm)',
-  lado_ext: 'Lado ext (mm)',
+  diametro: 'Diámetro (mm)', lado: 'Lado (mm)', diagonal: 'Entre caras (mm)',
+  diametro_ext: 'Diám. ext (mm)', espesor_pared: 'Esp. pared (mm)',
+  lado_ext: 'Lado ext (mm)', largo_ext: 'Largo ext (mm)', ancho_ext: 'Ancho ext (mm)',
   ala1: 'Ala 1 (mm)', ala2: 'Ala 2 (mm)',
+  alto: 'Alto (mm)', ala: 'Ala (mm)',
+  esp_alma: 'Esp. alma (mm)', esp_brida: 'Esp. brida (mm)',
 }
 
 function calcPesoKg(geomId, dims, densidad) {
   const d = (k) => Number(dims[k]) || 0
-  const rho = densidad / 1e9
+  const rho = densidad / 1e9  // kg/mm³
   let vol = 0
-  if (geomId === 'plancha')       vol = d('largo') * d('ancho') * d('espesor')
-  if (geomId === 'barra_redonda') vol = Math.PI / 4 * d('diametro') ** 2 * d('largo')
-  if (geomId === 'barra_cuad')    vol = d('lado') ** 2 * d('largo')
-  if (geomId === 'barra_plana')   vol = d('ancho') * d('espesor') * d('largo')
-  if (geomId === 'tubo_redondo') {
-    const ri = d('diametro_ext') / 2 - d('espesor_pared')
-    vol = Math.PI * (Math.pow(d('diametro_ext') / 2, 2) - Math.pow(Math.max(0, ri), 2)) * d('largo')
+  switch (geomId) {
+    case 'plancha':       vol = d('largo') * d('ancho') * d('espesor'); break
+    case 'barra_redonda': vol = Math.PI / 4 * d('diametro') ** 2 * d('largo'); break
+    case 'barra_cuad':    vol = d('lado') ** 2 * d('largo'); break
+    case 'barra_plana':   vol = d('ancho') * d('espesor') * d('largo'); break
+    // hex: área = (√3/2) × d² donde d = distancia entre caras (across flats)
+    case 'barra_hex':     vol = (Math.sqrt(3) / 2) * d('diagonal') ** 2 * d('largo'); break
+    case 'tubo_redondo': {
+      const ri = Math.max(0, d('diametro_ext') / 2 - d('espesor_pared'))
+      vol = Math.PI * ((d('diametro_ext') / 2) ** 2 - ri ** 2) * d('largo'); break
+    }
+    case 'tubo_cuad': {
+      const li = Math.max(0, d('lado_ext') - 2 * d('espesor_pared'))
+      vol = (d('lado_ext') ** 2 - li ** 2) * d('largo'); break
+    }
+    case 'tubo_rect': {
+      const li = Math.max(0, d('largo_ext') - 2 * d('espesor_pared'))
+      const wi = Math.max(0, d('ancho_ext') - 2 * d('espesor_pared'))
+      vol = (d('largo_ext') * d('ancho_ext') - li * wi) * d('largo'); break
+    }
+    case 'perfil_l': vol = (d('ala1') + d('ala2') - d('espesor')) * d('espesor') * d('largo'); break
+    case 'perfil_c': vol = (d('alto') + 2 * Math.max(0, d('ala') - d('espesor'))) * d('espesor') * d('largo'); break
+    case 'perfil_t': vol = (d('ala') + Math.max(0, d('alto') - d('espesor'))) * d('espesor') * d('largo'); break
+    case 'viga_i':   vol = (2 * d('ala') * d('esp_brida') + Math.max(0, d('alto') - 2 * d('esp_brida')) * d('esp_alma')) * d('largo'); break
+    default: break
   }
-  if (geomId === 'tubo_cuad') {
-    const li = d('lado_ext') - 2 * d('espesor_pared')
-    vol = (d('lado_ext') ** 2 - Math.max(0, li) ** 2) * d('largo')
-  }
-  if (geomId === 'perfil_l') vol = (d('ala1') + d('ala2') - d('espesor')) * d('espesor') * d('largo')
   return vol * rho
 }
 
@@ -219,9 +263,76 @@ function PesoCalculadora({ onAgregar }) {
   )
 }
 
+// ── Peso por fila ─────────────────────────────────────────────────────────────
+function PesoSubRow({ item, onUpdate }) {
+  const pd  = item.pesoData || { geomId: 'plancha', dims: {}, densidadIdx: 0 }
+  const geom = GEOMETRIAS.find(g => g.id === pd.geomId) || GEOMETRIAS[0]
+  const mat  = MATERIALES_PESO[pd.densidadIdx ?? 0]
+  const pesoUnit  = calcPesoKg(pd.geomId, pd.dims || {}, mat.densidad)
+  const pesoTotal = pesoUnit * (Number(item.cantidad) || 1)
+
+  const upd    = (changes) => onUpdate('pesoData', { ...pd, ...changes })
+  const setDim = (campo, v) => upd({ dims: { ...(pd.dims || {}), [campo]: v } })
+
+  return (
+    <div className="mb-2 bg-slate-900/60 border border-emerald-500/20 rounded-xl p-3 space-y-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+        <div>
+          <p className="label text-xs mb-1">Tipo de perfil</p>
+          <select className="input-field text-xs py-1.5" value={pd.geomId}
+            onChange={e => upd({ geomId: e.target.value, dims: {} })}>
+            {GEOMETRIAS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+          </select>
+        </div>
+        {geom.campos.map(campo => (
+          <div key={campo}>
+            <p className="label text-xs mb-1">{CAMPO_LABELS[campo]}</p>
+            <input type="number" min="0" className="input-field text-xs py-1.5" placeholder="0"
+              value={(pd.dims || {})[campo] || ''}
+              onChange={e => setDim(campo, e.target.value)} />
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex-1 min-w-52">
+          <p className="label text-xs mb-1">Material (densidad)</p>
+          <select className="input-field text-xs py-1.5" value={pd.densidadIdx ?? 0}
+            onChange={e => upd({ densidadIdx: Number(e.target.value) })}>
+            {MATERIALES_PESO.map((m, i) => (
+              <option key={i} value={i}>{m.label} — {m.densidad} kg/m³</option>
+            ))}
+          </select>
+        </div>
+        {pesoUnit > 0 ? (
+          <div className="flex items-center gap-2 text-sm bg-emerald-900/20 border border-emerald-500/20 px-3 py-2 rounded-lg">
+            <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+            </svg>
+            <span className="text-emerald-300 font-semibold">{pesoUnit.toFixed(3)} kg/pieza</span>
+            {Number(item.cantidad) > 1 && (
+              <span className="text-slate-400 text-xs">
+                × {item.cantidad} = <span className="text-white font-medium">{pesoTotal.toFixed(3)} kg</span>
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="text-slate-600 text-xs italic">Ingresa dimensiones para calcular el peso</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Tarjeta de sub-producto ───────────────────────────────────────────────────
 function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem }) {
   const total = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+  const [pesosOpen, setPesosOpen] = useState(new Set())
+  const togglePeso = (id) => setPesosOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const pesoGrupo = (sp.items || []).reduce((acc, m) => {
+    if (!m.pesoData) return acc
+    const mat = MATERIALES_PESO[m.pesoData.densidadIdx ?? 0]
+    return acc + calcPesoKg(m.pesoData.geomId, m.pesoData.dims || {}, mat.densidad) * (Number(m.cantidad) || 1)
+  }, 0)
 
   return (
     <div className="card space-y-3">
@@ -251,7 +362,7 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
               <th className="text-right px-3 py-3 w-28">Cant.</th>
               <th className="text-right px-3 py-3 w-40">P. Unit.</th>
               <th className="text-right px-3 py-3 w-28">Total</th>
-              <th className="px-3 py-3 rounded-r-lg w-8" />
+              <th className="px-2 py-3 rounded-r-lg w-16 text-center text-slate-500 font-normal text-xs">⚖ Peso</th>
             </tr>
           </thead>
           <tbody>
@@ -262,33 +373,64 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
                 </td>
               </tr>
             ) : (
-              (sp.items || []).map((m) => (
-                <tr key={m.id} className="border-b border-slate-700">
-                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} /></td>
-                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
-                  <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
-                  <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-full" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <input type="number" min="0" className="input-field py-1.5 text-sm text-right min-w-0 flex-1" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} />
-                      <PrecioAviso aviso={detectarAviso(m.nombre, m.formato, m.precio_unitario)} />
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
-                  <td className="px-3 py-2">
-                    <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </td>
-                </tr>
-              ))
+              (sp.items || []).map((m) => {
+                const pesoCalc = m.pesoData
+                  ? calcPesoKg(m.pesoData.geomId, m.pesoData.dims || {}, MATERIALES_PESO[m.pesoData.densidadIdx ?? 0].densidad)
+                  : 0
+                const hasWeight = pesoCalc > 0
+                const open = pesosOpen.has(m.id)
+                return (
+                  <Fragment key={m.id}>
+                    <tr className="border-b border-slate-700">
+                      <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} /></td>
+                      <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Proveedor" value={m.proveedor} onChange={e => onUpdateItem(m.id, 'proveedor', e.target.value)} /></td>
+                      <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Ej: kg, m" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
+                      <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-full" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <input type="number" min="0" className="input-field py-1.5 text-sm text-right min-w-0 flex-1" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} />
+                          <PrecioAviso aviso={detectarAviso(m.nombre, m.formato, m.precio_unitario)} />
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => togglePeso(m.id)}
+                            title={hasWeight ? `${(pesoCalc * (Number(m.cantidad) || 1)).toFixed(2)} kg` : 'Calcular peso'}
+                            className={`transition-colors p-0.5 rounded ${open ? 'text-emerald-400' : hasWeight ? 'text-emerald-500 hover:text-emerald-300' : 'text-slate-600 hover:text-emerald-400'}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                            </svg>
+                          </button>
+                          <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr className="border-b border-slate-700/40">
+                        <td colSpan={7} className="px-3 pt-0 pb-1">
+                          <PesoSubRow item={m} onUpdate={(field, val) => onUpdateItem(m.id, field, val)} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })
             )}
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-600">
               <td colSpan={5} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
               <td className="px-3 py-2 text-right text-blue-400 font-semibold">{fmt(total)}</td>
-              <td />
+              <td className="px-3 py-2 text-right">
+                {pesoGrupo > 0 && (
+                  <span className="text-emerald-500 text-xs font-medium">{pesoGrupo.toFixed(2)} kg</span>
+                )}
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -299,7 +441,7 @@ function SubproductoCard({ sp, isOnly, onUpdateNombre, onRemove, onAddItem, onRe
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export default function TabMateriales({ materiales, setMateriales }) {
+export default function TabMateriales({ materiales, setMateriales, cantidadLotes = 1, unidadesPorLote = 1 }) {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm]   = useState('')
   const [searching, setSearching]     = useState(false)
@@ -374,6 +516,15 @@ export default function TabMateriales({ materiales, setMateriales }) {
   }
 
   const totalGeneral = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+
+  // Peso total estimado (solo ítems con dimensiones calculadas)
+  const pesoTotalEstructura = materiales.flatMap(sp => sp.items || []).reduce((acc, m) => {
+    if (!m.pesoData) return acc
+    const mat = MATERIALES_PESO[m.pesoData.densidadIdx ?? 0]
+    return acc + calcPesoKg(m.pesoData.geomId, m.pesoData.dims || {}, mat.densidad) * (Number(m.cantidad) || 1)
+  }, 0)
+  const unidadesTotales   = (Number(cantidadLotes) || 1) * (Number(unidadesPorLote) || 1)
+  const pesoUnitario      = pesoTotalEstructura / unidadesTotales
 
   return (
     <div className="space-y-6">
@@ -519,6 +670,31 @@ export default function TabMateriales({ materiales, setMateriales }) {
         Agregar grupo de materiales
         <span className="text-amber-600/60 text-xs font-normal">(Material Base, Pintura, EPP, etc.)</span>
       </button>
+
+      {/* Resumen de peso estimado */}
+      {pesoTotalEstructura > 0 && (
+        <div className="card border-emerald-500/20 bg-slate-800">
+          <div className="flex items-center gap-2 mb-3">
+            <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+            </svg>
+            <h3 className="text-sm font-semibold text-emerald-400">Peso estimado de la estructura</h3>
+          </div>
+          <div className="flex gap-8 flex-wrap">
+            <div>
+              <p className="text-slate-500 text-xs mb-0.5">Peso total (todos los lotes)</p>
+              <p className="text-white font-bold text-xl">{pesoTotalEstructura.toFixed(2)} <span className="text-slate-400 text-sm font-normal">kg</span></p>
+            </div>
+            {unidadesTotales > 1 && (
+              <div>
+                <p className="text-slate-500 text-xs mb-0.5">Peso por unidad ({unidadesTotales} un.)</p>
+                <p className="text-emerald-400 font-bold text-xl">{pesoUnitario.toFixed(2)} <span className="text-emerald-600 text-sm font-normal">kg/un.</span></p>
+              </div>
+            )}
+          </div>
+          <p className="text-slate-700 text-xs mt-2">* Solo incluye materiales con dimensiones calculadas (ícono ⚖ en verde)</p>
+        </div>
+      )}
 
       {/* Total general (solo si hay múltiples sub-productos) */}
       {materiales.length > 1 && (

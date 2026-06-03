@@ -641,7 +641,7 @@ export default function Cotizador() {
         ))}
       </div>
 
-      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} />}
+      {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} cantidadLotes={cantidadLotes} unidadesPorLote={unidadesPorLote} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
       {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
