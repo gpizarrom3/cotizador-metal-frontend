@@ -74,5 +74,11 @@ service cloud.firestore {
       );
     }
 
+    // Suscripciones: solo el dueño puede leer, escritura solo via Admin SDK (webhook)
+    match /suscripciones/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
   }
 }

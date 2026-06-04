@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../hooks/useTheme'
 import { useUserData } from '../../contexts/UserDataContext'
 import { suscribirInvitacionesPendientes } from '../../firebase/firestore'
+import { usePlan } from '../../hooks/usePlan'
 
 const navItems = [
   {
@@ -86,6 +87,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
   const { empresa } = useUserData()
+  const { isPro } = usePlan()
   const logoEmpresa = empresa?.logo || null
   const [invPendientes, setInvPendientes] = useState(0)
 
@@ -187,7 +189,25 @@ export default function Sidebar({ mobileOpen, onClose }) {
             </p>
             <p className="text-stone-500 text-xs truncate">{user?.email}</p>
           </div>
+          {isPro ? (
+            <span className="text-[10px] font-bold bg-blue-600/30 text-blue-400 border border-blue-500/40 px-2 py-0.5 rounded-full flex-shrink-0">PRO</span>
+          ) : (
+            <span className="text-[10px] font-bold bg-stone-700 text-stone-400 border border-stone-600 px-2 py-0.5 rounded-full flex-shrink-0">FREE</span>
+          )}
         </div>
+
+        {!isPro && (
+          <NavLink
+            to="/planes"
+            onClick={handleNavClick}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 border border-blue-500/30 hover:border-blue-500/60 transition-colors mb-2"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Actualizar a Pro
+          </NavLink>
+        )}
 
         {/* Toggle modo oscuro/claro */}
         <button

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import TabMateriales, { emptyMaterial, emptySubproducto, calcPesoFromPesoData } from '../components/cotizador/TabMateriales'
 import TabConsumibles, { DEFAULT_CONSUMIBLES } from '../components/cotizador/TabConsumibles'
@@ -11,6 +12,7 @@ import CotizacionPrintView from '../components/cotizador/CotizacionPrintView'
 import FichaCostosPrintView from '../components/cotizador/FichaCostosPrintView'
 import MecanicoIA from '../components/cotizador/MecanicoIA'
 import { useAuth } from '../hooks/useAuth'
+import { usePlan } from '../hooks/usePlan'
 import {
   guardarCotizacion, actualizarCotizacion, obtenerClientes,
   guardarPlantilla as guardarPlantillaFS,
@@ -114,6 +116,8 @@ const migrarEmbalaje = (emb) => {
 
 export default function Cotizador() {
   const { user } = useAuth()
+  const { isPro } = usePlan()
+  const navigate = useNavigate()
   const { empresa, configDefaults } = useUserData()
   const printRef  = useRef(null)
 
@@ -160,6 +164,11 @@ export default function Cotizador() {
     if (!user) return
     obtenerClientes(user.uid).then(setClientes).catch(() => {})
   }, [user])
+
+  // Si el usuario es free y tiene modo avanzado guardado, lo resetea a estándar
+  useEffect(() => {
+    if (!isPro && modo === 'avanzado') setModo('estandar')
+  }, [isPro])
 
   const [saving,      setSaving]      = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -541,9 +550,15 @@ export default function Cotizador() {
                 Estándar
               </button>
               <button
-                onClick={() => setModo('avanzado')}
-                className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${modo === 'avanzado' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                onClick={() => isPro ? setModo('avanzado') : navigate('/planes')}
+                className={`text-xs px-3 py-1 rounded-full transition-colors font-medium flex items-center gap-1 ${modo === 'avanzado' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                title={!isPro ? 'Disponible en plan Pro' : undefined}
               >
+                {!isPro && (
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                )}
                 Avanzado
               </button>
             </div>

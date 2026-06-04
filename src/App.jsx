@@ -11,6 +11,7 @@ import Configuracion from './pages/Configuracion'
 import Conexiones from './pages/Conexiones'
 import Catalogo from './pages/Catalogo'
 import CatalogoServicios from './pages/CatalogoServicios'
+import Planes from './pages/Planes'
 import PrivateRoute from './components/PrivateRoute'
 import Terminos from './pages/Terminos'
 import Privacidad from './pages/Privacidad'
@@ -56,6 +57,10 @@ function App() {
         <Route
           path="/configuracion"
           element={<PrivateRoute><Configuracion /></PrivateRoute>}
+        />
+        <Route
+          path="/planes"
+          element={<PrivateRoute><Planes /></PrivateRoute>}
         />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
