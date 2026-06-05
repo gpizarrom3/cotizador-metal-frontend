@@ -149,7 +149,7 @@ export default function Planes() {
               )}
             </div>
             <div className="mb-5">
-              <span className="text-3xl font-bold text-white">Consultar</span>
+              <span className="text-3xl font-bold text-white">$12 USD</span>
               <span className="text-slate-500 text-sm ml-1">/ mes</span>
             </div>
             <ul className="space-y-2.5 mb-6">
