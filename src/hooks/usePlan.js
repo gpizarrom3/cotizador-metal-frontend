@@ -19,7 +19,7 @@ export function usePlan() {
       ref,
       (snap) => {
         const data = snap.data()
-        const isActive = data?.status === 'active' || data?.status === 'trialing'
+        const isActive = data?.status === 'authorized' || data?.status === 'active' || data?.status === 'trialing'
         setPlan(isActive ? 'pro' : 'free')
         setLoading(false)
       },

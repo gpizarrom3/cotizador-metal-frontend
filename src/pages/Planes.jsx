@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { usePlan } from '../hooks/usePlan'
@@ -7,20 +7,21 @@ import { usePlan } from '../hooks/usePlan'
 export default function Planes() {
   const { user } = useAuth()
   const { plan, isPro } = usePlan()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [loadingCheckout, setLoadingCheckout] = useState(false)
-  const [loadingPortal, setLoadingPortal] = useState(false)
+  const [loadingCancel, setLoadingCancel]     = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [error, setError] = useState('')
+  const [cancelOk, setCancelOk] = useState(false)
 
-  const success = searchParams.get('success') === '1'
+  const success  = searchParams.get('success') === '1'
   const canceled = searchParams.get('canceled') === '1'
 
   const handleUpgrade = async () => {
     setLoadingCheckout(true)
     setError('')
     try {
-      const res = await fetch('/api/create-checkout-session', {
+      const res = await fetch('/api/create-mp-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user.uid, email: user.email }),
@@ -38,29 +39,30 @@ export default function Planes() {
     }
   }
 
-  const handlePortal = async () => {
-    setLoadingPortal(true)
+  const handleCancelSubscription = async () => {
+    setLoadingCancel(true)
     setError('')
     try {
-      const res = await fetch('/api/create-portal-session', {
+      const res = await fetch('/api/cancel-mp-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user.uid }),
       })
       const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
+      if (data.ok) {
+        setShowCancelConfirm(false)
+        setCancelOk(true)
       } else {
-        setError(data.error || 'Error al abrir el portal.')
+        setError(data.error || 'Error al cancelar la suscripción.')
       }
     } catch {
       setError('Error de conexión. Intenta nuevamente.')
     } finally {
-      setLoadingPortal(false)
+      setLoadingCancel(false)
     }
   }
 
-  const freatures = [
+  const features = [
     { label: 'Cotizador modo Estándar', free: true, pro: true },
     { label: 'Cotizador modo Avanzado (embalaje, pallets)', free: false, pro: true },
     { label: 'Historial de cotizaciones', free: true, pro: true },
@@ -95,6 +97,11 @@ export default function Planes() {
             <p className="text-sm">Pago cancelado. Puedes intentarlo nuevamente cuando quieras.</p>
           </div>
         )}
+        {cancelOk && (
+          <div className="mb-6 bg-slate-800 border border-slate-600 text-slate-300 rounded-xl px-5 py-4 text-center">
+            <p className="text-sm">Tu suscripción fue cancelada. Seguirás con el plan Free.</p>
+          </div>
+        )}
         {error && (
           <div className="mb-6 bg-red-900/30 border border-red-500/50 text-red-400 rounded-xl px-5 py-4 text-center text-sm">
             {error}
@@ -117,7 +124,7 @@ export default function Planes() {
               <span className="text-slate-500 text-sm ml-1">/ siempre gratis</span>
             </div>
             <ul className="space-y-2.5 mb-6">
-              {freatures.filter(f => f.free).map((f) => (
+              {features.filter(f => f.free).map((f) => (
                 <li key={f.label} className="flex items-center gap-2.5 text-sm">
                   <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -150,11 +157,11 @@ export default function Planes() {
               )}
             </div>
             <div className="mb-5">
-              <span className="text-3xl font-bold text-white">$12 USD</span>
+              <span className="text-3xl font-bold text-white">$14.990 CLP</span>
               <span className="text-slate-500 text-sm ml-1">/ mes</span>
             </div>
             <ul className="space-y-2.5 mb-6">
-              {freatures.filter(f => f.pro).map((f) => (
+              {features.filter(f => f.pro).map((f) => (
                 <li key={f.label} className="flex items-center gap-2.5 text-sm">
                   <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -165,13 +172,37 @@ export default function Planes() {
             </ul>
 
             {isPro ? (
-              <button
-                onClick={handlePortal}
-                disabled={loadingPortal}
-                className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors disabled:opacity-60"
-              >
-                {loadingPortal ? 'Cargando...' : 'Gestionar suscripción'}
-              </button>
+              <div className="space-y-2">
+                {!showCancelConfirm ? (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
+                  >
+                    Cancelar suscripción
+                  </button>
+                ) : (
+                  <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 space-y-3">
+                    <p className="text-red-300 text-sm font-medium text-center">¿Confirmas la cancelación?</p>
+                    <p className="text-slate-400 text-xs text-center">Perderás el acceso a las funciones Pro al finalizar el período actual.</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowCancelConfirm(false)}
+                        disabled={loadingCancel}
+                        className="flex-1 py-2 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors disabled:opacity-50"
+                      >
+                        No, mantener
+                      </button>
+                      <button
+                        onClick={handleCancelSubscription}
+                        disabled={loadingCancel}
+                        className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-700 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
+                      >
+                        {loadingCancel ? 'Cancelando...' : 'Sí, cancelar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <button
                 onClick={handleUpgrade}
@@ -185,7 +216,7 @@ export default function Planes() {
         </div>
 
         <p className="text-center text-xs text-slate-600">
-          Pagos procesados de forma segura por Stripe. Puedes cancelar en cualquier momento.
+          Pagos procesados de forma segura por MercadoPago. Puedes cancelar en cualquier momento.
         </p>
       </div>
     </DashboardLayout>

@@ -1,4 +1,4 @@
-import Stripe from 'stripe'
+import { MercadoPagoConfig, PreApproval } from 'mercadopago'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 
@@ -21,18 +21,24 @@ export default async function handler(req, res) {
     const snap = await db.collection('suscripciones').doc(uid).get()
     if (!snap.exists) return res.status(404).json({ error: 'No hay suscripción activa' })
 
-    const { stripeCustomerId } = snap.data()
-    if (!stripeCustomerId) return res.status(404).json({ error: 'Customer no encontrado' })
+    const { mpPreapprovalId } = snap.data()
+    if (!mpPreapprovalId) return res.status(404).json({ error: 'ID de suscripción no encontrado' })
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-    const origin = req.headers.origin || 'https://cotizametal.vercel.app'
+    const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN })
+    const preapproval = new PreApproval(client)
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: stripeCustomerId,
-      return_url: `${origin}/planes`,
+    await preapproval.update({
+      id: mpPreapprovalId,
+      body: { status: 'cancelled' },
     })
 
-    res.status(200).json({ url: portalSession.url })
+    // Actualizar Firestore de inmediato para reflejar el cambio en la UI
+    await db.collection('suscripciones').doc(uid).set(
+      { plan: 'free', status: 'cancelled', updatedAt: new Date() },
+      { merge: true }
+    )
+
+    res.status(200).json({ ok: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

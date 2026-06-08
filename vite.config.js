@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
   return {
     // Excluir SDKs de servidor para que Vite no intente procesarlos
     optimizeDeps: {
-      exclude: ['firebase-admin', 'stripe'],
+      exclude: ['firebase-admin', 'mercadopago'],
     },
     build: {
       rollupOptions: {
@@ -115,19 +115,19 @@ export default defineConfig(({ mode }) => {
             })
           })
 
-          // /api/create-checkout-session — Stripe Checkout
-          server.middlewares.use('/api/create-checkout-session', async (req, res) => {
+          // /api/create-mp-subscription — MercadoPago suscripción
+          server.middlewares.use('/api/create-mp-subscription', async (req, res) => {
             shimRes(res)
             req.body = await parseBody(req)
-            const { default: handler } = await import('./api/create-checkout-session.js')
+            const { default: handler } = await import('./api/create-mp-subscription.js')
             await handler(req, res)
           })
 
-          // /api/create-portal-session — Stripe Customer Portal
-          server.middlewares.use('/api/create-portal-session', async (req, res) => {
+          // /api/cancel-mp-subscription — cancelar suscripción MP
+          server.middlewares.use('/api/cancel-mp-subscription', async (req, res) => {
             shimRes(res)
             req.body = await parseBody(req)
-            const { default: handler } = await import('./api/create-portal-session.js')
+            const { default: handler } = await import('./api/cancel-mp-subscription.js')
             await handler(req, res)
           })
         },
