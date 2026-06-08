@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { NavLink } from 'react-router-dom'
 
 // Mensaje inicial estático — no consume API, aparece instantáneo al abrir
 const MENSAJE_BIENVENIDA = {
@@ -25,7 +26,7 @@ const SUGERENCIAS_SEGUIMIENTO = [
   '¿Qué servicios debería considerar?',
 ]
 
-export default function MecanicoIA({ contexto }) {
+export default function MecanicoIA({ contexto, isPro }) {
   const [open, setOpen]       = useState(false)
   const [messages, setMessages] = useState([MENSAJE_BIENVENIDA])
   const [input, setInput]     = useState('')
@@ -95,7 +96,7 @@ export default function MecanicoIA({ contexto }) {
 
   return (
     <>
-      {/* ── Panel de chat ── */}
+      {/* ── Panel ── */}
       {open && (
         <div
           className="fixed bottom-20 right-4 w-96 bg-stone-900 border border-stone-700 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden"
@@ -111,8 +112,7 @@ export default function MecanicoIA({ contexto }) {
               <p className="text-stone-500 text-xs">Especialista en cotizaciones metalmecánicas</p>
             </div>
             <div className="flex items-center gap-1">
-              {/* Botón reiniciar — solo si ya hay intercambio */}
-              {messages.length > 1 && (
+              {isPro && messages.length > 1 && (
                 <button
                   onClick={clearChat}
                   className="text-stone-600 hover:text-stone-400 transition-colors p-1.5 rounded"
@@ -134,89 +134,114 @@ export default function MecanicoIA({ contexto }) {
             </div>
           </div>
 
-          {/* Mensajes */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-            {messages.map((m, i) => (
-              <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {m.role === 'assistant' && (
-                  <div className="w-7 h-7 bg-amber-800 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5 select-none">
-                    C
+          {/* Upsell para Free */}
+          {!isPro ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-amber-600/20 flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <p className="text-white font-semibold text-sm mb-1">Función exclusiva del plan Pro</p>
+              <p className="text-stone-400 text-xs mb-5 leading-relaxed">
+                Consulta con Carlos, nuestro especialista IA en cotizaciones metalmecánicas. Analiza materiales, mano de obra y precios de mercado en tiempo real.
+              </p>
+              <NavLink
+                to="/planes"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg shadow-blue-900/30"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Ver planes
+              </NavLink>
+            </div>
+          ) : (
+            <>
+              {/* Mensajes */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+                {messages.map((m, i) => (
+                  <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {m.role === 'assistant' && (
+                      <div className="w-7 h-7 bg-amber-800 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5 select-none">
+                        C
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[84%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                        m.role === 'user'
+                          ? 'bg-amber-600 text-white rounded-br-sm'
+                          : 'bg-stone-800 text-stone-200 rounded-bl-sm'
+                      }`}
+                    >
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+
+                {loading && (
+                  <div className="flex gap-2 justify-start">
+                    <div className="w-7 h-7 bg-amber-800 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 select-none">
+                      C
+                    </div>
+                    <div className="bg-stone-800 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
+                      {[0, 150, 300].map((delay) => (
+                        <span
+                          key={delay}
+                          className="w-1.5 h-1.5 bg-stone-500 rounded-full animate-bounce"
+                          style={{ animationDelay: `${delay}ms` }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
-                <div
-                  className={`max-w-[84%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-                    m.role === 'user'
-                      ? 'bg-amber-600 text-white rounded-br-sm'
-                      : 'bg-stone-800 text-stone-200 rounded-bl-sm'
-                  }`}
-                >
-                  {m.content}
-                </div>
-              </div>
-            ))}
 
-            {/* Indicador de escritura */}
-            {loading && (
-              <div className="flex gap-2 justify-start">
-                <div className="w-7 h-7 bg-amber-800 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 select-none">
-                  C
-                </div>
-                <div className="bg-stone-800 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
-                  {[0, 150, 300].map((delay) => (
-                    <span
-                      key={delay}
-                      className="w-1.5 h-1.5 bg-stone-500 rounded-full animate-bounce"
-                      style={{ animationDelay: `${delay}ms` }}
-                    />
+                {error && (
+                  <p className="text-red-400 text-xs text-center py-1">{error}</p>
+                )}
+                <div ref={endRef} />
+              </div>
+
+              {showFollowUp && (
+                <div className="px-3 pb-2 flex flex-wrap gap-1.5 border-t border-stone-800 pt-2.5">
+                  {SUGERENCIAS_SEGUIMIENTO.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => sendMessage(s)}
+                      className="text-xs bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-stone-200 border border-stone-700 hover:border-amber-600/40 rounded-full px-3 py-1.5 transition-colors text-left leading-tight"
+                    >
+                      {s}
+                    </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {error && (
-              <p className="text-red-400 text-xs text-center py-1">{error}</p>
-            )}
-            <div ref={endRef} />
-          </div>
-
-          {/* Sugerencias de seguimiento — aparecen después del primer intercambio */}
-          {showFollowUp && (
-            <div className="px-3 pb-2 flex flex-wrap gap-1.5 border-t border-stone-800 pt-2.5">
-              {SUGERENCIAS_SEGUIMIENTO.map((s, i) => (
+              {/* Input */}
+              <div className="px-3 pb-3 pt-2.5 flex gap-2 flex-shrink-0 border-t border-stone-800">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="input-field flex-1 text-sm py-2"
+                  placeholder={placeholder}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                  disabled={loading}
+                />
                 <button
-                  key={i}
-                  onClick={() => sendMessage(s)}
-                  className="text-xs bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-stone-200 border border-stone-700 hover:border-amber-600/40 rounded-full px-3 py-1.5 transition-colors text-left leading-tight"
+                  onClick={() => sendMessage()}
+                  disabled={loading || !input.trim()}
+                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white p-2 rounded-lg transition-colors flex-shrink-0"
+                  title="Enviar"
                 >
-                  {s}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
                 </button>
-              ))}
-            </div>
+              </div>
+            </>
           )}
-
-          {/* Input */}
-          <div className="px-3 pb-3 pt-2.5 flex gap-2 flex-shrink-0 border-t border-stone-800">
-            <input
-              ref={inputRef}
-              type="text"
-              className="input-field flex-1 text-sm py-2"
-              placeholder={placeholder}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              disabled={loading}
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={loading || !input.trim()}
-              className="bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white p-2 rounded-lg transition-colors flex-shrink-0"
-              title="Enviar"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
-          </div>
         </div>
       )}
 

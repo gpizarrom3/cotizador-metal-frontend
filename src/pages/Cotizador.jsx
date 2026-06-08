@@ -725,6 +725,7 @@ export default function Cotizador() {
 
       {/* IA Mecánico Carlos — flotante */}
       <MecanicoIA
+        isPro={isPro}
         contexto={{
           cliente, numeroCot,
           materiales, roles, servicios, bases, config,
