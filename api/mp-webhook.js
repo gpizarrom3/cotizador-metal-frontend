@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {})
 
   if (!validateSignature(req, body)) {
-    return res.status(401).json({ error: 'Invalid signature' })
+    return res.status(200).json({ received: true })
   }
 
   // Solo procesar eventos de preapproval (suscripciones)
