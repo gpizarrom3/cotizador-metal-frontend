@@ -23,16 +23,40 @@ Responde SOLO con un JSON array (sin markdown, sin texto adicional):
 
 Los precios deben ser en pesos chilenos (CLP). La URL debe ser la página real del producto, no Google.`
 
+// Shim para que los handlers de Vercel (Express-style) funcionen en el dev server de Vite
+function shimRes(res) {
+  res.status = (code) => { res.statusCode = code; return res }
+  res.json = (data) => {
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify(data))
+    return res
+  }
+  return res
+}
+
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let raw = ''
+    req.on('data', (chunk) => { raw += chunk.toString() })
+    req.on('end', () => { try { resolve(JSON.parse(raw)) } catch { resolve({}) } })
+  })
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
+    // Excluir SDKs de servidor para que Vite no intente procesarlos
+    optimizeDeps: {
+      exclude: ['firebase-admin', 'stripe'],
+    },
     build: {
       rollupOptions: {
         output: {
-    manualChunks(id) {
+          manualChunks(id) {
             if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'react-vendor'
-            if (id.includes('node_modules/firebase')) return 'firebase-vendor'
+            // Usar rutas más específicas para no matchear firebase-admin
+            if (id.includes('node_modules/firebase/') || id.includes('node_modules/@firebase/')) return 'firebase-vendor'
           },
         },
       },
@@ -41,8 +65,14 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       {
-        name: 'anthropic-search-api',
+        name: 'api-dev-server',
         configureServer(server) {
+          // Inyectar variables de .env en process.env para que los handlers puedan leerlas
+          for (const [k, v] of Object.entries(env)) {
+            if (!process.env[k]) process.env[k] = v
+          }
+
+          // /api/search-material — usa Anthropic con web search
           server.middlewares.use('/api/search-material', (req, res) => {
             if (req.method !== 'POST') {
               res.statusCode = 405
@@ -71,7 +101,6 @@ export default defineConfig(({ mode }) => {
                 })
                 const data = await response.json()
                 if (data.error) throw new Error(data.error.message)
-                // Con web search el contenido tiene múltiples bloques; tomamos el último texto
                 const textBlocks = (data.content || []).filter(b => b.type === 'text')
                 const text = textBlocks[textBlocks.length - 1]?.text || ''
                 const match = text.match(/\[[\s\S]*\]/)
@@ -84,6 +113,22 @@ export default defineConfig(({ mode }) => {
                 res.end(JSON.stringify({ error: err.message }))
               }
             })
+          })
+
+          // /api/create-checkout-session — Stripe Checkout
+          server.middlewares.use('/api/create-checkout-session', async (req, res) => {
+            shimRes(res)
+            req.body = await parseBody(req)
+            const { default: handler } = await import('./api/create-checkout-session.js')
+            await handler(req, res)
+          })
+
+          // /api/create-portal-session — Stripe Customer Portal
+          server.middlewares.use('/api/create-portal-session', async (req, res) => {
+            shimRes(res)
+            req.body = await parseBody(req)
+            const { default: handler } = await import('./api/create-portal-session.js')
+            await handler(req, res)
           })
         },
       },
