@@ -71,7 +71,7 @@ export default function Planes() {
     { label: 'Catálogo de servicios ilimitado', free: false, pro: true },
     { label: 'Exportar PDF de cotizaciones', free: true, pro: true },
     { label: 'Plantillas de cotización', free: true, pro: true },
-    { label: 'Conexiones y colaboración', free: true, pro: true },
+    { label: 'Compartir cotizaciones y colaboración', free: false, pro: true },
     { label: 'Asistente IA Mecánico', free: true, pro: true },
   ]
 

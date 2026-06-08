@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { NavLink } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
+import { usePlan } from '../hooks/usePlan'
 import {
   enviarInvitacion,
   suscribirInvitacionesPendientes,
@@ -43,6 +45,7 @@ function TipoBadge({ tipo }) {
 
 export default function Conexiones() {
   const { user } = useAuth()
+  const { isPro } = usePlan()
 
   const [toEmail, setToEmail]   = useState('')
   const [permiso, setPermiso]   = useState('lectura')
@@ -79,6 +82,7 @@ export default function Conexiones() {
 
   const handleEnviar = async (e) => {
     e.preventDefault()
+    if (!isPro) return
     setEnvioErr('')
     setEnvioOk(false)
     setEnviando(true)
@@ -192,105 +196,127 @@ export default function Conexiones() {
         <div className="card">
           <h2 className="text-base font-semibold text-white mb-1">Compartir cotizaciones</h2>
           <p className="text-slate-400 text-xs mb-4">Elige cómo quieres compartir antes de enviar la invitación.</p>
-          <form onSubmit={handleEnviar} className="space-y-4">
-            {/* Tipo de conexión */}
-            <div>
-              <label className="label">Tipo de conexión</label>
-              <div className="grid grid-cols-2 gap-3 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setTipo('individual')}
-                  className={`p-3 rounded-lg border text-left transition-all ${
-                    tipo === 'individual'
-                      ? 'border-blue-500/60 bg-blue-500/10'
-                      : 'border-slate-600 bg-slate-800 hover:border-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span className={`text-sm font-medium ${tipo === 'individual' ? 'text-blue-300' : 'text-slate-300'}`}>Individual</span>
-                  </div>
-                  <p className="text-slate-500 text-xs">Solo tú compartes tus cotizaciones con el otro. Él no comparte las suyas contigo.</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTipo('mutua')}
-                  className={`p-3 rounded-lg border text-left transition-all ${
-                    tipo === 'mutua'
-                      ? 'border-violet-500/60 bg-violet-500/10'
-                      : 'border-slate-600 bg-slate-800 hover:border-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className={`text-sm font-medium ${tipo === 'mutua' ? 'text-violet-300' : 'text-slate-300'}`}>Mutua</span>
-                  </div>
-                  <p className="text-slate-500 text-xs">Ambos comparten sus cotizaciones entre sí. Los dos ven las del otro al aceptar.</p>
-                </button>
-              </div>
-            </div>
 
-            <div>
-              <label className="label">Correo del destinatario</label>
-              <input
-                type="email"
-                className="input-field"
-                placeholder="usuario@empresa.com"
-                value={toEmail}
-                onChange={e => { setToEmail(e.target.value); setEnvioOk(false); setEnvioErr('') }}
-                required
-              />
-            </div>
-            <div>
-              <label className="label">Nivel de acceso</label>
-              <div className="grid grid-cols-2 gap-3 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setPermiso('lectura')}
-                  className={`p-3 rounded-lg border text-left transition-all ${
-                    permiso === 'lectura'
-                      ? 'border-sky-500/60 bg-sky-500/10'
-                      : 'border-slate-600 bg-slate-800 hover:border-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg className="w-4 h-4 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <span className={`text-sm font-medium ${permiso === 'lectura' ? 'text-sky-300' : 'text-slate-300'}`}>Solo lectura</span>
-                  </div>
-                  <p className="text-slate-500 text-xs">Puede ver y exportar PDF. No puede editar ni crear.</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPermiso('editor')}
-                  className={`p-3 rounded-lg border text-left transition-all ${
-                    permiso === 'editor'
-                      ? 'border-amber-500/60 bg-amber-500/10'
-                      : 'border-slate-600 bg-slate-800 hover:border-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span className={`text-sm font-medium ${permiso === 'editor' ? 'text-amber-300' : 'text-slate-300'}`}>Editor</span>
-                  </div>
-                  <p className="text-slate-500 text-xs">Puede ver, crear y editar cotizaciones. No puede eliminar.</p>
-                </button>
+          {!isPro ? (
+            <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 text-center">
+              <div className="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
               </div>
+              <p className="text-white font-semibold text-sm mb-1">Función exclusiva del plan Pro</p>
+              <p className="text-slate-400 text-xs mb-4">Actualiza tu plan para compartir tus cotizaciones con otros usuarios y colaborar en equipo.</p>
+              <NavLink
+                to="/planes"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg shadow-blue-900/30"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Ver planes
+              </NavLink>
             </div>
-            {envioErr && <p className="text-red-400 text-sm">{envioErr}</p>}
-            {envioOk && <p className="text-green-400 text-sm">Invitación enviada. El destinatario debe aceptarla desde su cuenta.</p>}
-            <button type="submit" className="btn-primary" disabled={enviando}>
-              {enviando ? 'Enviando...' : 'Enviar invitación'}
-            </button>
-          </form>
+          ) : (
+            <form onSubmit={handleEnviar} className="space-y-4">
+              {/* Tipo de conexión */}
+              <div>
+                <label className="label">Tipo de conexión</label>
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setTipo('individual')}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      tipo === 'individual'
+                        ? 'border-blue-500/60 bg-blue-500/10'
+                        : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className={`text-sm font-medium ${tipo === 'individual' ? 'text-blue-300' : 'text-slate-300'}`}>Individual</span>
+                    </div>
+                    <p className="text-slate-500 text-xs">Solo tú compartes tus cotizaciones con el otro. Él no comparte las suyas contigo.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipo('mutua')}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      tipo === 'mutua'
+                        ? 'border-violet-500/60 bg-violet-500/10'
+                        : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className={`text-sm font-medium ${tipo === 'mutua' ? 'text-violet-300' : 'text-slate-300'}`}>Mutua</span>
+                    </div>
+                    <p className="text-slate-500 text-xs">Ambos comparten sus cotizaciones entre sí. Los dos ven las del otro al aceptar.</p>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Correo del destinatario</label>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="usuario@empresa.com"
+                  value={toEmail}
+                  onChange={e => { setToEmail(e.target.value); setEnvioOk(false); setEnvioErr('') }}
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">Nivel de acceso</label>
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPermiso('lectura')}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      permiso === 'lectura'
+                        ? 'border-sky-500/60 bg-sky-500/10'
+                        : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg className="w-4 h-4 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span className={`text-sm font-medium ${permiso === 'lectura' ? 'text-sky-300' : 'text-slate-300'}`}>Solo lectura</span>
+                    </div>
+                    <p className="text-slate-500 text-xs">Puede ver y exportar PDF. No puede editar ni crear.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPermiso('editor')}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      permiso === 'editor'
+                        ? 'border-amber-500/60 bg-amber-500/10'
+                        : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span className={`text-sm font-medium ${permiso === 'editor' ? 'text-amber-300' : 'text-slate-300'}`}>Editor</span>
+                    </div>
+                    <p className="text-slate-500 text-xs">Puede ver, crear y editar cotizaciones. No puede eliminar.</p>
+                  </button>
+                </div>
+              </div>
+              {envioErr && <p className="text-red-400 text-sm">{envioErr}</p>}
+              {envioOk && <p className="text-green-400 text-sm">Invitación enviada. El destinatario debe aceptarla desde su cuenta.</p>}
+              <button type="submit" className="btn-primary" disabled={enviando}>
+                {enviando ? 'Enviando...' : 'Enviar invitación'}
+              </button>
+            </form>
+          )}
         </div>
 
         {/* Invitaciones enviadas pendientes */}
