@@ -43,6 +43,8 @@ async function setSubscription(db, uid, data) {
 }
 
 export default async function handler(req, res) {
+  // MP envía GET para validar la URL al registrarla
+  if (req.method === 'GET') return res.status(200).json({ ok: true })
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {})
