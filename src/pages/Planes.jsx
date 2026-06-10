@@ -10,9 +10,11 @@ export default function Planes() {
   const [searchParams] = useSearchParams()
   const [loadingCheckout, setLoadingCheckout] = useState(false)
   const [loadingCancel, setLoadingCancel]     = useState(false)
+  const [loadingSync, setLoadingSync]         = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [error, setError] = useState('')
   const [cancelOk, setCancelOk] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
 
   const success  = searchParams.get('success') === '1'
   const canceled = searchParams.get('canceled') === '1'
@@ -36,6 +38,31 @@ export default function Planes() {
       setError('Error de conexión. Intenta nuevamente.')
     } finally {
       setLoadingCheckout(false)
+    }
+  }
+
+  const handleSyncSubscription = async () => {
+    setLoadingSync(true)
+    setSyncMsg('')
+    setError('')
+    try {
+      const res = await fetch('/api/sync-mp-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid }),
+      })
+      const data = await res.json()
+      if (!data.found) {
+        setSyncMsg('No se encontró ninguna suscripción en MercadoPago para tu cuenta.')
+      } else if (data.activated) {
+        setSyncMsg('¡Plan Pro activado correctamente! La página se actualizará en unos segundos.')
+      } else {
+        setSyncMsg(`Tu suscripción en MercadoPago tiene estado: "${data.status}". Aún no está activa.`)
+      }
+    } catch {
+      setError('Error de conexión al verificar la suscripción.')
+    } finally {
+      setLoadingSync(false)
     }
   }
 
@@ -102,9 +129,26 @@ export default function Planes() {
             <p className="text-sm">Tu suscripción fue cancelada. Seguirás con el plan Free.</p>
           </div>
         )}
+        {syncMsg && (
+          <div className={`mb-6 rounded-xl px-5 py-4 text-center text-sm border ${syncMsg.includes('activado') ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-300' : 'bg-amber-900/30 border-amber-500/50 text-amber-300'}`}>
+            {syncMsg}
+          </div>
+        )}
         {error && (
           <div className="mb-6 bg-red-900/30 border border-red-500/50 text-red-400 rounded-xl px-5 py-4 text-center text-sm">
             {error}
+          </div>
+        )}
+        {!isPro && (
+          <div className="mb-6 bg-slate-800/50 border border-slate-700 rounded-xl px-5 py-4 text-center">
+            <p className="text-slate-400 text-sm mb-3">¿Ya realizaste el pago pero aún ves el plan Free?</p>
+            <button
+              onClick={handleSyncSubscription}
+              disabled={loadingSync}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors disabled:opacity-50"
+            >
+              {loadingSync ? 'Verificando...' : 'Verificar mi suscripción'}
+            </button>
           </div>
         )}
 
