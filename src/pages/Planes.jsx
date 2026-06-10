@@ -49,7 +49,7 @@ export default function Planes() {
       const res = await fetch('/api/sync-mp-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: user.uid }),
+        body: JSON.stringify({ uid: user.uid, email: user.email }),
       })
       const data = await res.json()
       if (!data.found) {
@@ -57,7 +57,7 @@ export default function Planes() {
       } else if (data.activated) {
         setSyncMsg('¡Plan Pro activado correctamente! La página se actualizará en unos segundos.')
       } else {
-        setSyncMsg(`Tu suscripción en MercadoPago tiene estado: "${data.status}". Aún no está activa.`)
+        setSyncMsg(`Tu suscripción en MercadoPago tiene estado: "${data.status}". Aún no está activa (puede tardar unas horas en confirmar el banco).`)
       }
     } catch {
       setError('Error de conexión al verificar la suscripción.')
