@@ -15,7 +15,6 @@ export default async function handler(req, res) {
     const result = await preapproval.create({
       body: {
         reason: 'Plan Pro — CotizaMetal',
-        payer_email: email,
         external_reference: uid,
         back_url: `${origin}/planes?success=1`,
         auto_recurring: {
