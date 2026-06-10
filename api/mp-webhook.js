@@ -49,12 +49,17 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {})
 
-  if (!validateSignature(req, body)) {
+  const sigValid = validateSignature(req, body)
+  console.log('[mp-webhook] type:', body.type, '| sig_valid:', sigValid, '| data_id:', body?.data?.id)
+
+  if (!sigValid) {
+    console.log('[mp-webhook] firma inválida — x-signature:', req.headers['x-signature'])
     return res.status(200).json({ received: true })
   }
 
   // Solo procesar eventos de preapproval (suscripciones)
   if (body.type !== 'subscription_preapproval' && body.type !== 'preapproval') {
+    console.log('[mp-webhook] tipo ignorado:', body.type)
     return res.status(200).json({ received: true })
   }
 

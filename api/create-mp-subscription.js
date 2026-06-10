@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN })
     const preapproval = new PreApproval(client)
 
-    const origin = req.headers.origin || 'https://cotizametal.vercel.app'
+    const origin = req.headers.origin || 'https://cotizador-metal-frontend.vercel.app'
 
     const result = await preapproval.create({
       body: {
