@@ -215,7 +215,22 @@ export default function TabResumen({
         <div className="space-y-1.5">
           {conMaterial === false
             ? <SRow label="Consumibles de taller" value={totalConsumibles} fmtFn={fmtM} />
-            : <SRow label="Materiales" value={totalMateriales} fmtFn={fmtM} />
+            : <>
+                <SRow label="Materiales" value={totalMateriales} fmtFn={fmtM} />
+                {materiales.length > 1 && materiales.map(g => {
+                  const subtotal = (g.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
+                  if (subtotal === 0) return null
+                  return (
+                    <div key={g.id || g.nombre} className="flex justify-between items-center py-1 pl-5">
+                      <span className="text-slate-500 text-sm flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60 flex-shrink-0" />
+                        {g.nombre}
+                      </span>
+                      <span className="text-slate-500 font-medium text-sm">{fmtM(subtotal)}</span>
+                    </div>
+                  )
+                })}
+              </>
           }
           <SRow label="Horas Hombre" value={totalHH} fmtFn={fmtM} />
           {(() => {
