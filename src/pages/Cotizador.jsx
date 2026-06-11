@@ -708,6 +708,7 @@ export default function Cotizador() {
           conMaterial={conMaterial} totalConsumibles={totalConsumibles}
           pesoMateriales={pesoTotalEstructura} pesoServicios={pesoServicios}
           materiales={materiales}
+          roles={roles}
         />
       )}
 

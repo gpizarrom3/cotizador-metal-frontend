@@ -30,6 +30,7 @@ export default function TabResumen({
   conMaterial, totalConsumibles = 0,
   pesoMateriales = 0, pesoServicios = 0,
   materiales = [],
+  roles = [],
 }) {
   const {
     flete = 0, incluyeIVA = false, validezDias = 30,
@@ -217,6 +218,29 @@ export default function TabResumen({
             : <SRow label="Materiales" value={totalMateriales} fmtFn={fmtM} />
           }
           <SRow label="Horas Hombre" value={totalHH} fmtFn={fmtM} />
+          {(() => {
+            const grupos = [...new Set(roles.map(r => r.grupo).filter(Boolean))]
+            if (grupos.length === 0) return null
+            const calcRoleTotal = (r) => {
+              const hh = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
+              const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
+              return hh + col
+            }
+            return grupos.map(g => {
+              const subtotal = roles.filter(r => r.grupo === g).reduce((acc, r) => acc + calcRoleTotal(r), 0)
+              const horas = roles.filter(r => r.grupo === g).reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
+              return (
+                <div key={g} className="flex justify-between items-center py-1 pl-5">
+                  <span className="text-slate-500 text-sm flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 flex-shrink-0" />
+                    {g}
+                    <span className="text-slate-600 text-xs">({horas.toFixed(1)} h)</span>
+                  </span>
+                  <span className="text-slate-500 font-medium text-sm">{fmtM(subtotal)}</span>
+                </div>
+              )
+            })
+          })()}
 
           {totalServicios > 0 && (
             <div className="pt-1">
