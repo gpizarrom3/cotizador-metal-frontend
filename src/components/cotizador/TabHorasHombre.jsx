@@ -8,7 +8,7 @@ const calcRoleTotal = (r) => {
   return hh + col
 }
 
-const newRole = () => ({ id: Date.now() + Math.random(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0, grupo: '' })
+const newRole = () => ({ id: Date.now() + Math.random(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0, grupo: '', ubicacion: 'taller' })
 
 export default function TabHorasHombre({ roles, setRoles, configRoles = [], grupos = [] }) {
   const update = (id, field, value) =>
@@ -31,7 +31,7 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
 
   const renderCargo = (r) => (
     <div key={r.id} className="bg-slate-950 border border-slate-700 rounded-lg p-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3 items-end">
         {/* Cargo */}
         <div className="col-span-2 sm:col-span-1">
           <label className="label">Cargo</label>
@@ -111,6 +111,27 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
             value={r.horas || ''}
             onChange={(e) => update(r.id, 'horas', Number(e.target.value))}
           />
+        </div>
+
+        {/* Ubicación */}
+        <div>
+          <label className="label">Ubicación</label>
+          <div className="flex rounded-lg overflow-hidden border border-slate-600 h-10">
+            <button
+              type="button"
+              onClick={() => update(r.id, 'ubicacion', 'taller')}
+              className={`flex-1 text-xs font-medium transition-colors px-2 ${r.ubicacion !== 'terreno' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+            >
+              Taller
+            </button>
+            <button
+              type="button"
+              onClick={() => update(r.id, 'ubicacion', 'terreno')}
+              className={`flex-1 text-xs font-medium transition-colors px-2 ${r.ubicacion === 'terreno' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+            >
+              Terreno
+            </button>
+          </div>
         </div>
 
         {/* Colación */}

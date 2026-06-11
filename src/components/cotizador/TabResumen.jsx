@@ -227,16 +227,38 @@ export default function TabResumen({
               return hh + col
             }
             return grupos.map(g => {
-              const subtotal = roles.filter(r => r.grupo === g).reduce((acc, r) => acc + calcRoleTotal(r), 0)
-              const horas = roles.filter(r => r.grupo === g).reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
+              const rolesGrupo = roles.filter(r => r.grupo === g)
+              const subtotal = rolesGrupo.reduce((acc, r) => acc + calcRoleTotal(r), 0)
+              const horas = rolesGrupo.reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
+              const rolesTaller = rolesGrupo.filter(r => r.ubicacion !== 'terreno')
+              const rolesTerreno = rolesGrupo.filter(r => r.ubicacion === 'terreno')
+              const subtotalTaller = rolesTaller.reduce((acc, r) => acc + calcRoleTotal(r), 0)
+              const subtotalTerreno = rolesTerreno.reduce((acc, r) => acc + calcRoleTotal(r), 0)
+              const horasTaller = rolesTaller.reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
+              const horasTerreno = rolesTerreno.reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
+              const hasMix = subtotalTaller > 0 && subtotalTerreno > 0
               return (
-                <div key={g} className="flex justify-between items-center py-1 pl-5">
-                  <span className="text-slate-500 text-sm flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 flex-shrink-0" />
-                    {g}
-                    <span className="text-slate-600 text-xs">({horas.toFixed(1)} h)</span>
-                  </span>
-                  <span className="text-slate-500 font-medium text-sm">{fmtM(subtotal)}</span>
+                <div key={g}>
+                  <div className="flex justify-between items-center py-1 pl-5">
+                    <span className="text-slate-500 text-sm flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500/60 flex-shrink-0" />
+                      {g}
+                      <span className="text-slate-600 text-xs">({horas.toFixed(1)} h)</span>
+                    </span>
+                    <span className="text-slate-500 font-medium text-sm">{fmtM(subtotal)}</span>
+                  </div>
+                  {hasMix && subtotalTaller > 0 && (
+                    <div className="flex justify-between items-center py-0.5 pl-10">
+                      <span className="text-slate-600 text-xs">en taller ({horasTaller.toFixed(1)} h)</span>
+                      <span className="text-slate-600 text-xs">{fmtM(subtotalTaller)}</span>
+                    </div>
+                  )}
+                  {hasMix && subtotalTerreno > 0 && (
+                    <div className="flex justify-between items-center py-0.5 pl-10">
+                      <span className="text-amber-700 text-xs">en terreno ({horasTerreno.toFixed(1)} h)</span>
+                      <span className="text-amber-700 text-xs">{fmtM(subtotalTerreno)}</span>
+                    </div>
+                  )}
                 </div>
               )
             })
