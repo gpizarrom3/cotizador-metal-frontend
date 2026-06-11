@@ -199,6 +199,11 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
         <div style={{ width: '280px' }}>
           <div style={{ borderTop: '2px solid #1e3a5f', paddingTop: '10px' }}>
+            {conMaterial !== false && totalMateriales > 0 && <TotRow label="Materiales" value={fmtM(totalMateriales)} />}
+            {totalHH > 0 && <TotRow label="Horas Hombre" value={fmtM(totalHH)} />}
+            {(totalServicios + totalMarkupServicios) > 0 && <TotRow label="Servicios" value={fmtM(totalServicios + totalMarkupServicios)} />}
+            {totalEmbalaje > 0 && <TotRow label="Embalaje y envío" value={fmtM(totalEmbalaje)} />}
+            {totalBases > 0 && <TotRow label="Gastos generales" value={fmtM(totalBases)} />}
             {descuentoMonto > 0 && (
               <>
                 <TotRow label="Subtotal" value={fmtM(costoSinDescuento)} />
@@ -206,8 +211,10 @@ export default function CotizacionPrintView({ empresa = {}, cot }) {
               </>
             )}
             {Number(flete) > 0 && <TotRow label="Flete / transporte" value={fmtM(flete)} />}
+            <div style={{ borderTop: '1px solid #cbd5e1', marginTop: '4px', paddingTop: '4px' }}>
             <TotRow label="NETO" value={fmtM(totalNeto)} bold />
             {incluyeIVA && <TotRow label="IVA (19%)" value={fmtM(totalIVA)} />}
+            </div>
             <div style={{ background: '#1e3a5f', borderRadius: '4px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
               <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '13px' }}>TOTAL</span>
               <span style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '15px' }}>{fmtM(totalFinal)}</span>
