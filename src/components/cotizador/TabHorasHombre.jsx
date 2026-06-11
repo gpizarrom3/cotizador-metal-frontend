@@ -8,11 +8,11 @@ const calcRoleTotal = (r) => {
   return hh + col
 }
 
-export default function TabHorasHombre({ roles, setRoles, configRoles = [] }) {
+export default function TabHorasHombre({ roles, setRoles, configRoles = [], grupos = [] }) {
   const addRole = () =>
     setRoles([
       ...roles,
-      { id: Date.now(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 },
+      { id: Date.now(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0, grupo: '' },
     ])
 
   const removeRole = (id) => setRoles(roles.filter((r) => r.id !== id))
@@ -22,6 +22,18 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [] }) {
     setRoles(roles.map((r) => (r.id === id ? { ...r, ...fields } : r)))
 
   const total = roles.reduce((acc, r) => acc + calcRoleTotal(r), 0)
+
+  // Resumen por grupo
+  const resumenGrupos = grupos.map((g) => {
+    const rolesGrupo = roles.filter((r) => r.grupo === g)
+    const costo = rolesGrupo.reduce((acc, r) => acc + calcRoleTotal(r), 0)
+    const horas = rolesGrupo.reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
+    return { nombre: g, costo, horas, cantidad: rolesGrupo.length }
+  }).filter((g) => g.cantidad > 0)
+
+  const sinGrupo = roles.filter((r) => !r.grupo)
+  const costoSinGrupo = sinGrupo.reduce((acc, r) => acc + calcRoleTotal(r), 0)
+  const horasSinGrupo = sinGrupo.reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
 
   return (
     <div className="card">
@@ -33,7 +45,7 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [] }) {
       <div className="space-y-3">
         {roles.map((r) => (
           <div key={r.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3 items-end">
               {/* Cargo */}
               <div className="col-span-2 sm:col-span-1">
                 <label className="label">Cargo</label>
@@ -76,6 +88,23 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [] }) {
                   />
                 )}
               </div>
+
+              {/* Grupo */}
+              {grupos.length > 0 && (
+                <div>
+                  <label className="label">Grupo</label>
+                  <select
+                    className="input-field text-sm py-2"
+                    value={r.grupo || ''}
+                    onChange={(e) => update(r.id, 'grupo', e.target.value)}
+                  >
+                    <option value="">— Sin grupo —</option>
+                    {grupos.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Precio/hora */}
               <div>
@@ -167,13 +196,45 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [] }) {
                 {r.colacion && r.valor_colacion > 0 && (
                   <span>Colación: {fmt(r.valor_colacion)} × {r.cantidad} = {fmt(Number(r.valor_colacion) * Number(r.cantidad))}</span>
                 )}
+                {r.grupo && (
+                  <span className="text-slate-600">Grupo: <span className="text-slate-400">{r.grupo}</span></span>
+                )}
               </div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="mt-5 flex justify-end">
+      {/* Resumen por grupo */}
+      {(resumenGrupos.length > 0 || (sinGrupo.length > 0 && roles.length > 0 && grupos.length > 0)) && (
+        <div className="mt-6 bg-slate-900 border border-slate-700 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-slate-300 mb-3">Resumen por grupo</h3>
+          <div className="space-y-2">
+            {resumenGrupos.map((g) => (
+              <div key={g.nombre} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                  <span className="text-slate-300 font-medium">{g.nombre}</span>
+                  <span className="text-slate-500 text-xs">{g.horas.toFixed(1)} hrs·persona</span>
+                </div>
+                <span className="text-blue-400 font-semibold">{fmt(g.costo)}</span>
+              </div>
+            ))}
+            {sinGrupo.length > 0 && grupos.length > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
+                  <span className="text-slate-400">Sin grupo</span>
+                  <span className="text-slate-500 text-xs">{horasSinGrupo.toFixed(1)} hrs·persona</span>
+                </div>
+                <span className="text-slate-400 font-semibold">{fmt(costoSinGrupo)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 flex justify-end">
         <div className="bg-slate-900 rounded-lg px-5 py-3 flex items-center gap-4">
           <span className="text-slate-400 text-sm">Total Horas Hombre:</span>
           <span className="text-blue-400 font-bold text-lg">{fmt(total)}</span>
