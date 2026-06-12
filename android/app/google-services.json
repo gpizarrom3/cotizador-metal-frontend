@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1029722283362",
+    "project_id": "cotizador-305da",
+    "storage_bucket": "cotizador-305da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1029722283362:android:20e6b803f3460afe42603b",
+        "android_client_info": {
+          "package_name": "com.cotizametal.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1029722283362-1vghk4vt4ngn2b8ri5jgq2n4kc70f5c0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyvOfGtY9iNJELgho7GJVjmAPdwEGYi6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1029722283362-1vghk4vt4ngn2b8ri5jgq2n4kc70f5c0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

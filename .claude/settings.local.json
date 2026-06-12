@@ -62,7 +62,12 @@
       "Bash(npx -y firebase-tools@latest firestore:backups:schedules:create --database \"\\(default\\)\" --recurrence \"daily\" --retention \"14d\" --project cotizador-305da)",
       "Bash(npx -y firebase-tools@latest firestore:backups:schedules:create --help)",
       "Bash(npx -y firebase-tools@latest firestore:backups:schedules:create --database \"\\(default\\)\" --recurrence DAILY --retention 14d --project cotizador-305da)",
-      "Bash(npx cap *)"
+      "Bash(npx cap *)",
+      "Bash(gradlew.bat signingReport)",
+      "Bash(./gradlew signingReport)",
+      "Bash(keytool -list -v -keystore __TRACKED_VAR__/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)",
+      "PowerShell(keytool -list -v -keystore \"$env:USERPROFILE\\\\.android\\\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android 2>&1 | Select-String \"SHA1\")",
+      "PowerShell(& \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\\\\bin\\\\keytool.exe\" -list -v -keystore \"$env:USERPROFILE\\\\.android\\\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android 2>&1 | Select-String \"SHA1\")"
     ]
   }
 }
