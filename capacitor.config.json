@@ -3,8 +3,7 @@
   "appName": "CotizaMetal",
   "webDir": "dist",
   "server": {
-    "url": "https://cotizador-metal-frontend.vercel.app",
-    "cleartext": true
+    "androidScheme": "https"
   },
   "plugins": {
     "SplashScreen": {
