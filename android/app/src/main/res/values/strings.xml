@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CotizaMetal</string>
+    <string name="title_activity_main">CotizaMetal</string>
+    <string name="package_name">com.cotizametal.app</string>
+    <string name="custom_url_scheme">com.cotizametal.app</string>
+</resources>

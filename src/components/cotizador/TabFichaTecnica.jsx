@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { apiBase } from '../../utils/apiBase.js'
 
 const emptyProp  = () => ({ id: Date.now() + Math.random(), propiedad: '', valor: '', norma: '' })
 const emptyComp  = () => ({
@@ -102,7 +103,7 @@ export default function TabFichaTecnica({ ficha, setFicha }) {
     setErrorIA('')
     setGenerado(false)
     try {
-      const res = await fetch('/api/generate-ficha', {
+      const res = await fetch(`${apiBase}/api/generate-ficha`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombreProducto: ficha.nombreProducto, descripcion: descripcionIA }),

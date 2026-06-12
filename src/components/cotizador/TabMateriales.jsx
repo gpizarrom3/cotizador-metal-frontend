@@ -1,6 +1,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { obtenerCatalogo } from '../../firebase/firestore'
+import { apiBase } from '../../utils/apiBase.js'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -868,7 +869,7 @@ export default function TabMateriales({ materiales, setMateriales, modo = 'avanz
     if (!searchTerm.trim()) return
     setSearching(true); setSearchError(''); setResults([])
     try {
-      const res  = await fetch('/api/search-material', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: searchTerm }) })
+      const res  = await fetch(`${apiBase}/api/search-material`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: searchTerm }) })
       const data = await res.json()
       if (data.error) setSearchError(`Error: ${data.error}`)
       else setResults(data.results || [])

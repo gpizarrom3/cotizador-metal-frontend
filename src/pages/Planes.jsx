@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { usePlan } from '../hooks/usePlan'
+import { apiBase } from '../utils/apiBase.js'
 
 export default function Planes() {
   const { user } = useAuth()
@@ -23,7 +24,7 @@ export default function Planes() {
     setLoadingCheckout(true)
     setError('')
     try {
-      const res = await fetch('/api/create-mp-subscription', {
+      const res = await fetch(`${apiBase}/api/create-mp-subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user.uid, email: user.email }),
@@ -46,7 +47,7 @@ export default function Planes() {
     setSyncMsg('')
     setError('')
     try {
-      const res = await fetch('/api/sync-mp-subscription', {
+      const res = await fetch(`${apiBase}/api/sync-mp-subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user.uid, email: user.email }),
@@ -70,7 +71,7 @@ export default function Planes() {
     setLoadingCancel(true)
     setError('')
     try {
-      const res = await fetch('/api/cancel-mp-subscription', {
+      const res = await fetch(`${apiBase}/api/cancel-mp-subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user.uid }),
