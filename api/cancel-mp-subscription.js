@@ -1,7 +1,6 @@
 import { MercadoPagoConfig, PreApproval } from 'mercadopago'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
-import { handleCors } from './_cors.js'
 
 function getAdminDb() {
   if (!getApps().length) {
@@ -12,7 +11,6 @@ function getAdminDb() {
 }
 
 export default async function handler(req, res) {
-  if (handleCors(req, res)) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { uid } = req.body || {}

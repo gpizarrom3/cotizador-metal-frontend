@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { apiBase } from '../../utils/apiBase.js'
 
 // Mensaje inicial estático — no consume API, aparece instantáneo al abrir
 const MENSAJE_BIENVENIDA = {
@@ -57,7 +56,7 @@ export default function MecanicoIA({ contexto, isPro }) {
     setLoading(true)
 
     try {
-      const res = await fetch(`${apiBase}/api/chat-mecanico`, {
+      const res = await fetch('/api/chat-mecanico', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Enviamos el historial completo (incluye el mensaje de bienvenida como contexto de Carlos)

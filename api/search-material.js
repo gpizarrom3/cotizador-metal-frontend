@@ -19,10 +19,7 @@ Responde SOLO con un JSON array (sin markdown, sin texto adicional):
 
 Los precios deben ser en pesos chilenos (CLP). La URL debe ser la página real del producto, no Google.`
 
-import { handleCors } from './_cors.js'
-
 export default async function handler(req, res) {
-  if (handleCors(req, res)) return
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
