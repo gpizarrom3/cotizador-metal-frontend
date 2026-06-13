@@ -291,6 +291,17 @@ export function calcM2FromPesoData(pd) {
   return calcSuperficieM2(pd.geomId || 'plancha', pd.dims || {})
 }
 
+// Calcula m² de superficie lateral desde perimetro_mm y longitud
+export function calcM2Superficie(item) {
+  const perMm = item.pesoData?.catPerimetroMm
+  if (!perMm) return null
+  const longMm = item.pesoData?.modo === 'catalogo'
+    ? (Number(item.pesoData.metros) || 0) * 1000
+    : (Number(item.longitudMm) || 0)
+  if (!longMm) return null
+  return (perMm / 1000) * (longMm / 1000)
+}
+
 // Calcula kg por pieza desde pesoData (cualquier modo)
 export function calcPesoFromPesoData(pd) {
   if (!pd) return 0
@@ -547,6 +558,10 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
     if (!m.pesoData) return acc
     return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
   }, 0)
+  const m2Grupo = (sp.items || []).reduce((acc, m) => {
+    const m2 = calcM2Superficie(m)
+    return m2 !== null ? acc + m2 * (Number(m.cantidad) || 1) : acc
+  }, 0)
 
   return (
     <div className="card space-y-3">
@@ -573,6 +588,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
               <th className="text-left px-3 py-3 rounded-l-lg">Material</th>
               <th className="text-left px-3 py-3 w-32">Formato</th>
               <th className="text-right px-3 py-3 w-28">Longitud (mm)</th>
+              <th className="text-right px-3 py-3 w-20">m²</th>
               <th className="text-right px-3 py-3 w-40">
                 <span>P. Unit.</span>
                 <span className="block text-[10px] text-slate-600 font-normal leading-none mt-0.5">decimal: punto (.)</span>
@@ -585,7 +601,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
           <tbody>
             {(sp.items || []).length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-slate-500 text-sm">
+                <td colSpan={8} className="text-center py-8 text-slate-500 text-sm">
                   Sin materiales. Agrega una fila o usa las herramientas de arriba.
                 </td>
               </tr>
@@ -594,6 +610,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                 const longitudMm = m.pesoData?.modo === 'catalogo' && m.pesoData?.metros
                   ? Math.round(m.pesoData.metros * 1000)
                   : (m.longitudMm || '')
+                const m2Pieza = calcM2Superficie(m)
                 return (
                   <Fragment key={m.id}>
                     <tr className="border-b border-slate-700">
@@ -630,6 +647,9 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                           }}
                         />
                       </td>
+                      <td className="px-3 py-2 text-right text-sky-400 text-sm whitespace-nowrap">
+                        {m2Pieza !== null ? m2Pieza.toFixed(3) : <span className="text-slate-700">—</span>}
+                      </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5">
                           <input type="number" min="0" className="input-field py-1.5 text-sm text-right min-w-0 flex-1" placeholder="0" value={m.precio_unitario || ''} onChange={e => onUpdateItem(m.id, 'precio_unitario', Number(e.target.value))} />
@@ -653,7 +673,13 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-600">
-              <td colSpan={5} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
+              <td colSpan={3} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
+              <td className="px-3 py-2 text-right">
+                {m2Grupo > 0 && (
+                  <span className="text-sky-400 text-xs font-medium">{m2Grupo.toFixed(3)} m²</span>
+                )}
+              </td>
+              <td colSpan={2} className="px-3 py-2" />
               <td className="px-3 py-2 text-right text-blue-400 font-semibold">{fmt(total)}</td>
               <td className="px-3 py-2 text-right">
                 {pesoGrupo > 0 && (
@@ -719,13 +745,24 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                     autoFocus
                   />
                   {catPickerLargo > 0 && (
-                    <p className="text-xs text-slate-400 mt-1.5">
-                      Peso calculado:{' '}
-                      <span className="text-emerald-400 font-semibold">
-                        {(catPickerLargoItem.peso_por_metro * (Number(catPickerLargo) / 1000)).toFixed(2)} kg
-                      </span>
-                      {' '}({catPickerLargoItem.peso_por_metro} kg/m × {(Number(catPickerLargo) / 1000).toFixed(3)} m)
-                    </p>
+                    <div className="text-xs text-slate-400 mt-1.5 space-y-0.5">
+                      <p>
+                        Peso:{' '}
+                        <span className="text-emerald-400 font-semibold">
+                          {(catPickerLargoItem.peso_por_metro * (Number(catPickerLargo) / 1000)).toFixed(2)} kg
+                        </span>
+                        {' '}({catPickerLargoItem.peso_por_metro} kg/m × {(Number(catPickerLargo) / 1000).toFixed(3)} m)
+                      </p>
+                      {catPickerLargoItem.perimetro_mm && (
+                        <p>
+                          Superficie:{' '}
+                          <span className="text-sky-400 font-semibold">
+                            {((catPickerLargoItem.perimetro_mm / 1000) * (Number(catPickerLargo) / 1000)).toFixed(3)} m²
+                          </span>
+                          {' '}(perímetro {catPickerLargoItem.perimetro_mm} mm × {(Number(catPickerLargo) / 1000).toFixed(3)} m)
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-3">
@@ -748,6 +785,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                           catItemId: catPickerLargoItem.id,
                           catNombre: catPickerLargoItem.nombre,
                           catPesoPorMetro: catPickerLargoItem.peso_por_metro,
+                          catPerimetroMm: catPickerLargoItem.perimetro_mm || null,
                           metros: largoM,
                         },
                       })
