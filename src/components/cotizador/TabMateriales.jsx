@@ -545,6 +545,8 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
   const toggleM2 = (id) => setM2Open(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   const [catalogPickerId, setCatalogPickerId] = useState(null)
   const [catalogPickerSearch, setCatalogPickerSearch] = useState('')
+  const [catPickerLargoItem, setCatPickerLargoItem] = useState(null)
+  const [catPickerLargo, setCatPickerLargo] = useState('')
   const pesoGrupo = (sp.items || []).reduce((acc, m) => {
     if (!m.pesoData) return acc
     return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
@@ -884,8 +886,6 @@ export default function TabMateriales({ materiales, setMateriales, modo = 'avanz
   const [catalogoUsuario, setCatalogoUsuario] = useState([])
   const [iaOpen, setIaOpen]                  = useState(false)
   const [targetSpId, setTargetSpId]          = useState(() => materiales[0]?.id ?? null)
-  const [catPickerLargoItem, setCatPickerLargoItem] = useState(null)
-  const [catPickerLargo, setCatPickerLargo]         = useState('')
 
   useEffect(() => {
     if (!user) return
