@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { usePlan } from '../hooks/usePlan'
-import { guardarItemCatalogo, obtenerCatalogo, actualizarItemCatalogo, eliminarItemCatalogo } from '../firebase/firestore'
+import { guardarItemCatalogo, obtenerCatalogo, actualizarItemCatalogo, eliminarItemCatalogo, importarCatalogoBase } from '../firebase/firestore'
+import { CATALOGO_BASE } from '../data/catalogoBase'
 import ConfirmModal from '../components/ui/ConfirmModal'
 
 const FREE_LIMIT = 2
@@ -41,6 +42,8 @@ export default function Catalogo() {
   const [form, setForm]           = useState(EMPTY_FORM)
   const [saving, setSaving]       = useState(false)
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
+  const [importando, setImportando] = useState(false)
+  const [confirmImport, setConfirmImport] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -90,6 +93,22 @@ export default function Catalogo() {
     }
   }
 
+  const handleImportarBase = async () => {
+    setConfirmImport(false)
+    setImportando(true)
+    try {
+      const existentes = new Set(items.map((i) => i.nombre))
+      const agregados = await importarCatalogoBase(user.uid, CATALOGO_BASE, existentes)
+      const actualizados = await obtenerCatalogo(user.uid)
+      setItems(actualizados)
+      if (agregados === 0) setError('Todos los materiales del catálogo base ya existen.')
+    } catch {
+      setError('Error al importar el catálogo base.')
+    } finally {
+      setImportando(false)
+    }
+  }
+
   const handleEliminar = (id) => setConfirmDelete({ open: true, id })
 
   const ejecutarEliminar = async () => {
@@ -110,16 +129,33 @@ export default function Catalogo() {
           <h1 className="text-2xl font-bold text-white">Catálogo de materiales</h1>
           <p className="text-slate-400 mt-1">{items.length} materiales guardados</p>
         </div>
-        {isPro || items.length < FREE_LIMIT ? (
-          <button onClick={abrirNuevo} className="btn-primary">+ Nuevo material</button>
-        ) : (
-          <button onClick={() => navigate('/planes')} className="btn-primary flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            + Nuevo material
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isPro && (
+            <button
+              onClick={() => setConfirmImport(true)}
+              disabled={importando}
+              className="btn-secondary flex items-center gap-2"
+            >
+              {importando ? (
+                <><div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> Importando...</>
+              ) : (
+                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>Cargar catálogo base</>
+              )}
+            </button>
+          )}
+          {isPro || items.length < FREE_LIMIT ? (
+            <button onClick={abrirNuevo} className="btn-primary">+ Nuevo material</button>
+          ) : (
+            <button onClick={() => navigate('/planes')} className="btn-primary flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              + Nuevo material
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -332,6 +368,14 @@ export default function Catalogo() {
         message="Este material será eliminado del catálogo permanentemente."
         onConfirm={ejecutarEliminar}
         onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
+
+      <ConfirmModal
+        open={confirmImport}
+        title="Cargar catálogo base"
+        message={`Se agregarán hasta ${CATALOGO_BASE.length} materiales (vigas, perfiles, tubos, barras, planchas). Los que ya existan en tu catálogo no se duplicarán.`}
+        onConfirm={handleImportarBase}
+        onCancel={() => setConfirmImport(false)}
       />
     </DashboardLayout>
   )

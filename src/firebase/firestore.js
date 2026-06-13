@@ -162,6 +162,21 @@ export const eliminarItemCatalogo = async (uid, itemId) => {
   await deleteDoc(doc(db, 'usuarios', uid, 'catalogo', itemId))
 }
 
+export const importarCatalogoBase = async (uid, items, nombresExistentes = new Set()) => {
+  const nuevos = items.filter((i) => !nombresExistentes.has(i.nombre))
+  if (nuevos.length === 0) return 0
+  const colRef = collection(db, 'usuarios', uid, 'catalogo')
+  const CHUNK = 400
+  for (let i = 0; i < nuevos.length; i += CHUNK) {
+    const batch = writeBatch(db)
+    nuevos.slice(i, i + CHUNK).forEach((item) => {
+      batch.set(doc(colRef), { ...item, precio_unitario: 0, creadoEn: serverTimestamp() })
+    })
+    await batch.commit()
+  }
+  return nuevos.length
+}
+
 // ── Catálogo de servicios ─────────────────────────────────────────────────────
 
 export const guardarItemCatalogoServicios = async (uid, datos) => {
