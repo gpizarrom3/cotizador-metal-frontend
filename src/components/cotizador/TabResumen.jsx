@@ -1,5 +1,8 @@
 import Toggle from '../ui/Toggle'
 import { calcM2FromPesoData, calcM2Superficie } from './TabMateriales'
+import { CATALOGO_BASE } from '../../data/catalogoBase'
+
+const catalogoBaseConId = CATALOGO_BASE.map((item, i) => ({ ...item, id: `base_${i}` }))
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -529,7 +532,7 @@ export default function TabResumen({
         const m2Grupos = materiales.map(sp => ({
           nombre: sp.nombre,
           m2: (sp.items || []).reduce((acc, m) => {
-            const fromCatalog = calcM2Superficie(m)
+            const fromCatalog = calcM2Superficie(m, catalogoBaseConId)
             const val = fromCatalog !== null ? fromCatalog : calcM2FromPesoData(m.pesoData)
             return acc + val * (Number(m.cantidad) || 1)
           }, 0)

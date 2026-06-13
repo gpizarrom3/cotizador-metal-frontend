@@ -292,8 +292,14 @@ export function calcM2FromPesoData(pd) {
 }
 
 // Calcula m² de superficie lateral desde perimetro_mm y longitud
-export function calcM2Superficie(item) {
-  const perMm = item.pesoData?.catPerimetroMm
+// catalog: array de items del catálogo para fallback cuando el item fue guardado antes de tener catPerimetroMm
+export function calcM2Superficie(item, catalog = []) {
+  let perMm = item.pesoData?.catPerimetroMm
+  // Fallback: buscar perimetro_mm en el catálogo por catItemId (items guardados antes del cambio)
+  if (!perMm && item.pesoData?.catItemId && catalog.length > 0) {
+    const catItem = catalog.find(c => c.id === item.pesoData.catItemId)
+    perMm = catItem?.perimetro_mm || null
+  }
   if (!perMm) return null
   const longMm = item.pesoData?.modo === 'catalogo'
     ? (Number(item.pesoData.metros) || 0) * 1000
@@ -559,7 +565,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
     return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
   }, 0)
   const m2Grupo = (sp.items || []).reduce((acc, m) => {
-    const m2 = calcM2Superficie(m)
+    const m2 = calcM2Superficie(m, catalogo)
     return m2 !== null ? acc + m2 * (Number(m.cantidad) || 1) : acc
   }, 0)
 
@@ -610,7 +616,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                 const longitudMm = m.pesoData?.modo === 'catalogo' && m.pesoData?.metros
                   ? Math.round(m.pesoData.metros * 1000)
                   : (m.longitudMm || '')
-                const m2Pieza = calcM2Superficie(m)
+                const m2Pieza = calcM2Superficie(m, catalogo)
                 return (
                   <Fragment key={m.id}>
                     <tr className="border-b border-slate-700">
