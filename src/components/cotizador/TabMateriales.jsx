@@ -1,6 +1,7 @@
 import { useState, useEffect, Fragment } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { obtenerCatalogo } from '../../firebase/firestore'
+import { CATALOGO_BASE } from '../../data/catalogoBase'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -732,16 +733,18 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
       {catalogPickerId && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => { setCatalogPickerId(null); setCatalogPickerSearch('') }}
+          onClick={() => { setCatalogPickerId(null); setCatalogPickerSearch(''); setCatPickerLargoItem(null); setCatPickerLargo('') }}
         >
           <div
             className="bg-slate-900 border border-violet-500/40 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-800">
-              <h3 className="text-sm font-semibold text-violet-300">Seleccionar desde catálogo</h3>
+              <h3 className="text-sm font-semibold text-violet-300">
+                {catPickerLargoItem ? 'Ingresar largo' : 'Seleccionar desde catálogo'}
+              </h3>
               <button
-                onClick={() => { setCatalogPickerId(null); setCatalogPickerSearch('') }}
+                onClick={() => { setCatalogPickerId(null); setCatalogPickerSearch(''); setCatPickerLargoItem(null); setCatPickerLargo('') }}
                 className="text-slate-500 hover:text-white transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -749,50 +752,121 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                 </svg>
               </button>
             </div>
-            <div className="px-5 pt-3 pb-2">
-              <input
-                type="text"
-                className="input-field text-sm py-1.5"
-                placeholder="Filtrar catálogo..."
-                value={catalogPickerSearch}
-                onChange={e => setCatalogPickerSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="max-h-96 overflow-y-auto px-5 pb-5 space-y-1.5">
-              {catalogo
-                .filter(c =>
+            {!catPickerLargoItem && (
+              <div className="px-5 pt-3 pb-2">
+                <input
+                  type="text"
+                  className="input-field text-sm py-1.5"
+                  placeholder="Filtrar catálogo..."
+                  value={catalogPickerSearch}
+                  onChange={e => setCatalogPickerSearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            )}
+            {catPickerLargoItem ? (
+              /* Paso 2: ingresar largo para calcular peso */
+              <div className="px-5 pb-5 space-y-4">
+                <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700">
+                  <p className="text-white font-medium text-sm">{catPickerLargoItem.nombre}</p>
+                  <p className="text-emerald-400 text-xs mt-0.5">{catPickerLargoItem.peso_por_metro} kg/m</p>
+                </div>
+                <div>
+                  <label className="label">Largo (mm)</label>
+                  <input
+                    type="number" min="0" step="1"
+                    className="input-field"
+                    placeholder="Ej: 3000"
+                    value={catPickerLargo}
+                    onChange={e => setCatPickerLargo(e.target.value)}
+                    autoFocus
+                  />
+                  {catPickerLargo > 0 && (
+                    <p className="text-xs text-slate-400 mt-1.5">
+                      Peso calculado:{' '}
+                      <span className="text-emerald-400 font-semibold">
+                        {(catPickerLargoItem.peso_por_metro * (Number(catPickerLargo) / 1000)).toFixed(2)} kg
+                      </span>
+                      {' '}({catPickerLargoItem.peso_por_metro} kg/m × {(Number(catPickerLargo) / 1000).toFixed(3)} m)
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setCatPickerLargoItem(null); setCatPickerLargo('') }}
+                    className="btn-secondary flex-1 text-sm"
+                  >← Volver</button>
+                  <button
+                    onClick={() => {
+                      const largoM = Number(catPickerLargo) / 1000
+                      const pesoKg = catPickerLargoItem.peso_por_metro * largoM
+                      onFillItem(catalogPickerId, {
+                        nombre: catPickerLargoItem.nombre,
+                        proveedor: catPickerLargoItem.proveedor || '',
+                        formato: catPickerLargoItem.formato || '',
+                        precio_unitario: catPickerLargoItem.precio_unitario || 0,
+                        pesoData: {
+                          modo: 'catalogo',
+                          catItemId: catPickerLargoItem.id,
+                          catNombre: catPickerLargoItem.nombre,
+                          catPesoPorMetro: catPickerLargoItem.peso_por_metro,
+                          metros: largoM,
+                        },
+                      })
+                      setCatalogPickerId(null); setCatalogPickerSearch('')
+                      setCatPickerLargoItem(null); setCatPickerLargo('')
+                    }}
+                    disabled={!(Number(catPickerLargo) > 0)}
+                    className="btn-primary flex-1 text-sm"
+                  >Confirmar</button>
+                </div>
+              </div>
+            ) : (
+              /* Paso 1: seleccionar material */
+              <div className="max-h-96 overflow-y-auto px-5 pb-5 space-y-1.5">
+                {catalogo
+                  .filter(c =>
+                    c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) ||
+                    (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase())
+                  )
+                  .map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        if (Number(c.peso_por_metro) > 0) {
+                          setCatPickerLargoItem(c)
+                          setCatPickerLargo('')
+                        } else {
+                          onFillItem(catalogPickerId, {
+                            nombre: c.nombre,
+                            proveedor: c.proveedor || '',
+                            formato: c.formato || '',
+                            precio_unitario: c.precio_unitario || 0,
+                          })
+                          setCatalogPickerId(null); setCatalogPickerSearch('')
+                        }
+                      }}
+                      className="w-full text-left px-4 py-3 rounded-xl text-sm transition-colors bg-slate-950 border border-slate-700 hover:border-violet-500/40 hover:bg-violet-900/10"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-white font-medium">{c.nombre}</p>
+                        {Number(c.peso_por_metro) > 0 && (
+                          <span className="text-emerald-400 text-xs font-semibold">{c.peso_por_metro} kg/m</span>
+                        )}
+                      </div>
+                      {c.proveedor && <p className="text-slate-400 text-xs mt-0.5">{c.proveedor}</p>}
+                      {!c._base && <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(c.precio_unitario)}{c.unidad ? ` / ${c.unidad}` : ''}</p>}
+                    </button>
+                  ))
+                }
+                {catalogo.filter(c =>
                   c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) ||
                   (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase())
-                )
-                .map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      onFillItem(catalogPickerId, {
-                        nombre: c.nombre,
-                        proveedor: c.proveedor || '',
-                        formato: c.formato || '',
-                        precio_unitario: c.precio_unitario || 0,
-                      })
-                      setCatalogPickerId(null)
-                      setCatalogPickerSearch('')
-                    }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-sm transition-colors bg-slate-950 border border-slate-700 hover:border-violet-500/40 hover:bg-violet-900/10"
-                  >
-                    <p className="text-white font-medium">{c.nombre}</p>
-                    {c.proveedor && <p className="text-slate-400 text-xs mt-0.5">{c.proveedor}</p>}
-                    <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(c.precio_unitario)}{c.unidad ? ` / ${c.unidad}` : ''}</p>
-                  </button>
-                ))
-              }
-              {catalogo.filter(c =>
-                c.nombre?.toLowerCase().includes(catalogPickerSearch.toLowerCase()) ||
-                (c.proveedor || '').toLowerCase().includes(catalogPickerSearch.toLowerCase())
-              ).length === 0 && (
-                <p className="text-center text-slate-600 text-sm py-8">Sin resultados</p>
-              )}
-            </div>
+                ).length === 0 && (
+                  <p className="text-center text-slate-600 text-sm py-8">Sin resultados</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -807,14 +881,22 @@ export default function TabMateriales({ materiales, setMateriales, modo = 'avanz
   const [searching, setSearching]     = useState(false)
   const [results, setResults]         = useState([])
   const [searchError, setSearchError] = useState('')
-  const [catalogo, setCatalogo]       = useState([])
-  const [iaOpen, setIaOpen]           = useState(false)
-  const [targetSpId, setTargetSpId]   = useState(() => materiales[0]?.id ?? null)
+  const [catalogoUsuario, setCatalogoUsuario] = useState([])
+  const [iaOpen, setIaOpen]                  = useState(false)
+  const [targetSpId, setTargetSpId]          = useState(() => materiales[0]?.id ?? null)
+  const [catPickerLargoItem, setCatPickerLargoItem] = useState(null)
+  const [catPickerLargo, setCatPickerLargo]         = useState('')
 
   useEffect(() => {
     if (!user) return
-    obtenerCatalogo(user.uid).then(setCatalogo).catch(() => {})
+    obtenerCatalogo(user.uid).then(setCatalogoUsuario).catch(() => {})
   }, [user])
+
+  const catalogoBase = CATALOGO_BASE.map((item, i) => ({ ...item, id: `base_${i}`, _base: true }))
+  const catalogo = [
+    ...catalogoUsuario,
+    ...catalogoBase.filter(b => !catalogoUsuario.some(u => u.nombre === b.nombre)),
+  ]
 
   useEffect(() => {
     if (!targetSpId && materiales.length > 0) setTargetSpId(materiales[0].id)

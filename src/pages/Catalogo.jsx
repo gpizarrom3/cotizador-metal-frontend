@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { usePlan } from '../hooks/usePlan'
-import { guardarItemCatalogo, obtenerCatalogo, actualizarItemCatalogo, eliminarItemCatalogo, importarCatalogoBase } from '../firebase/firestore'
+import { guardarItemCatalogo, obtenerCatalogo, actualizarItemCatalogo, eliminarItemCatalogo } from '../firebase/firestore'
 import { CATALOGO_BASE } from '../data/catalogoBase'
 import ConfirmModal from '../components/ui/ConfirmModal'
 
@@ -42,8 +42,7 @@ export default function Catalogo() {
   const [form, setForm]           = useState(EMPTY_FORM)
   const [saving, setSaving]       = useState(false)
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
-  const [importando, setImportando] = useState(false)
-  const [confirmImport, setConfirmImport] = useState(false)
+  const [activeTab, setActiveTab] = useState('mis')
 
   useEffect(() => {
     if (!user) return
@@ -93,22 +92,6 @@ export default function Catalogo() {
     }
   }
 
-  const handleImportarBase = async () => {
-    setConfirmImport(false)
-    setImportando(true)
-    try {
-      const existentes = new Set(items.map((i) => i.nombre))
-      const agregados = await importarCatalogoBase(user.uid, CATALOGO_BASE, existentes)
-      const actualizados = await obtenerCatalogo(user.uid)
-      setItems(actualizados)
-      if (agregados === 0) setError('Todos los materiales del catálogo base ya existen.')
-    } catch {
-      setError('Error al importar el catálogo base.')
-    } finally {
-      setImportando(false)
-    }
-  }
-
   const handleEliminar = (id) => setConfirmDelete({ open: true, id })
 
   const ejecutarEliminar = async () => {
@@ -124,45 +107,103 @@ export default function Catalogo() {
 
   return (
     <DashboardLayout>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Catálogo de materiales</h1>
-          <p className="text-slate-400 mt-1">{items.length} materiales guardados</p>
+          <p className="text-slate-400 mt-1">{items.length} materiales propios · {CATALOGO_BASE.length} en catálogo base</p>
         </div>
-        <div className="flex items-center gap-3">
-          {isPro && (
-            <button
-              onClick={() => setConfirmImport(true)}
-              disabled={importando}
-              className="btn-secondary flex items-center gap-2"
-            >
-              {importando ? (
-                <><div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> Importando...</>
-              ) : (
-                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>Cargar catálogo base</>
-              )}
-            </button>
-          )}
-          {isPro || items.length < FREE_LIMIT ? (
-            <button onClick={abrirNuevo} className="btn-primary">+ Nuevo material</button>
-          ) : (
-            <button onClick={() => navigate('/planes')} className="btn-primary flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              + Nuevo material
-            </button>
-          )}
-        </div>
+        {activeTab === 'mis' && (isPro || items.length < FREE_LIMIT ? (
+          <button onClick={abrirNuevo} className="btn-primary">+ Nuevo material</button>
+        ) : (
+          <button onClick={() => navigate('/planes')} className="btn-primary flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            + Nuevo material
+          </button>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 bg-slate-900 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('mis')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'mis' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          Mis materiales
+        </button>
+        <button
+          onClick={() => setActiveTab('base')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'base' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          Catálogo base
+          <span className="ml-2 text-xs bg-amber-600/30 text-amber-400 px-1.5 py-0.5 rounded-full">{CATALOGO_BASE.length}</span>
+        </button>
       </div>
 
       {error && (
         <div className="bg-red-900/30 border border-red-500/50 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">{error}</div>
       )}
 
-      <div className="card">
+      {/* Tab catálogo base */}
+      {activeTab === 'base' && (
+        <div className="card">
+          <div className="mb-5">
+            <div className="relative">
+              <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input type="text" className="input-field pl-9 max-w-sm" placeholder="Buscar en catálogo base..."
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="table-header">
+                  <th className="text-left px-4 py-3 rounded-l-lg">Material</th>
+                  <th className="text-left px-4 py-3">Tipo</th>
+                  <th className="text-left px-4 py-3">Formato</th>
+                  <th className="text-left px-4 py-3">Unidad</th>
+                  <th className="text-right px-4 py-3 rounded-r-lg">kg/m lineal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CATALOGO_BASE.filter(i =>
+                  i.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+                  i.formato?.toLowerCase().includes(search.toLowerCase())
+                ).length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-10 text-slate-500">Sin resultados.</td></tr>
+                ) : (
+                  CATALOGO_BASE.filter(i =>
+                    i.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+                    i.formato?.toLowerCase().includes(search.toLowerCase())
+                  ).map((i, idx) => (
+                    <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+                      <td className="px-4 py-3 text-slate-200 font-medium">{i.nombre}</td>
+                      <td className="px-4 py-3">
+                        {i.tipo && TIPO_BADGE[i.tipo]
+                          ? <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TIPO_BADGE[i.tipo].cls}`}>{TIPO_BADGE[i.tipo].label}</span>
+                          : <span className="text-slate-700">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{i.formato || '—'}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{i.unidad || '—'}</td>
+                      <td className="px-4 py-3 text-right">
+                        {i.peso_por_metro > 0
+                          ? <span className="text-emerald-400 font-medium text-sm">{i.peso_por_metro} kg/m</span>
+                          : <span className="text-slate-700">—</span>}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab mis materiales */}
+      {activeTab === 'mis' && <div className="card">
         <div className="mb-5">
           <div className="relative">
             <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,7 +325,7 @@ export default function Catalogo() {
             </table>
           </div>
         )}
-      </div>
+      </div>}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
@@ -370,13 +411,6 @@ export default function Catalogo() {
         onCancel={() => setConfirmDelete({ open: false, id: null })}
       />
 
-      <ConfirmModal
-        open={confirmImport}
-        title="Cargar catálogo base"
-        message={`Se agregarán hasta ${CATALOGO_BASE.length} materiales (vigas, perfiles, tubos, barras, planchas). Los que ya existan en tu catálogo no se duplicarán.`}
-        onConfirm={handleImportarBase}
-        onCancel={() => setConfirmImport(false)}
-      />
     </DashboardLayout>
   )
 }
