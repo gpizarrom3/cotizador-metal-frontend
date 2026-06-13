@@ -292,19 +292,30 @@ export function calcM2FromPesoData(pd) {
 }
 
 // Calcula m² de superficie lateral desde perimetro_mm y longitud
-// catalog: array de items del catálogo para fallback cuando el item fue guardado antes de tener catPerimetroMm
+// catalog: array de items del catálogo para resolver perimetro_mm por catItemId o nombre
 export function calcM2Superficie(item, catalog = []) {
-  let perMm = item.pesoData?.catPerimetroMm
-  // Fallback: buscar perimetro_mm en el catálogo por catItemId (items guardados antes del cambio)
-  if (!perMm && item.pesoData?.catItemId && catalog.length > 0) {
-    const catItem = catalog.find(c => c.id === item.pesoData.catItemId)
-    perMm = catItem?.perimetro_mm || null
+  let perMm = item.pesoData?.catPerimetroMm || null
+
+  if (!perMm && catalog.length > 0) {
+    // Fallback 1: buscar por catItemId
+    if (item.pesoData?.catItemId) {
+      const found = catalog.find(c => c.id === item.pesoData.catItemId)
+      perMm = found?.perimetro_mm || null
+    }
+    // Fallback 2: buscar por nombre del item (cubre items sin catItemId)
+    if (!perMm && item.nombre) {
+      const found = catalog.find(c => c.nombre === item.nombre)
+      perMm = found?.perimetro_mm || null
+    }
   }
+
   if (!perMm) return null
+
   const longMm = item.pesoData?.modo === 'catalogo'
-    ? (Number(item.pesoData.metros) || 0) * 1000
+    ? (Number(item.pesoData?.metros) || 0) * 1000
     : (Number(item.longitudMm) || 0)
   if (!longMm) return null
+
   return (perMm / 1000) * (longMm / 1000)
 }
 
