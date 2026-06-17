@@ -262,7 +262,12 @@ export default function Cotizador() {
   const flatMateriales = materiales.flatMap(sp => sp.items || [])
   const totalMateriales   = flatMateriales.reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
   const totalConsumibles  = consumibles.reduce((acc, c) => acc + ((Number(c.cantidad) * Number(c.precio_unitario)) || 0), 0)
-  const totalHH = roles.reduce((acc, r) => {
+
+  // Excluir roles cuyo grupo ya no existe en materiales (huérfanos por eliminación de subproducto)
+  const gruposActuales = new Set(materiales.map(g => g.nombre))
+  const rolesEfectivos = roles.filter(r => !r.grupo || gruposActuales.has(r.grupo))
+
+  const totalHH = rolesEfectivos.reduce((acc, r) => {
     const hh  = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
     const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
     return acc + hh + col
@@ -300,7 +305,7 @@ export default function Cotizador() {
 
   const cotizacionData = {
     cliente, estado,
-    materiales, roles, servicios, bases, config, embalaje,
+    materiales, roles: rolesEfectivos, servicios, bases, config, embalaje,
     cantidadLotes, unidadesPorLote,
     conMaterial, modo,
     consumibles: conMaterial === false ? consumibles : [],
@@ -708,7 +713,7 @@ export default function Cotizador() {
           conMaterial={conMaterial} totalConsumibles={totalConsumibles}
           pesoMateriales={pesoTotalEstructura} pesoServicios={pesoServicios}
           materiales={materiales}
-          roles={roles}
+          roles={rolesEfectivos}
         />
       )}
 
