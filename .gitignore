@@ -29,3 +29,8 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Capacitor / Android / iOS build artifacts
+android/
+ios/
+scripts/
