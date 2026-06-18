@@ -85,6 +85,11 @@ export const suscribirCotizaciones = (uid, callback, onError) => {
   )
 }
 
+export const contarCotizaciones = async (uid) => {
+  const snap = await getDocs(collection(db, 'usuarios', uid, 'cotizaciones'))
+  return snap.docs.filter(d => !d.data().deleted).length
+}
+
 export const actualizarEstado = async (uid, cotId, estado) => {
   await updateDoc(doc(db, 'usuarios', uid, 'cotizaciones', cotId), { estado })
 }

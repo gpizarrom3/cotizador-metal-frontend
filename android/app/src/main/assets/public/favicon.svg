@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 48 48">
+  <rect width="48" height="48" rx="10" fill="#d97706"/>
+  <!-- chimneys -->
+  <rect x="13" y="6" width="5" height="10" rx="1" fill="white" opacity="0.9"/>
+  <rect x="30" y="6" width="5" height="10" rx="1" fill="white" opacity="0.9"/>
+  <!-- building -->
+  <rect x="6" y="16" width="36" height="26" rx="2" fill="white" opacity="0.9"/>
+  <!-- windows -->
+  <rect x="10" y="22" width="8" height="8" rx="1" fill="#d97706"/>
+  <rect x="30" y="22" width="8" height="8" rx="1" fill="#d97706"/>
+  <!-- door -->
+  <rect x="19" y="32" width="10" height="10" rx="1" fill="#d97706"/>
+</svg>

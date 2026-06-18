@@ -24,6 +24,12 @@ export default function Register() {
     setLoading(true)
     try {
       await registerWithEmail(form.email, form.password, form.name)
+      // Email de bienvenida — fire-and-forget, no bloquea el registro
+      fetch('/api/send-welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, nombre: form.name }),
+      }).catch(() => {})
       navigate('/dashboard')
     } catch (err) {
       setError(getFirebaseError(err.code))

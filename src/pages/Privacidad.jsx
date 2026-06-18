@@ -35,7 +35,7 @@ export default function Privacidad() {
               <li><strong className="text-slate-200">Datos de empresa:</strong> razón social, RUT, giro, dirección, teléfono, correo comercial y logotipo, ingresados voluntariamente en la sección Configuración.</li>
               <li><strong className="text-slate-200">Datos comerciales:</strong> cotizaciones, clientes, catálogos de materiales y servicios ingresados por el usuario.</li>
               <li><strong className="text-slate-200">Datos de uso:</strong> registros de acceso, funciones utilizadas y contadores de uso (para gestión de planes).</li>
-              <li><strong className="text-slate-200">Datos de pago:</strong> procesados directamente por Stripe. CotizaMetal no almacena números de tarjeta ni datos bancarios.</li>
+              <li><strong className="text-slate-200">Datos de pago:</strong> procesados directamente por MercadoPago. CotizaMetal no almacena números de tarjeta ni datos bancarios.</li>
             </ul>
           </section>
 
@@ -69,9 +69,9 @@ export default function Privacidad() {
                 <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs mt-1 inline-block">Política de privacidad de Anthropic →</a>
               </div>
               <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                <p className="text-slate-200 font-medium">Stripe</p>
-                <p className="text-slate-400 mt-0.5">Procesamiento de pagos y suscripciones. Los datos de tarjeta son manejados directamente por Stripe y nunca pasan por los servidores de CotizaMetal.</p>
-                <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs mt-1 inline-block">Política de privacidad de Stripe →</a>
+                <p className="text-slate-200 font-medium">MercadoPago</p>
+                <p className="text-slate-400 mt-0.5">Procesamiento de pagos y suscripciones. Los datos de tarjeta son manejados directamente por MercadoPago y nunca pasan por los servidores de CotizaMetal.</p>
+                <a href="https://www.mercadopago.cl/privacidad" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs mt-1 inline-block">Política de privacidad de MercadoPago →</a>
               </div>
               <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                 <p className="text-slate-200 font-medium">Vercel</p>

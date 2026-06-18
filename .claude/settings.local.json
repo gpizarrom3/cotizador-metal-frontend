@@ -67,7 +67,14 @@
       "Bash(./gradlew signingReport)",
       "Bash(keytool -list -v -keystore __TRACKED_VAR__/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)",
       "PowerShell(keytool -list -v -keystore \"$env:USERPROFILE\\\\.android\\\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android 2>&1 | Select-String \"SHA1\")",
-      "PowerShell(& \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\\\\bin\\\\keytool.exe\" -list -v -keystore \"$env:USERPROFILE\\\\.android\\\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android 2>&1 | Select-String \"SHA1\")"
+      "PowerShell(& \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\\\\bin\\\\keytool.exe\" -list -v -keystore \"$env:USERPROFILE\\\\.android\\\\debug.keystore\" -alias androiddebugkey -storepass android -keypass android 2>&1 | Select-String \"SHA1\")",
+      "Bash(git checkout *)",
+      "Bash(findstr -i \"capacitor\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\gpiza\\\\Desktop\\\\cotizador-metal-frontend\" -Force)",
+      "Bash(Select-Object Name)",
+      "Bash(node *)",
+      "Bash(xargs grep -l \"error\")",
+      "Bash(npm list *)"
     ]
   }
 }

@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { usePlan } from '../hooks/usePlan'
 import {
   guardarCotizacion, actualizarCotizacion, obtenerClientes,
+  contarCotizaciones,
   guardarPlantilla as guardarPlantillaFS,
   obtenerPlantillas as obtenerPlantillasFS,
   eliminarPlantilla as eliminarPlantillaFS,
@@ -318,6 +319,8 @@ export default function Cotizador() {
     fecha: new Date().toLocaleDateString('es-CL'),
   }
 
+  const LIMITE_FREE = 10
+
   const handleGuardar = async () => {
     if (!user) return
     setSaving(true); setSaveError(''); setSaveSuccess(false)
@@ -326,6 +329,12 @@ export default function Cotizador() {
         // ownerUid presente cuando se edita una cotización compartida como editor
         await actualizarCotizacion(ownerUid || user.uid, cotizacionId, { ...cotizacionData, empresa })
       } else {
+        if (!isPro) {
+          const total = await contarCotizaciones(user.uid)
+          if (total >= LIMITE_FREE) {
+            throw new Error('LIMIT_REACHED')
+          }
+        }
         const { id, numero } = await guardarCotizacion(user.uid, { ...cotizacionData, empresa })
         setNumeroCot(numero)
         setCotizacionId(id)
@@ -333,7 +342,11 @@ export default function Cotizador() {
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 5000)
     } catch (err) {
-      setSaveError('Error al guardar: ' + err.message)
+      if (err.message === 'LIMIT_REACHED') {
+        setSaveError(`Plan gratuito: límite de ${LIMITE_FREE} cotizaciones alcanzado. Archiva cotizaciones antiguas o actualiza al plan Pro para crear más.`)
+      } else {
+        setSaveError('Error al guardar: ' + err.message)
+      }
     } finally {
       setSaving(false)
     }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="default_web_client_id" translatable="false">1029722283362-1vghk4vt4ngn2b8ri5jgq2n4kc70f5c0.apps.googleusercontent.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">1029722283362</string>
+    <string name="google_api_key" translatable="false">AIzaSyAyvOfGtY9iNJELgho7GJVjmAPdwEGYi6c</string>
+    <string name="google_app_id" translatable="false">1:1029722283362:android:20e6b803f3460afe42603b</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyAyvOfGtY9iNJELgho7GJVjmAPdwEGYi6c</string>
+    <string name="google_storage_bucket" translatable="false">cotizador-305da.firebasestorage.app</string>
+    <string name="project_id" translatable="false">cotizador-305da</string>
+</resources>
