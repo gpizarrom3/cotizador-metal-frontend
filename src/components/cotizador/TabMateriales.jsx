@@ -337,10 +337,45 @@ const SCALE_ICON = (
 // ── Peso por fila ─────────────────────────────────────────────────────────────
 function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
   const [catSearch, setCatSearch] = useState('')
+  const [iaDesc, setIaDesc]       = useState('')
+  const [iaLoading, setIaLoading] = useState(false)
+  const [iaResult, setIaResult]   = useState(null)
+  const [iaError, setIaError]     = useState('')
   const pd   = item.pesoData || { geomId: 'plancha', dims: {}, densidadIdx: 0 }
   const modo = pd.modo || 'dimensiones'
   const geom = GEOMETRIAS.find(g => g.id === pd.geomId) || GEOMETRIAS[0]
   const mat  = MATERIALES_PESO[pd.densidadIdx ?? 0]
+
+  const llamarIA = async () => {
+    const desc = (iaDesc || item.nombre || '').trim()
+    if (!desc) return
+    setIaLoading(true); setIaError(''); setIaResult(null)
+    try {
+      const res  = await fetch('/api/inferir-peso', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descripcion: desc }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setIaResult(data)
+    } catch (err) {
+      setIaError(err.message)
+    } finally {
+      setIaLoading(false)
+    }
+  }
+
+  const aplicarIA = () => {
+    if (!iaResult) return
+    onUpdate('pesoData', {
+      ...pd,
+      modo: 'dimensiones',
+      geomId: iaResult.geomId,
+      dims: iaResult.dims,
+      densidadIdx: iaResult.densidadIdx,
+    })
+    setIaResult(null)
+  }
 
   const peso1     = calcPesoFromPesoData(pd)
   const pesoTotal = peso1 * (Number(item.cantidad) || 1)
@@ -359,9 +394,9 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
   return (
     <div className="mb-2 bg-slate-900/60 border border-emerald-500/20 rounded-xl p-3 space-y-2.5">
       {/* Selector de modo */}
-      <div className="flex gap-1 bg-slate-950/80 rounded-lg p-0.5 w-fit">
+      <div className="flex gap-1 bg-slate-950/80 rounded-lg p-0.5 w-fit flex-wrap">
         <button onClick={() => upd({ modo: 'dimensiones' })}
-          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'dimensiones' || (!modo && modo !== 'catalogo' && modo !== 'manual') ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'dimensiones' || (!modo && modo !== 'catalogo' && modo !== 'manual' && modo !== 'ia') ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
           Dimensiones
         </button>
         <button onClick={() => upd({ modo: 'catalogo' })}
@@ -371,6 +406,10 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
         <button onClick={() => upd({ modo: 'manual' })}
           className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'manual' ? 'bg-blue-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
           Manual (kg)
+        </button>
+        <button onClick={() => { upd({ modo: 'ia' }); setIaDesc(item.nombre || '') }}
+          className={`text-xs px-3 py-1 rounded-md transition-colors font-medium ${modo === 'ia' ? 'bg-violet-700 text-white' : 'text-slate-500 hover:text-violet-400'}`}>
+          IA ✦
         </button>
       </div>
 
@@ -454,6 +493,90 @@ function PesoSubRow({ item, onUpdate, catalogoPesos = [] }) {
             )}
           </div>
         </>
+      )}
+
+      {/* Modo IA */}
+      {modo === 'ia' && (
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="input-field flex-1 text-sm"
+              placeholder="Ej: Barra redonda 3'' largo 3100 acero 1045"
+              value={iaDesc || item.nombre || ''}
+              onChange={e => setIaDesc(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && llamarIA()}
+            />
+            <button
+              onClick={llamarIA}
+              disabled={iaLoading || !(iaDesc || item.nombre || '').trim()}
+              className="flex items-center gap-2 bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+            >
+              {iaLoading
+                ? <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Calculando...</>
+                : <>✦ Calcular</>}
+            </button>
+          </div>
+
+          {iaError && (
+            <p className="text-red-400 text-xs">{iaError}</p>
+          )}
+
+          {iaResult && (
+            <div className="bg-violet-900/20 border border-violet-500/40 rounded-xl p-3 space-y-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-violet-200 text-xs font-semibold mb-0.5">
+                    {GEOMETRIAS.find(g => g.id === iaResult.geomId)?.label || iaResult.geomId}
+                    {' · '}{iaResult.materialNombre}
+                  </p>
+                  <p className="text-slate-400 text-xs leading-relaxed">{iaResult.explicacion}</p>
+                  {(iaResult.advertencias || []).map((w, i) => (
+                    <p key={i} className="text-amber-400 text-xs mt-1">⚠ {w}</p>
+                  ))}
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                  iaResult.confianza === 'alta' ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-500/40' :
+                  iaResult.confianza === 'media' ? 'bg-amber-900/50 text-amber-400 border border-amber-500/40' :
+                  'bg-red-900/50 text-red-400 border border-red-500/40'
+                }`}>
+                  {iaResult.confianza === 'alta' ? 'Alta confianza' : iaResult.confianza === 'media' ? 'Confianza media' : 'Baja confianza'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-violet-500/20">
+                <div className="flex items-center gap-2">
+                  {SCALE_ICON}
+                  <span className="text-emerald-300 font-bold text-sm">{iaResult.pesoKg?.toFixed(3)} kg/pieza</span>
+                  {Number(item.cantidad) > 1 && (
+                    <span className="text-slate-400 text-xs">
+                      × {item.cantidad} = <span className="text-white font-medium">{(iaResult.pesoKg * Number(item.cantidad)).toFixed(3)} kg</span>
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={aplicarIA}
+                  className="bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Aplicar →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 pt-0.5">
+                {Object.entries(iaResult.dims || {}).map(([k, v]) => (
+                  <div key={k} className="bg-slate-900/60 rounded-lg px-2 py-1.5 text-center">
+                    <p className="text-slate-500 text-[10px] leading-none mb-0.5">{CAMPO_LABELS[k] || k}</p>
+                    <p className="text-slate-200 text-xs font-semibold">{Number(v).toFixed(1)} mm</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-slate-600 text-xs">
+            Describe el material como lo escribirías normalmente: tipo, dimensiones y aleación. La IA infiere la geometría y calcula el peso.
+          </p>
+        </div>
       )}
 
       {/* Modo catálogo */}
@@ -571,6 +694,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
   const [catalogPickerSearch, setCatalogPickerSearch] = useState('')
   const [catPickerLargoItem, setCatPickerLargoItem] = useState(null)
   const [catPickerLargo, setCatPickerLargo] = useState('')
+  const [expandedPesoId, setExpandedPesoId] = useState(null)
   const pesoGrupo = (sp.items || []).reduce((acc, m) => {
     if (!m.pesoData) return acc
     return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
@@ -676,13 +800,33 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                       <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-full" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
                       <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
                       <td className="px-2 py-2">
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setExpandedPesoId(expandedPesoId === m.id ? null : m.id)}
+                            title="Calcular peso (IA y manual)"
+                            className={`p-0.5 rounded transition-colors ${expandedPesoId === m.id ? 'text-emerald-400' : 'text-slate-600 hover:text-emerald-400'}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                            </svg>
+                          </button>
                           <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         </div>
                       </td>
                     </tr>
+                    {expandedPesoId === m.id && (
+                      <tr>
+                        <td colSpan={8} className="px-3 pb-3">
+                          <PesoSubRow
+                            item={m}
+                            onUpdate={(field, value) => onUpdateItem(m.id, field, value)}
+                            catalogoPesos={catalogoPesos}
+                          />
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 )
               })
