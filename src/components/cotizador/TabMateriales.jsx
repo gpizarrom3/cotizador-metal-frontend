@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { obtenerCatalogo } from '../../firebase/firestore'
 import { CATALOGO_BASE } from '../../data/catalogoBase'
@@ -694,8 +694,20 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
   const [catalogPickerSearch, setCatalogPickerSearch] = useState('')
   const [catPickerLargoItem, setCatPickerLargoItem] = useState(null)
   const [catPickerLargo, setCatPickerLargo] = useState('')
-  const [pesoIa, setPesoIa] = useState({})
-  const [m2Ia, setM2Ia]     = useState({})
+  // ── Toggle IA: peso y m² ─────────────────────────────────────────────────────
+  const [pesoOn, setPesoOn]     = useState({}) // { [id]: bool }
+  const [m2On, setM2On]         = useState({}) // { [id]: bool }
+  const [iaLoading, setIaLoading] = useState({}) // { [id]: bool }
+
+  const itemsRef  = useRef(sp.items)
+  const pesoOnRef = useRef(pesoOn)
+  const m2OnRef   = useRef(m2On)
+  const timers    = useRef({})
+  const lastHash  = useRef({})
+
+  useEffect(() => { itemsRef.current  = sp.items }, [sp.items])
+  useEffect(() => { pesoOnRef.current = pesoOn   }, [pesoOn])
+  useEffect(() => { m2OnRef.current   = m2On     }, [m2On])
 
   const buildDesc = (m) => {
     const partes = [m.nombre, m.formato]
@@ -703,10 +715,10 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
     return partes.filter(Boolean).join(' ').trim()
   }
 
-  const inferirPesoItem = async (m) => {
+  const inferirItem = async (m) => {
     const desc = buildDesc(m)
     if (!desc) return
-    setPesoIa(s => ({ ...s, [m.id]: { loading: true } }))
+    setIaLoading(s => ({ ...s, [m.id]: true }))
     try {
       const res  = await fetch('/api/inferir-peso', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -715,40 +727,65 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       onUpdateItem(m.id, 'pesoData', { modo: 'dimensiones', geomId: data.geomId, dims: data.dims, densidadIdx: data.densidadIdx })
-      setPesoIa(s => ({ ...s, [m.id]: { loading: false, ok: true } }))
-    } catch (err) {
-      setPesoIa(s => ({ ...s, [m.id]: { loading: false, error: err.message } }))
+    } finally {
+      setIaLoading(s => ({ ...s, [m.id]: false }))
     }
   }
 
-  const inferirM2Item = async (m) => {
-    const desc = buildDesc(m)
-    if (!desc) return
-    setM2Ia(s => ({ ...s, [m.id]: { loading: true } }))
-    try {
-      const res  = await fetch('/api/inferir-peso', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descripcion: desc }),
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      onUpdateItem(m.id, 'pesoData', { modo: 'dimensiones', geomId: data.geomId, dims: data.dims, densidadIdx: data.densidadIdx })
-      setM2Ia(s => ({ ...s, [m.id]: { loading: false, ok: true } }))
-    } catch (err) {
-      setM2Ia(s => ({ ...s, [m.id]: { loading: false, error: err.message } }))
+  const scheduleRecalc = (itemId) => {
+    clearTimeout(timers.current[itemId])
+    timers.current[itemId] = setTimeout(() => {
+      const item = itemsRef.current?.find(i => i.id === itemId)
+      if (!item) return
+      if (pesoOnRef.current[itemId] || m2OnRef.current[itemId]) inferirItem(item)
+    }, 700)
+  }
+
+  // Auto-recalcula cuando cambian campos relevantes mientras el toggle está activo
+  useEffect(() => {
+    sp.items.forEach(item => {
+      if (!pesoOnRef.current[item.id] && !m2OnRef.current[item.id]) return
+      const hash = `${item.nombre}|${item.formato}|${item.longitudMm}|${item.cantidad}`
+      if (lastHash.current[item.id] === hash) return
+      lastHash.current[item.id] = hash
+      scheduleRecalc(item.id)
+    })
+  }, [sp.items]) // eslint-disable-line
+
+  const togglePeso = (m) => {
+    const next = !pesoOn[m.id]
+    setPesoOn(s => ({ ...s, [m.id]: next }))
+    if (next) {
+      // marcar hash actual para que el effect no lo retriggere
+      lastHash.current[m.id] = `${m.nombre}|${m.formato}|${m.longitudMm}|${m.cantidad}`
+      inferirItem(m)
     }
   }
-  const pesoGrupo = (sp.items || []).reduce((acc, m) => {
-    if (!m.pesoData) return acc
-    return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
-  }, 0)
+
+  const toggleM2 = (m) => {
+    const next = !m2On[m.id]
+    setM2On(s => ({ ...s, [m.id]: next }))
+    if (next) {
+      lastHash.current[m.id] = `${m.nombre}|${m.formato}|${m.longitudMm}|${m.cantidad}`
+      inferirItem(m)
+    }
+  }
+
+  // ── Totales ──────────────────────────────────────────────────────────────────
   const resolveM2 = (m) => {
     const cat = calcM2Superficie(m, catalogo)
     if (cat !== null) return cat
     const geom = calcM2FromPesoData(m.pesoData)
     return geom > 0 ? geom : null
   }
+
+  const pesoGrupo = (sp.items || []).reduce((acc, m) => {
+    if (!pesoOn[m.id] || !m.pesoData) return acc
+    return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
+  }, 0)
+
   const m2Grupo = (sp.items || []).reduce((acc, m) => {
+    if (!m2On[m.id]) return acc
     const m2 = resolveM2(m)
     return m2 !== null ? acc + m2 * (Number(m.cantidad) || 1) : acc
   }, 0)
@@ -785,7 +822,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
               </th>
               <th className="text-right px-3 py-3 w-24">Cant.</th>
               <th className="text-right px-3 py-3 w-28">Total</th>
-              <th className="px-2 py-3 rounded-r-lg w-10" />
+              <th className="px-2 py-3 rounded-r-lg w-20" />
             </tr>
           </thead>
           <tbody>
@@ -838,7 +875,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                         />
                       </td>
                       <td className="px-3 py-2 text-right text-sky-400 text-sm whitespace-nowrap">
-                        {m2Pieza !== null ? m2Pieza.toFixed(3) : <span className="text-slate-700">—</span>}
+                        {m2On[m.id] && m2Pieza !== null ? m2Pieza.toFixed(3) : <span className="text-slate-700">—</span>}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5">
@@ -849,32 +886,32 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                       <td className="px-3 py-2"><input type="number" min="0" step="0.01" className="input-field py-1.5 text-sm text-right w-full" value={m.cantidad} onChange={e => onUpdateItem(m.id, 'cantidad', Number(e.target.value))} /></td>
                       <td className="px-3 py-2 text-right text-blue-400 font-medium whitespace-nowrap">{fmt(m.cantidad * m.precio_unitario || 0)}</td>
                       <td className="px-2 py-2">
-                        <div className="flex flex-col items-center gap-1">
-                          {/* Balanza: calcular peso */}
+                        <div className="flex items-center justify-center gap-1">
+                          {/* ⚖ toggle peso */}
                           <button
-                            onClick={() => inferirPesoItem(m)}
-                            title="Calcular peso con IA"
-                            disabled={pesoIa[m.id]?.loading}
-                            className={`p-0.5 rounded transition-colors disabled:opacity-50 ${pesoIa[m.id]?.ok ? 'text-emerald-400' : pesoIa[m.id]?.error ? 'text-red-400' : 'text-slate-600 hover:text-emerald-400'}`}
+                            onClick={() => togglePeso(m)}
+                            title={pesoOn[m.id] ? 'Desactivar peso IA' : 'Calcular peso con IA'}
+                            disabled={iaLoading[m.id]}
+                            className={`p-0.5 rounded transition-colors disabled:opacity-50 ${pesoOn[m.id] ? 'text-emerald-400' : 'text-slate-600 hover:text-emerald-400'}`}
                           >
-                            {pesoIa[m.id]?.loading
+                            {iaLoading[m.id] && pesoOn[m.id]
                               ? <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin block" />
                               : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
                             }
                           </button>
-                          {/* Pincel: calcular m² */}
+                          {/* 🖼 toggle m² */}
                           <button
-                            onClick={() => inferirM2Item(m)}
-                            title="Calcular m² de superficie con IA"
-                            disabled={m2Ia[m.id]?.loading}
-                            className={`p-0.5 rounded transition-colors disabled:opacity-50 ${m2Ia[m.id]?.ok ? 'text-sky-400' : m2Ia[m.id]?.error ? 'text-red-400' : 'text-slate-600 hover:text-sky-400'}`}
+                            onClick={() => toggleM2(m)}
+                            title={m2On[m.id] ? 'Desactivar m² IA' : 'Calcular m² con IA'}
+                            disabled={iaLoading[m.id]}
+                            className={`p-0.5 rounded transition-colors disabled:opacity-50 ${m2On[m.id] ? 'text-sky-400' : 'text-slate-600 hover:text-sky-400'}`}
                           >
-                            {m2Ia[m.id]?.loading
+                            {iaLoading[m.id] && m2On[m.id]
                               ? <span className="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin block" />
                               : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             }
                           </button>
-                          {/* Eliminar */}
+                          {/* ✕ eliminar */}
                           <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
