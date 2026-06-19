@@ -694,7 +694,30 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
   const [catalogPickerSearch, setCatalogPickerSearch] = useState('')
   const [catPickerLargoItem, setCatPickerLargoItem] = useState(null)
   const [catPickerLargo, setCatPickerLargo] = useState('')
-  const [expandedPesoId, setExpandedPesoId] = useState(null)
+  const [pesoIa, setPesoIa] = useState({})
+
+  const inferirPesoItem = async (m) => {
+    const partes = [m.nombre, m.formato]
+    if (m.longitudMm) partes.push(`largo ${m.longitudMm}mm`)
+    const desc = partes.filter(Boolean).join(' ').trim()
+    if (!desc) return
+
+    setPesoIa(s => ({ ...s, [m.id]: { loading: true } }))
+    try {
+      const res  = await fetch('/api/inferir-peso', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descripcion: desc }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      onUpdateItem(m.id, 'pesoData', {
+        modo: 'dimensiones', geomId: data.geomId, dims: data.dims, densidadIdx: data.densidadIdx,
+      })
+      setPesoIa(s => ({ ...s, [m.id]: { loading: false, pesoKg: data.pesoKg, explicacion: data.explicacion } }))
+    } catch (err) {
+      setPesoIa(s => ({ ...s, [m.id]: { loading: false, error: err.message } }))
+    }
+  }
   const pesoGrupo = (sp.items || []).reduce((acc, m) => {
     if (!m.pesoData) return acc
     return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
@@ -802,13 +825,19 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                       <td className="px-2 py-2">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => setExpandedPesoId(expandedPesoId === m.id ? null : m.id)}
-                            title="Calcular peso (IA y manual)"
-                            className={`p-0.5 rounded transition-colors ${expandedPesoId === m.id ? 'text-emerald-400' : 'text-slate-600 hover:text-emerald-400'}`}
+                            onClick={() => inferirPesoItem(m)}
+                            title="Calcular peso con IA"
+                            disabled={pesoIa[m.id]?.loading}
+                            className={`p-0.5 rounded transition-colors disabled:opacity-50 ${
+                              pesoIa[m.id]?.pesoKg > 0 ? 'text-emerald-400' :
+                              pesoIa[m.id]?.error ? 'text-red-400' :
+                              'text-slate-600 hover:text-emerald-400'
+                            }`}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                            </svg>
+                            {pesoIa[m.id]?.loading
+                              ? <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin block" />
+                              : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
+                            }
                           </button>
                           <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -816,14 +845,25 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                         </div>
                       </td>
                     </tr>
-                    {expandedPesoId === m.id && (
+                    {(pesoIa[m.id]?.pesoKg > 0 || pesoIa[m.id]?.error) && (
                       <tr>
-                        <td colSpan={8} className="px-3 pb-3">
-                          <PesoSubRow
-                            item={m}
-                            onUpdate={(field, value) => onUpdateItem(m.id, field, value)}
-                            catalogoPesos={catalogoPesos}
-                          />
+                        <td colSpan={8} className="px-3 pb-2">
+                          {pesoIa[m.id]?.pesoKg > 0 ? (
+                            <div className="flex items-center gap-2 text-xs bg-emerald-900/10 border border-emerald-500/20 rounded-lg px-3 py-1.5 flex-wrap">
+                              <svg className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
+                              <span className="text-emerald-300 font-semibold">{pesoIa[m.id].pesoKg.toFixed(3)} kg/pieza</span>
+                              {Number(m.cantidad) > 1 && (
+                                <span className="text-slate-400">
+                                  × {m.cantidad} = <span className="text-emerald-200 font-semibold">{(pesoIa[m.id].pesoKg * Number(m.cantidad)).toFixed(3)} kg total</span>
+                                </span>
+                              )}
+                              {pesoIa[m.id].explicacion && (
+                                <span className="text-slate-500 ml-1 truncate">{pesoIa[m.id].explicacion}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-red-400 text-xs px-2">{pesoIa[m.id]?.error}</p>
+                          )}
                         </td>
                       </tr>
                     )}
