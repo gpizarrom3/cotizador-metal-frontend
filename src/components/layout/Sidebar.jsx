@@ -4,8 +4,11 @@ import { logout } from '../../firebase/auth'
 import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../hooks/useTheme'
 import { useUserData } from '../../contexts/UserDataContext'
-import { suscribirInvitacionesPendientes } from '../../firebase/firestore'
+import { suscribirInvitacionesPendientes, contarCotizaciones } from '../../firebase/firestore'
 import { usePlan } from '../../hooks/usePlan'
+
+const LIMITE_FREE = 10
+const SOPORTE_EMAIL = 'gpizarrom.3@gmail.com'
 
 const navItems = [
   {
@@ -99,11 +102,17 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const { isPro } = usePlan()
   const logoEmpresa = empresa?.logo || null
   const [invPendientes, setInvPendientes] = useState(0)
+  const [cotizCount, setCotizCount] = useState(null)
 
   useEffect(() => {
     if (!user?.email) return
     return suscribirInvitacionesPendientes(user.email, (inv) => setInvPendientes(inv.length))
   }, [user?.email])
+
+  useEffect(() => {
+    if (!user?.uid || isPro) return
+    contarCotizaciones(user.uid).then(setCotizCount)
+  }, [user?.uid, isPro])
 
   const handleLogout = async () => {
     await logout()
@@ -206,17 +215,46 @@ export default function Sidebar({ mobileOpen, onClose }) {
         </div>
 
         {!isPro && (
-          <NavLink
-            to="/planes"
-            onClick={handleNavClick}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 border border-blue-500/30 hover:border-blue-500/60 transition-colors mb-2"
-          >
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Actualizar a Pro
-          </NavLink>
+          <>
+            {cotizCount !== null && (
+              <div className="px-3 mb-2">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-stone-400">Cotizaciones usadas</span>
+                  <span className={cotizCount >= LIMITE_FREE ? 'text-red-400 font-medium' : cotizCount >= 8 ? 'text-amber-400 font-medium' : 'text-stone-400'}>
+                    {cotizCount} / {LIMITE_FREE}
+                  </span>
+                </div>
+                <div className="h-1 bg-stone-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${cotizCount >= LIMITE_FREE ? 'bg-red-500' : cotizCount >= 8 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    style={{ width: `${Math.min((cotizCount / LIMITE_FREE) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            <NavLink
+              to="/planes"
+              onClick={handleNavClick}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 border border-blue-500/30 hover:border-blue-500/60 transition-colors mb-2"
+            >
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Actualizar a Pro
+            </NavLink>
+          </>
         )}
+
+        {/* Soporte */}
+        <a
+          href={`mailto:${SOPORTE_EMAIL}?subject=Soporte CotizaMetal`}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition-colors mb-1"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          Soporte
+        </a>
 
         {/* Toggle modo oscuro/claro */}
         <button

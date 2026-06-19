@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useUserData } from '../contexts/UserDataContext'
-
+import { useAuth } from '../hooks/useAuth'
+import { getAuth } from 'firebase/auth'
 
 export default function Configuracion() {
   const { empresa, configDefaults, saveEmpresa, saveConfigDefaults } = useUserData()
+  const { user } = useAuth()
+  const navigate = useNavigate()
 
   const [form, setForm] = useState(() => ({
     nombre: '', rut: '', giro: '', direccion: '', telefono: '', email: '', logo: null,
@@ -14,6 +18,10 @@ export default function Configuracion() {
 
   const [configDef, setConfigDef] = useState(() => configDefaults)
   const [defSuccess, setDefSuccess] = useState(false)
+
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   // Sync form when empresa loads from Firestore (async)
   useEffect(() => {
@@ -59,6 +67,27 @@ export default function Configuracion() {
     saveEmpresa(form)  // from context — saves to Firestore + localStorage
     setSuccess(true)
     setTimeout(() => setSuccess(false), 3000)
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== 'ELIMINAR') return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      const token = await getAuth().currentUser.getIdToken()
+      const res = await fetch('/api/delete-account', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Error al eliminar la cuenta')
+      }
+      navigate('/login')
+    } catch (err) {
+      setDeleteError(err.message)
+      setDeleting(false)
+    }
   }
 
   return (
@@ -255,6 +284,39 @@ export default function Configuracion() {
 
         <div className="flex justify-end">
           <button onClick={handleSaveDefaults} className="btn-primary">Guardar valores predeterminados</button>
+        </div>
+      </div>
+
+      {/* Zona de peligro */}
+      <div className="max-w-2xl mt-10">
+        <div className="border border-red-500/40 rounded-xl p-6 bg-red-900/10">
+          <h2 className="text-lg font-semibold text-red-400 mb-1">Zona de peligro</h2>
+          <p className="text-slate-400 text-sm mb-4">
+            Eliminar tu cuenta borra de forma permanente todos tus datos: cotizaciones, catálogos, clientes y configuración. Esta acción no se puede deshacer.
+          </p>
+          <p className="text-slate-300 text-sm mb-2">
+            Escribe <strong className="text-red-400">ELIMINAR</strong> para confirmar:
+          </p>
+          <div className="flex gap-3 flex-wrap">
+            <input
+              type="text"
+              className="input-field max-w-xs"
+              placeholder="ELIMINAR"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              disabled={deleting}
+            />
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirm !== 'ELIMINAR' || deleting}
+              className="px-4 py-2.5 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar mi cuenta'}
+            </button>
+          </div>
+          {deleteError && (
+            <p className="text-red-400 text-sm mt-3">{deleteError}</p>
+          )}
         </div>
       </div>
 
