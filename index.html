@@ -33,6 +33,15 @@
         if (t === 'light') document.documentElement.setAttribute('data-theme', 'light')
       } catch(e) {}
     </script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-C1LE91T0WJ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-C1LE91T0WJ');
+    </script>
   </head>
   <body>
     <div id="root"></div>
