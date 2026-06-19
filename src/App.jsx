@@ -15,12 +15,14 @@ import Planes from './pages/Planes'
 import PrivateRoute from './components/PrivateRoute'
 import Terminos from './pages/Terminos'
 import Privacidad from './pages/Privacidad'
+import Landing from './pages/Landing'
 
 function App() {
   return (
     <BrowserRouter>
       <UserDataProvider>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -62,7 +64,7 @@ function App() {
           path="/planes"
           element={<PrivateRoute><Planes /></PrivateRoute>}
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </UserDataProvider>
     </BrowserRouter>
