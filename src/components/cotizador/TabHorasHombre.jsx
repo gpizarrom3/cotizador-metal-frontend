@@ -1,16 +1,113 @@
+import { useState } from 'react'
 import Toggle from '../ui/Toggle'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
+const calcDiasTrabajados = (r) => Math.ceil(Number(r.horas) / 8) || 0
+
 const calcRoleTotal = (r) => {
   const hh = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
-  const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
+  const dias = calcDiasTrabajados(r)
+  const col = r.colacion ? (dias * Number(r.cantidad) * Number(r.valor_colacion)) || 0 : 0
   return hh + col
 }
 
 const newRole = () => ({ id: Date.now() + Math.random(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0, grupo: '', ubicacion: 'taller' })
 
-export default function TabHorasHombre({ roles, setRoles, configRoles = [], grupos = [] }) {
+const FUEL_ICON = (
+  <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+  </svg>
+)
+
+function CombustibleCard({ combustible, setCombustible }) {
+  const upd = (field, val) => setCombustible(c => ({ ...c, [field]: val }))
+  const valorDia  = (Number(combustible.precio_litro) * Number(combustible.litros_dia)) || 0
+  const total     = valorDia * (Number(combustible.total_dias) || 0)
+
+  return (
+    <div className="card border border-slate-700">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0" />
+          <h3 className="text-white font-semibold flex items-center gap-2">
+            Combustible
+          </h3>
+          {total > 0 && (
+            <span className="text-orange-400 font-bold text-sm">{fmt(total)}</span>
+          )}
+        </div>
+        <Toggle value={combustible.activo} onChange={() => upd('activo', !combustible.activo)} />
+      </div>
+
+      {!combustible.activo && (
+        <p className="text-slate-600 text-xs mt-2">Activa para registrar el costo de combustible del proyecto.</p>
+      )}
+
+      {combustible.activo && (
+        <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="label">Valor combustible ($/litro)</label>
+              <input
+                type="number" min="0"
+                className="input-field text-sm py-2"
+                placeholder="Ej: 1200"
+                value={combustible.precio_litro || ''}
+                onChange={e => upd('precio_litro', Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="label">Litros por día</label>
+              <input
+                type="number" min="0" step="0.5"
+                className="input-field text-sm py-2"
+                placeholder="Ej: 40"
+                value={combustible.litros_dia || ''}
+                onChange={e => upd('litros_dia', Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <label className="label">Total de días</label>
+              <input
+                type="number" min="0"
+                className="input-field text-sm py-2"
+                placeholder="Ej: 5"
+                value={combustible.total_dias || ''}
+                onChange={e => upd('total_dias', Number(e.target.value))}
+              />
+            </div>
+          </div>
+
+          {valorDia > 0 && (
+            <div className="flex items-center gap-4 flex-wrap text-xs text-slate-400 pt-1 border-t border-slate-700">
+              <span>
+                Valor por día:{' '}
+                <span className="text-orange-300 font-semibold">{fmt(valorDia)}</span>
+                {combustible.litros_dia > 0 && (
+                  <span className="text-slate-600 ml-1">
+                    ({combustible.litros_dia} L × {fmt(combustible.precio_litro)}/L)
+                  </span>
+                )}
+              </span>
+              {combustible.total_dias > 0 && (
+                <span>
+                  Total:{' '}
+                  <span className="text-orange-400 font-bold">{fmt(total)}</span>
+                  <span className="text-slate-600 ml-1">
+                    ({fmt(valorDia)}/día × {combustible.total_dias} días)
+                  </span>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function TabHorasHombre({ roles, setRoles, configRoles = [], grupos = [], combustible = {}, setCombustible = () => {} }) {
   const update = (id, field, value) =>
     setRoles(roles.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
   const updateMulti = (id, fields) =>
@@ -149,7 +246,7 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
           <input
             type="number" min="0"
             className={`input-field text-sm py-2 transition-opacity ${r.colacion ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}
-            placeholder="Por persona"
+            placeholder="Por persona/día"
             value={r.valor_colacion || ''}
             onChange={(e) => update(r.id, 'valor_colacion', Number(e.target.value))}
             disabled={!r.colacion}
@@ -176,9 +273,14 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
       {(r.precio_hora > 0 || r.horas > 0) && (
         <div className="mt-3 pt-3 border-t border-slate-700 flex flex-wrap gap-4 text-xs text-slate-500">
           <span>HH: {fmt(Number(r.precio_hora) * Number(r.horas))} × {r.cantidad} persona(s) = {fmt(Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad))}</span>
-          {r.colacion && r.valor_colacion > 0 && (
-            <span>Colación: {fmt(r.valor_colacion)} × {r.cantidad} = {fmt(Number(r.valor_colacion) * Number(r.cantidad))}</span>
-          )}
+          {r.colacion && r.valor_colacion > 0 && (() => {
+            const dias = calcDiasTrabajados(r)
+            return (
+              <span className="text-amber-500/80">
+                Colación: {dias} día(s) × {r.cantidad} pers. × {fmt(r.valor_colacion)} = {fmt(dias * Number(r.cantidad) * Number(r.valor_colacion))}
+              </span>
+            )
+          })()}
         </div>
       )}
     </div>
@@ -263,13 +365,29 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
         </div>
       )}
 
+      {/* Combustible */}
+      <CombustibleCard combustible={combustible} setCombustible={setCombustible} />
+
       {/* Total general */}
-      <div className="flex justify-end">
-        <div className="bg-slate-800 border border-slate-700 rounded-lg px-5 py-3 flex items-center gap-4">
-          <span className="text-slate-400 text-sm">Total Horas Hombre:</span>
-          <span className="text-blue-400 font-bold text-lg">{fmt(total)}</span>
-        </div>
-      </div>
+      {(() => {
+        const totalCombustible = combustible.activo
+          ? (Number(combustible.precio_litro) * Number(combustible.litros_dia) * Number(combustible.total_dias)) || 0
+          : 0
+        const totalConCombustible = total + totalCombustible
+        return (
+          <div className="flex justify-end">
+            <div className="bg-slate-800 border border-slate-700 rounded-lg px-5 py-3 flex items-center gap-4 flex-wrap justify-end">
+              {totalCombustible > 0 && (
+                <span className="text-slate-500 text-xs">
+                  HH {fmt(total)} + Combustible {fmt(totalCombustible)}
+                </span>
+              )}
+              <span className="text-slate-400 text-sm">Total HH:</span>
+              <span className="text-blue-400 font-bold text-lg">{fmt(totalConCombustible)}</span>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

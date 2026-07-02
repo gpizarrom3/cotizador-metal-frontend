@@ -53,6 +53,8 @@ const DEFAULT_CONFIG = {
 
 const DEFAULT_CLIENTE = { nombre: '', rut: '', email: '', telefono: '' }
 
+const DEFAULT_COMBUSTIBLE = { activo: false, precio_litro: 0, litros_dia: 0, total_dias: 0 }
+
 const DEFAULT_EMBALAJE = {
   activo: true,
   tipoEnvio: 'sin_especificar',
@@ -134,6 +136,7 @@ export default function Cotizador() {
     return d.conMaterial !== undefined ? d.conMaterial : null
   })
   const [consumibles, setConsumibles] = useState(() => getDraft().consumibles ?? DEFAULT_CONSUMIBLES)
+  const [combustible, setCombustible] = useState(() => getDraft().combustible ?? { ...DEFAULT_COMBUSTIBLE })
   const [versionGuardada, setVersionGuardada] = useState(() => {
     try {
       const v = localStorage.getItem('cotizador_original')
@@ -198,9 +201,9 @@ export default function Cotizador() {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
       cliente, estado, materiales, roles, servicios, bases,
       cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
-      conMaterial, consumibles, ownerUid, modo,
+      conMaterial, consumibles, ownerUid, modo, combustible,
     }))
-  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles, ownerUid])
+  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles, ownerUid, combustible])
 
   const clearDraft = () => {
     localStorage.removeItem(DRAFT_KEY)
@@ -220,6 +223,7 @@ export default function Cotizador() {
     setSaveError('')
     setConMaterial(null)
     setConsumibles([...DEFAULT_CONSUMIBLES])
+    setCombustible({ ...DEFAULT_COMBUSTIBLE })
     setModo('estandar')
   }
 
@@ -268,11 +272,16 @@ export default function Cotizador() {
   const gruposActuales = new Set(materiales.map(g => g.nombre))
   const rolesEfectivos = roles.filter(r => !r.grupo || gruposActuales.has(r.grupo))
 
+  const totalCombustible = combustible.activo
+    ? (Number(combustible.precio_litro) * Number(combustible.litros_dia) * Number(combustible.total_dias)) || 0
+    : 0
+
   const totalHH = rolesEfectivos.reduce((acc, r) => {
     const hh  = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
-    const col = r.colacion ? (Number(r.valor_colacion) * Number(r.cantidad)) || 0 : 0
+    const dias = Math.ceil(Number(r.horas) / 8) || 0
+    const col = r.colacion ? (dias * Number(r.cantidad) * Number(r.valor_colacion)) || 0 : 0
     return acc + hh + col
-  }, 0)
+  }, 0) + totalCombustible
   const totalServicios      = (servicios.custom || []).reduce((acc, s) => acc + (Number(s.cantidad) * Number(s.precio_ref) || 0), 0)
   const pesoServicios       = (servicios.custom || []).filter(s => s.agregaPeso).reduce((acc, s) => acc + (Number(s.pesoKg) || 0), 0)
   const pesoTotalEstructura = flatMateriales.reduce((acc, m) => {
@@ -698,7 +707,7 @@ export default function Cotizador() {
 
       {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} modo={modo} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
-      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} grupos={materiales.map(g => g.nombre)} />}
+      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} grupos={materiales.map(g => g.nombre)} combustible={combustible} setCombustible={setCombustible} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
       {activeTab === 'bases'       && (
         <TabBases

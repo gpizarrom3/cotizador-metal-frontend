@@ -779,9 +779,18 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
     return geom > 0 ? geom : null
   }
 
+  const getPesoFila = (m) => {
+    if (pesoOn[m.id] && m.pesoData) {
+      const p = calcPesoFromPesoData(m.pesoData)
+      return p > 0 ? p : null
+    }
+    const kgFila = Number(m.pesoData?.kgFila)
+    return kgFila > 0 ? kgFila : null
+  }
+
   const pesoGrupo = (sp.items || []).reduce((acc, m) => {
-    if (!pesoOn[m.id] || !m.pesoData) return acc
-    return acc + calcPesoFromPesoData(m.pesoData) * (Number(m.cantidad) || 1)
+    const p = getPesoFila(m)
+    return p !== null ? acc + p * (Number(m.cantidad) || 1) : acc
   }, 0)
 
   const m2Grupo = (sp.items || []).reduce((acc, m) => {
@@ -816,6 +825,10 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
               <th className="text-left px-3 py-3 w-32">Formato</th>
               <th className="text-right px-3 py-3 w-28">Longitud (mm)</th>
               <th className="text-right px-3 py-3 w-20">m²</th>
+              <th className="text-right px-3 py-3 w-24">
+                <span>Kg</span>
+                <span className="block text-[10px] text-slate-600 font-normal leading-none mt-0.5">IA / manual</span>
+              </th>
               <th className="text-right px-3 py-3 w-40">
                 <span>P. Unit.</span>
                 <span className="block text-[10px] text-slate-600 font-normal leading-none mt-0.5">decimal: punto (.)</span>
@@ -828,7 +841,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
           <tbody>
             {(sp.items || []).length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-slate-500 text-sm">
+                <td colSpan={9} className="text-center py-8 text-slate-500 text-sm">
                   Sin materiales. Agrega una fila o usa las herramientas de arriba.
                 </td>
               </tr>
@@ -876,6 +889,31 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                       </td>
                       <td className="px-3 py-2 text-right text-sky-400 text-sm whitespace-nowrap">
                         {m2On[m.id] && m2Pieza !== null ? m2Pieza.toFixed(3) : <span className="text-slate-700">—</span>}
+                      </td>
+                      <td className="px-3 py-2 w-24">
+                        {pesoOn[m.id] ? (
+                          iaLoading[m.id] ? (
+                            <div className="flex justify-end">
+                              <span className="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin inline-block" />
+                            </div>
+                          ) : calcPesoFromPesoData(m.pesoData) > 0 ? (
+                            <span className="text-emerald-400 text-xs font-semibold block text-right">
+                              {calcPesoFromPesoData(m.pesoData).toFixed(3)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-700 block text-right text-xs">—</span>
+                          )
+                        ) : (
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            className="input-field py-1 text-xs text-right w-full"
+                            placeholder="—"
+                            value={m.pesoData?.kgFila || ''}
+                            onChange={e => onUpdateItem(m.id, 'pesoData', { ...(m.pesoData || {}), kgFila: e.target.value })}
+                          />
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5">
@@ -931,13 +969,14 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                   <span className="text-sky-400 text-xs font-medium">{m2Grupo.toFixed(3)} m²</span>
                 )}
               </td>
-              <td colSpan={2} className="px-3 py-2" />
-              <td className="px-3 py-2 text-right text-blue-400 font-semibold">{fmt(total)}</td>
               <td className="px-3 py-2 text-right">
                 {pesoGrupo > 0 && (
                   <span className="text-emerald-500 text-xs font-medium">{pesoGrupo.toFixed(2)} kg</span>
                 )}
               </td>
+              <td colSpan={2} className="px-3 py-2" />
+              <td className="px-3 py-2 text-right text-blue-400 font-semibold">{fmt(total)}</td>
+              <td className="px-3 py-2" />
             </tr>
           </tfoot>
         </table>
