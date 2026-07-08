@@ -47,8 +47,6 @@ export default function Conexiones() {
   const { user } = useAuth()
   const { isPro, loading: planLoading } = usePlan()
 
-  if (!planLoading && !isPro) return <Navigate to="/planes" replace />
-
   const [toEmail, setToEmail]   = useState('')
   const [permiso, setPermiso]   = useState('lectura')
   const [tipo, setTipo]         = useState('individual')
@@ -56,12 +54,12 @@ export default function Conexiones() {
   const [envioOk, setEnvioOk]   = useState(false)
   const [envioErr, setEnvioErr] = useState('')
 
-  const [pendientes, setPendientes]   = useState([])   // invitaciones recibidas pendientes
-  const [enviadas, setEnviadas]       = useState([])   // invitaciones que envié
-  const [comoOwner, setComoOwner]     = useState([])   // personas a quienes les comparto
-  const [comoLector, setComoLector]   = useState([])   // personas que me comparten
+  const [pendientes, setPendientes] = useState([])
+  const [enviadas, setEnviadas]     = useState([])
+  const [comoOwner, setComoOwner]   = useState([])
+  const [comoLector, setComoLector] = useState([])
 
-  const [accionando, setAccionando] = useState(null)   // id siendo procesado
+  const [accionando, setAccionando] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -81,6 +79,8 @@ export default function Conexiones() {
       setComoLector(lector)
     })
   }, [user])
+
+  if (!planLoading && !isPro) return <Navigate to="/planes" replace />
 
   const handleEnviar = async (e) => {
     e.preventDefault()

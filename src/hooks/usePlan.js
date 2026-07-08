@@ -3,6 +3,8 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { useAuth } from './useAuth'
 
+const ADMIN_EMAIL = 'guillermopizarro@innovattech.org'
+
 export function usePlan() {
   const { user } = useAuth()
   const [plan, setPlan] = useState('free')
@@ -11,6 +13,11 @@ export function usePlan() {
   useEffect(() => {
     if (!user) {
       setPlan('free')
+      setLoading(false)
+      return
+    }
+    if (user.email === ADMIN_EMAIL) {
+      setPlan('pro')
       setLoading(false)
       return
     }
