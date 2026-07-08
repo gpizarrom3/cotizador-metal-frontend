@@ -6,11 +6,14 @@ import { useAuth } from './useAuth'
 const ADMIN_EMAIL = 'guillermopizarro@innovattech.org'
 
 export function usePlan() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [plan, setPlan] = useState('free')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Esperar a que Firebase Auth resuelva antes de decidir
+    if (authLoading) return
+
     if (!user) {
       setPlan('free')
       setLoading(false)
@@ -33,7 +36,7 @@ export function usePlan() {
       () => { setPlan('free'); setLoading(false) }
     )
     return unsub
-  }, [user])
+  }, [user, authLoading])
 
   return { plan, loading, isPro: plan === 'pro' }
 }
