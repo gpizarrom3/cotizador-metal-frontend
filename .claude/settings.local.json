@@ -74,7 +74,9 @@
       "Bash(Select-Object Name)",
       "Bash(node *)",
       "Bash(xargs grep -l \"error\")",
-      "Bash(npm list *)"
+      "Bash(npm list *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\gpiza\\\\Desktop\\\\cotizador-metal-frontend\" -Recurse -Force)",
+      "Bash(Select-Object -First 50)"
     ]
   }
 }

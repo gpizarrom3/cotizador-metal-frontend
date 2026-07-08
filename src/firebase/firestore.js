@@ -391,41 +391,4 @@ export const obtenerCotizacionesDeOwner = async (ownerUid) => {
     .sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
-// ── Admin ─────────────────────────────────────────────────────────────────────
-
-export const obtenerUsuariosAdmin = async () => {
-  console.log('[Admin] iniciando carga de usuarios...')
-  let usuariosSnap
-  try {
-    usuariosSnap = await getDocs(collection(db, 'usuarios_lista'))
-    console.log('[Admin] usuarios_lista OK, docs:', usuariosSnap.size)
-  } catch (e) {
-    console.error('[Admin] ERROR en usuarios_lista:', e.code, e.message)
-    throw e
-  }
-
-  let suscMap = {}
-  try {
-    const suscSnap = await getDocs(collection(db, 'suscripciones'))
-    suscSnap.docs.forEach(d => { suscMap[d.id] = d.data() })
-    console.log('[Admin] suscripciones OK, docs:', suscSnap.size)
-  } catch (e) {
-    console.warn('[Admin] suscripciones no accesible (todos quedan free):', e.code)
-  }
-
-  return usuariosSnap.docs.map(d => {
-    const u = d.data()
-    const susc = suscMap[d.id]
-    const isActive = susc?.status === 'authorized' || susc?.status === 'active' || susc?.status === 'trialing'
-    return {
-      ...u,
-      plan: isActive ? 'pro' : 'free',
-      suscStatus: susc?.status || null,
-    }
-  }).sort((a, b) => {
-    const ta = a.creadoEn?.toDate?.() || 0
-    const tb = b.creadoEn?.toDate?.() || 0
-    return tb - ta
-  })
-}
 
