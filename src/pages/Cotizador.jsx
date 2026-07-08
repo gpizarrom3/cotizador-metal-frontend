@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import TabMateriales, { emptyMaterial, emptySubproducto, calcPesoFromPesoData } from '../components/cotizador/TabMateriales'
 import TabConsumibles, { DEFAULT_CONSUMIBLES } from '../components/cotizador/TabConsumibles'
-import TabHorasHombre from '../components/cotizador/TabHorasHombre'
+import TabHorasHombre, { emptyGrupoHH, newRole as newHHRole } from '../components/cotizador/TabHorasHombre'
 import TabServicios from '../components/cotizador/TabServicios'
 import TabBases from '../components/cotizador/TabBases'
 import TabEmbalaje from '../components/cotizador/TabEmbalaje'
@@ -25,10 +25,35 @@ import { getConfigDefaults } from '../utils/configDefaults'
 import { useUserData } from '../contexts/UserDataContext'
 
 
+const GRUPO_HH_DEFAULT = 'MANO DE OBRA'
+
+const makeDefaultGruposHH = () => [{ id: 1, nombre: GRUPO_HH_DEFAULT }]
+
 const makeDefaultRoles = (cfg) => {
   const first = cfg.roles[0]
   if (!first) return []
-  return [{ id: 1, nombre: first.nombre, precio_hora: first.precio_hora, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0 }]
+  return [{ id: 1, nombre: first.nombre, precio_hora: first.precio_hora, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0, grupo: GRUPO_HH_DEFAULT }]
+}
+
+// Migra datos antiguos: extrae gruposHH desde los grupos usados en roles
+const migrarGruposHH = (draft) => {
+  if (Array.isArray(draft.gruposHH) && draft.gruposHH.length > 0) return draft.gruposHH
+  const rolesOld = draft.roles || []
+  const nombresUnicos = [...new Set(rolesOld.map(r => r.grupo).filter(Boolean))]
+  if (nombresUnicos.length > 0) {
+    return nombresUnicos.map((nombre, i) => ({ id: i + 1, nombre }))
+  }
+  return makeDefaultGruposHH()
+}
+
+// Migra roles antiguos sin grupo asignándolos al grupo por defecto
+const migrarRolesGrupo = (draft) => {
+  const rolesRaw = draft.roles ?? makeDefaultRoles(getConfigDefaults())
+  if (rolesRaw.every(r => r.grupo)) return rolesRaw
+  const primerGrupo = Array.isArray(draft.gruposHH) && draft.gruposHH[0]
+    ? draft.gruposHH[0].nombre
+    : GRUPO_HH_DEFAULT
+  return rolesRaw.map(r => r.grupo ? r : { ...r, grupo: primerGrupo })
 }
 
 const makeDefaultServicios = () => ({ custom: [] })
@@ -150,7 +175,8 @@ export default function Cotizador() {
   const [cliente,        setCliente]        = useState(() => normCliente(getDraft().cliente))
   const [estado,         setEstado]         = useState(() => getDraft().estado ?? 'Pendiente')
   const [materiales,     setMateriales]     = useState(() => migrarMateriales(getDraft().materiales ?? []))
-  const [roles,          setRoles]          = useState(() => getDraft().roles          ?? makeDefaultRoles(getConfigDefaults()))
+  const [gruposHH,       setGruposHH]       = useState(() => migrarGruposHH(getDraft()))
+  const [roles,          setRoles]          = useState(() => migrarRolesGrupo(getDraft()))
   const [servicios,      setServicios]      = useState(() => mergeServicios(getDraft().servicios))
   const [bases,          setBases]          = useState(() => getDraft().bases          ?? makeDefaultBases(getConfigDefaults()))
   const cantidadLotes = 1
@@ -199,17 +225,18 @@ export default function Cotizador() {
   // Auto-save draft
   useEffect(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
-      cliente, estado, materiales, roles, servicios, bases,
+      cliente, estado, materiales, gruposHH, roles, servicios, bases,
       cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId,
       conMaterial, consumibles, ownerUid, modo, combustible,
     }))
-  }, [cliente, estado, materiales, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles, ownerUid, combustible])
+  }, [cliente, estado, materiales, gruposHH, roles, servicios, bases, cantidadLotes, unidadesPorLote, config, embalaje, numeroCot, cotizacionId, conMaterial, consumibles, ownerUid, combustible])
 
   const clearDraft = () => {
     localStorage.removeItem(DRAFT_KEY)
     setCliente({ ...DEFAULT_CLIENTE })
     setEstado('Pendiente')
     setMateriales([{ ...emptySubproducto('MATERIALES'), items: [emptyMaterial()] }])
+    setGruposHH(makeDefaultGruposHH())
     setRoles(makeDefaultRoles(configDefaults))
     setServicios(makeDefaultServicios(configDefaults))
     setBases(makeDefaultBases(configDefaults))
@@ -246,7 +273,8 @@ export default function Cotizador() {
 
   const handleCargarPlantilla = (p) => {
     setMateriales(migrarMateriales(p.materiales || []))
-    setRoles(p.roles || makeDefaultRoles(configDefaults))
+    setGruposHH(p.gruposHH || migrarGruposHH(p))
+    setRoles(migrarRolesGrupo(p))
     setServicios(p.servicios || makeDefaultServicios())
     setBases(p.bases || makeDefaultBases(configDefaults))
     setConfig((c) => ({ ...c, ...(p.config || {}) }))
@@ -268,9 +296,9 @@ export default function Cotizador() {
   const totalMateriales   = flatMateriales.reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
   const totalConsumibles  = consumibles.reduce((acc, c) => acc + ((Number(c.cantidad) * Number(c.precio_unitario)) || 0), 0)
 
-  // Excluir roles cuyo grupo ya no existe en materiales (huérfanos por eliminación de subproducto)
-  const gruposActuales = new Set(materiales.map(g => g.nombre))
-  const rolesEfectivos = roles.filter(r => !r.grupo || gruposActuales.has(r.grupo))
+  // Excluir roles cuyo grupo ya no existe en gruposHH
+  const gruposHHActuales = new Set(gruposHH.map(g => g.nombre))
+  const rolesEfectivos = roles.filter(r => !r.grupo || gruposHHActuales.has(r.grupo))
 
   const totalCombustible = combustible.activo
     ? (Number(combustible.precio_litro) * Number(combustible.litros_dia) * Number(combustible.total_dias)) || 0
@@ -315,7 +343,7 @@ export default function Cotizador() {
 
   const cotizacionData = {
     cliente, estado,
-    materiales, roles: rolesEfectivos, servicios, bases, config, embalaje,
+    materiales, gruposHH, roles: rolesEfectivos, servicios, bases, config, embalaje,
     cantidadLotes, unidadesPorLote,
     conMaterial, modo,
     consumibles: conMaterial === false ? consumibles : [],
@@ -707,7 +735,7 @@ export default function Cotizador() {
 
       {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} modo={modo} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
-      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} grupos={materiales.map(g => g.nombre)} combustible={combustible} setCombustible={setCombustible} />}
+      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} gruposHH={gruposHH} setGruposHH={setGruposHH} combustible={combustible} setCombustible={setCombustible} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
       {activeTab === 'bases'       && (
         <TabBases

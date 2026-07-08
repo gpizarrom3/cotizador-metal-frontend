@@ -12,13 +12,12 @@ const calcRoleTotal = (r) => {
   return hh + col
 }
 
-const newRole = () => ({ id: Date.now() + Math.random(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0, grupo: '', ubicacion: 'taller' })
+export const newRole = () => ({ id: Date.now() + Math.random(), nombre: '', precio_hora: 0, cantidad: 1, horas: 0, colacion: false, valor_colacion: 0, grupo: '', ubicacion: 'taller' })
 
-const FUEL_ICON = (
-  <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-  </svg>
-)
+export const emptyGrupoHH = (nombre = 'MANO DE OBRA') => ({
+  id: Date.now() + Math.random(),
+  nombre,
+})
 
 function CombustibleCard({ combustible, setCombustible }) {
   const upd = (field, val) => setCombustible(c => ({ ...c, [field]: val }))
@@ -107,24 +106,40 @@ function CombustibleCard({ combustible, setCombustible }) {
   )
 }
 
-export default function TabHorasHombre({ roles, setRoles, configRoles = [], grupos = [], combustible = {}, setCombustible = () => {} }) {
+export default function TabHorasHombre({
+  roles, setRoles,
+  configRoles = [],
+  gruposHH = [], setGruposHH = () => {},
+  combustible = {}, setCombustible = () => {}
+}) {
   const update = (id, field, value) =>
-    setRoles(roles.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
+    setRoles(prev => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
   const updateMulti = (id, fields) =>
-    setRoles(roles.map((r) => (r.id === id ? { ...r, ...fields } : r)))
-  const removeRole = (id) => setRoles(roles.filter((r) => r.id !== id))
+    setRoles(prev => prev.map((r) => (r.id === id ? { ...r, ...fields } : r)))
+  const removeRole = (id) => setRoles(prev => prev.filter((r) => r.id !== id))
 
-  const addRoleToGroup = (grupo) =>
-    setRoles([...roles, { ...newRole(), grupo }])
+  const addRoleToGroup = (grupoNombre) =>
+    setRoles(prev => [...prev, { ...newRole(), grupo: grupoNombre }])
+
+  const addGroup = () => {
+    const g = emptyGrupoHH('NUEVO GRUPO')
+    setGruposHH(prev => [...prev, g])
+  }
+
+  const removeGroup = (grupoId, grupoNombre) => {
+    setGruposHH(prev => prev.filter(g => g.id !== grupoId))
+    setRoles(prev => prev.filter(r => r.grupo !== grupoNombre))
+  }
+
+  const renameGroup = (grupoId, oldNombre, newNombre) => {
+    setGruposHH(prev => prev.map(g => g.id === grupoId ? { ...g, nombre: newNombre } : g))
+    setRoles(prev => prev.map(r => r.grupo === oldNombre ? { ...r, grupo: newNombre } : r))
+  }
 
   const total = roles.reduce((acc, r) => acc + calcRoleTotal(r), 0)
 
-  // Grupos activos = grupos de materiales que tienen al menos 1 cargo, más los usados
-  const gruposActivos = grupos.length > 0
-    ? grupos
-    : [...new Set(roles.map(r => r.grupo).filter(Boolean))]
-
-  const rolesSinGrupo = roles.filter(r => !r.grupo)
+  const grupoNombres = new Set(gruposHH.map(g => g.nombre))
+  const rolesSinGrupo = roles.filter(r => !r.grupo || !grupoNombres.has(r.grupo))
 
   const renderCargo = (r) => (
     <div key={r.id} className="bg-slate-950 border border-slate-700 rounded-lg p-4">
@@ -289,39 +304,62 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
   return (
     <div className="space-y-4">
 
-      {/* Grupos de materiales como contenedores */}
-      {gruposActivos.map((grupo) => {
-        const rolesGrupo = roles.filter(r => r.grupo === grupo)
+      {/* Grupos de HH */}
+      {gruposHH.map((grupo) => {
+        const rolesGrupo = roles.filter(r => r.grupo === grupo.nombre)
         const subtotal = rolesGrupo.reduce((acc, r) => acc + calcRoleTotal(r), 0)
         const horasTotal = rolesGrupo.reduce((acc, r) => acc + (Number(r.horas) * Number(r.cantidad) || 0), 0)
 
         return (
-          <div key={grupo} className="card border border-slate-700">
+          <div key={grupo.id} className="card border border-slate-700">
             {/* Header del grupo */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />
-                <h3 className="text-white font-semibold">{grupo}</h3>
+                <input
+                  type="text"
+                  value={grupo.nombre}
+                  onChange={(e) => renameGroup(grupo.id, grupo.nombre, e.target.value)}
+                  onBlur={(e) => {
+                    const trimmed = e.target.value.trim().toUpperCase()
+                    if (trimmed && trimmed !== grupo.nombre) renameGroup(grupo.id, grupo.nombre, trimmed)
+                    else if (!trimmed) renameGroup(grupo.id, grupo.nombre, 'GRUPO SIN NOMBRE')
+                  }}
+                  className="bg-transparent text-white font-semibold focus:outline-none border-b border-transparent hover:border-slate-600 focus:border-blue-500 transition-colors min-w-0 flex-1 max-w-xs uppercase"
+                />
                 {rolesGrupo.length > 0 && (
-                  <span className="text-xs text-slate-500">{horasTotal.toFixed(1)} hrs·persona</span>
+                  <span className="text-xs text-slate-500 whitespace-nowrap hidden sm:inline">
+                    {horasTotal.toFixed(1)} hrs·persona
+                  </span>
                 )}
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {rolesGrupo.length > 0 && (
-                  <span className="text-blue-400 font-bold">{fmt(subtotal)}</span>
+                  <span className="text-blue-400 font-bold text-sm">{fmt(subtotal)}</span>
                 )}
                 <button
-                  onClick={() => addRoleToGroup(grupo)}
+                  onClick={() => addRoleToGroup(grupo.nombre)}
                   className="btn-secondary text-xs py-1.5 px-3"
                 >
-                  + Agregar cargo
+                  + Cargo
                 </button>
+                {gruposHH.length > 1 && (
+                  <button
+                    onClick={() => removeGroup(grupo.id, grupo.nombre)}
+                    className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                    title="Eliminar grupo"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 
             {rolesGrupo.length === 0 ? (
               <p className="text-slate-600 text-sm text-center py-4">
-                Sin cargos asignados — haz click en "+ Agregar cargo"
+                Sin cargos asignados — haz click en "+ Cargo"
               </p>
             ) : (
               <div className="space-y-3">
@@ -332,7 +370,7 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
         )
       })}
 
-      {/* Cargos sin grupo (si los hay) */}
+      {/* Cargos legacy sin grupo (migración desde datos antiguos) */}
       {rolesSinGrupo.length > 0 && (
         <div className="card border border-slate-700">
           <div className="flex items-center justify-between mb-4">
@@ -350,20 +388,14 @@ export default function TabHorasHombre({ roles, setRoles, configRoles = [], grup
         </div>
       )}
 
-      {/* Botón para agregar cargo sin grupo cuando no hay grupos de materiales */}
-      {grupos.length === 0 && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Horas Hombre por cargo</h2>
-            <button onClick={() => setRoles([...roles, { ...newRole() }])} className="btn-secondary text-sm py-2">
-              + Agregar cargo
-            </button>
-          </div>
-          <div className="space-y-3">
-            {roles.map(renderCargo)}
-          </div>
-        </div>
-      )}
+      {/* Botón agregar grupo */}
+      <button
+        onClick={addGroup}
+        className="w-full bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/40 border-dashed text-blue-400 hover:text-blue-300 font-medium rounded-xl py-3 text-sm transition-colors"
+      >
+        + Agregar grupo de horas hombre
+        <span className="block text-xs text-slate-500 font-normal mt-0.5">Fabricación, Montaje, Instalación, etc.</span>
+      </button>
 
       {/* Combustible */}
       <CombustibleCard combustible={combustible} setCombustible={setCombustible} />
