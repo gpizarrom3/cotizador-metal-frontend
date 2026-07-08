@@ -13,6 +13,8 @@ import Catalogo from './pages/Catalogo'
 import CatalogoServicios from './pages/CatalogoServicios'
 import Planes from './pages/Planes'
 import PrivateRoute from './components/PrivateRoute'
+import AdminRoute from './components/AdminRoute'
+import AdminPanel from './pages/AdminPanel'
 import Terminos from './pages/Terminos'
 import Privacidad from './pages/Privacidad'
 import Landing from './pages/Landing'
@@ -63,6 +65,10 @@ function App() {
         <Route
           path="/planes"
           element={<PrivateRoute><Planes /></PrivateRoute>}
+        />
+        <Route
+          path="/admin"
+          element={<AdminRoute><AdminPanel /></AdminRoute>}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

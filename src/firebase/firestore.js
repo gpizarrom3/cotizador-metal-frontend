@@ -391,3 +391,30 @@ export const obtenerCotizacionesDeOwner = async (ownerUid) => {
     .sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export const obtenerUsuariosAdmin = async () => {
+  const [usuariosSnap, suscSnap] = await Promise.all([
+    getDocs(collection(db, 'usuarios_lista')),
+    getDocs(collection(db, 'suscripciones')),
+  ])
+
+  const suscMap = {}
+  suscSnap.docs.forEach(d => { suscMap[d.id] = d.data() })
+
+  return usuariosSnap.docs.map(d => {
+    const u = d.data()
+    const susc = suscMap[d.id]
+    const isActive = susc?.status === 'authorized' || susc?.status === 'active' || susc?.status === 'trialing'
+    return {
+      ...u,
+      plan: isActive ? 'pro' : 'free',
+      suscStatus: susc?.status || null,
+    }
+  }).sort((a, b) => {
+    const ta = a.creadoEn?.toDate?.() || 0
+    const tb = b.creadoEn?.toDate?.() || 0
+    return tb - ta
+  })
+}
+

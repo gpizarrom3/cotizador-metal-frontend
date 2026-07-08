@@ -193,6 +193,29 @@ export default function Sidebar({ mobileOpen, onClose }) {
             )}
           </NavLink>
         ))}
+
+        {/* Link admin — solo para guillermopizarro@innovattech.org */}
+        {user?.email === 'guillermopizarro@innovattech.org' && (
+          <>
+            <div className="my-2 border-t border-stone-700" />
+            <NavLink
+              to="/admin"
+              onClick={handleNavClick}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-purple-600/20 text-purple-400 border border-purple-500/40'
+                    : 'text-stone-500 hover:text-purple-300 hover:bg-stone-800'
+                }`
+              }
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <span className="flex-1">Admin</span>
+            </NavLink>
+          </>
+        )}
       </nav>
 
       {/* Footer: usuario + opciones */}
