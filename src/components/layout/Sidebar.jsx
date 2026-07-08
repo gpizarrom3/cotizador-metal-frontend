@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '../../firebase/auth'
 import { useAuth } from '../../hooks/useAuth'
@@ -160,6 +161,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
   }
 
   return (
+    <>
     <aside
       className={`
         fixed lg:relative inset-y-0 left-0 z-40
@@ -342,14 +344,17 @@ export default function Sidebar({ mobileOpen, onClose }) {
         </button>
       </div>
 
-      {proModal && (
-        <ProFeatureModal
-          title={proModal.title}
-          description={proModal.description}
-          benefits={proModal.benefits}
-          onClose={() => setProModal(null)}
-        />
-      )}
     </aside>
+
+    {proModal && createPortal(
+      <ProFeatureModal
+        title={proModal.title}
+        description={proModal.description}
+        benefits={proModal.benefits}
+        onClose={() => setProModal(null)}
+      />,
+      document.body
+    )}
+    </>
   )
 }
