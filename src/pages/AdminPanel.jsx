@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { obtenerUsuariosAdmin } from '../firebase/firestore'
+import { useAuth } from '../hooks/useAuth'
 
 const fmtDate = (ts) => {
   if (!ts) return '—'
@@ -17,6 +18,7 @@ const fmtDateTime = (ts) => {
 const PROVIDER_LABEL = { 'google.com': 'Google', 'password': 'Email' }
 
 export default function AdminPanel() {
+  const { user } = useAuth()
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -24,11 +26,12 @@ export default function AdminPanel() {
   const [filtro, setFiltro] = useState('todos')
 
   useEffect(() => {
+    if (!user) return
     obtenerUsuariosAdmin()
       .then(setUsuarios)
       .catch(e => setError(e?.message || 'Error al cargar usuarios. Verifica las reglas de Firestore.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   const filtrados = usuarios.filter(u => {
     const matchSearch = !search ||
@@ -52,7 +55,7 @@ export default function AdminPanel() {
             <p className="text-slate-400 text-sm mt-0.5">Usuarios registrados en CotizaMetal</p>
           </div>
           <button
-            onClick={() => { setLoading(true); obtenerUsuariosAdmin().then(setUsuarios).catch(() => {}).finally(() => setLoading(false)) }}
+            onClick={() => { if (!user) return; setLoading(true); setError(''); obtenerUsuariosAdmin().then(setUsuarios).catch(e => setError(e?.message || 'Error')).finally(() => setLoading(false)) }}
             className="btn-secondary text-sm py-2 px-4 flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
