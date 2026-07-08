@@ -391,4 +391,46 @@ export const obtenerCotizacionesDeOwner = async (ownerUid) => {
     .sort((a, b) => (b.fechaDate || 0) - (a.fechaDate || 0))
 }
 
+// ── Catálogo global de materiales (admin → todos los Pro) ─────────────────────
+
+export const obtenerCatalogoGlobal = async () => {
+  const q = query(collection(db, 'catalogo_global'), orderBy('nombre', 'asc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+export const guardarItemCatalogoGlobal = async (datos) => {
+  const ref = await addDoc(collection(db, 'catalogo_global'), { ...datos, creadoEn: serverTimestamp() })
+  return ref.id
+}
+
+export const actualizarItemCatalogoGlobal = async (itemId, datos) => {
+  await updateDoc(doc(db, 'catalogo_global', itemId), datos)
+}
+
+export const eliminarItemCatalogoGlobal = async (itemId) => {
+  await deleteDoc(doc(db, 'catalogo_global', itemId))
+}
+
+// ── Catálogo global de servicios (admin → todos los Pro) ──────────────────────
+
+export const obtenerCatalogoServiciosGlobal = async () => {
+  const q = query(collection(db, 'catalogo_servicios_global'), orderBy('nombre', 'asc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+export const guardarItemCatalogoServiciosGlobal = async (datos) => {
+  const ref = await addDoc(collection(db, 'catalogo_servicios_global'), { ...datos, creadoEn: serverTimestamp() })
+  return ref.id
+}
+
+export const actualizarItemCatalogoServiciosGlobal = async (itemId, datos) => {
+  await updateDoc(doc(db, 'catalogo_servicios_global', itemId), datos)
+}
+
+export const eliminarItemCatalogoServiciosGlobal = async (itemId) => {
+  await deleteDoc(doc(db, 'catalogo_servicios_global', itemId))
+}
+
 
