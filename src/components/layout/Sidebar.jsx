@@ -50,6 +50,7 @@ const navItems = [
   {
     to: '/catalogo-servicios',
     label: 'Cat. Servicios',
+    proOnly: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -171,28 +172,36 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
       {/* Navegación */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={handleNavClick}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-amber-600/20 text-amber-400 border border-amber-500/40'
-                  : 'text-stone-400 hover:text-stone-100 hover:bg-stone-800'
-              }`
-            }
-          >
-            {item.icon}
-            <span className="flex-1">{item.label}</span>
-            {item.to === '/conexiones' && invPendientes > 0 && (
-              <span className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-black flex-shrink-0">
-                {invPendientes}
-              </span>
-            )}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const destino = (item.proOnly && !isPro) ? '/planes' : item.to
+          return (
+            <NavLink
+              key={item.to}
+              to={destino}
+              onClick={handleNavClick}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive && destino === item.to
+                    ? 'bg-amber-600/20 text-amber-400 border border-amber-500/40'
+                    : 'text-stone-400 hover:text-stone-100 hover:bg-stone-800'
+                }`
+              }
+            >
+              {item.icon}
+              <span className="flex-1">{item.label}</span>
+              {item.proOnly && !isPro && (
+                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded flex-shrink-0">
+                  PRO
+                </span>
+              )}
+              {item.to === '/conexiones' && invPendientes > 0 && (
+                <span className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-black flex-shrink-0">
+                  {invPendientes}
+                </span>
+              )}
+            </NavLink>
+          )
+        })}
 
       </nav>
 
