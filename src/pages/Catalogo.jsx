@@ -32,6 +32,48 @@ const TIPO_BADGE = {
   viga:    { label: 'Viga',     cls: 'bg-orange-900/60 text-orange-300' },
 }
 
+function MaterialRow({ i, onEdit, onDelete }) {
+  return (
+    <tr className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+      <td className="px-4 py-3 text-slate-200 font-medium">{i.nombre}</td>
+      <td className="px-4 py-3">
+        {i.tipo && TIPO_BADGE[i.tipo]
+          ? <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TIPO_BADGE[i.tipo].cls}`}>{TIPO_BADGE[i.tipo].label}</span>
+          : <span className="text-slate-700">—</span>}
+      </td>
+      <td className="px-4 py-3 text-slate-400 text-xs">{i.proveedor || '—'}</td>
+      <td className="px-4 py-3 text-slate-400 text-xs">{i.formato || '—'}</td>
+      <td className="px-4 py-3 text-slate-400 text-xs">{i.unidad || '—'}</td>
+      <td className="px-4 py-3 text-right">
+        {i.peso_por_metro > 0
+          ? <span className="text-emerald-400 font-medium text-sm">{i.peso_por_metro} kg/m</span>
+          : <span className="text-slate-700">—</span>}
+      </td>
+      <td className="px-4 py-3 text-slate-200 text-right font-medium">{fmt(i.precio_unitario)}</td>
+      <td className="px-4 py-3 text-center">
+        {(onEdit || onDelete) && (
+          <div className="flex items-center justify-center gap-2">
+            {onEdit && (
+              <button onClick={onEdit} className="text-slate-400 hover:text-yellow-400 transition-colors" title="Editar">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={onDelete} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+      </td>
+    </tr>
+  )
+}
+
 export default function Catalogo() {
   const { user } = useAuth()
   const { isPro, loading: planLoading } = usePlan()
@@ -143,47 +185,6 @@ export default function Catalogo() {
       setError('Error al eliminar.')
     }
   }
-
-  const MaterialRow = ({ i, onEdit, onDelete }) => (
-    <tr className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
-      <td className="px-4 py-3 text-slate-200 font-medium">{i.nombre}</td>
-      <td className="px-4 py-3">
-        {i.tipo && TIPO_BADGE[i.tipo]
-          ? <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TIPO_BADGE[i.tipo].cls}`}>{TIPO_BADGE[i.tipo].label}</span>
-          : <span className="text-slate-700">—</span>}
-      </td>
-      <td className="px-4 py-3 text-slate-400 text-xs">{i.proveedor || '—'}</td>
-      <td className="px-4 py-3 text-slate-400 text-xs">{i.formato || '—'}</td>
-      <td className="px-4 py-3 text-slate-400 text-xs">{i.unidad || '—'}</td>
-      <td className="px-4 py-3 text-right">
-        {i.peso_por_metro > 0
-          ? <span className="text-emerald-400 font-medium text-sm">{i.peso_por_metro} kg/m</span>
-          : <span className="text-slate-700">—</span>}
-      </td>
-      <td className="px-4 py-3 text-slate-200 text-right font-medium">{fmt(i.precio_unitario)}</td>
-      {(onEdit || onDelete) && (
-        <td className="px-4 py-3 text-center">
-          <div className="flex items-center justify-center gap-2">
-            {onEdit && (
-              <button onClick={onEdit} className="text-slate-400 hover:text-yellow-400 transition-colors" title="Editar">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            )}
-            {onDelete && (
-              <button onClick={onDelete} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </td>
-      )}
-      {!onEdit && !onDelete && <td className="px-4 py-3" />}
-    </tr>
-  )
 
   return (
     <DashboardLayout>
