@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ProFeatureModal from '../components/ui/ProFeatureModal'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import TabMateriales, { emptyMaterial, emptySubproducto, calcPesoFromPesoData } from '../components/cotizador/TabMateriales'
 import TabConsumibles, { DEFAULT_CONSUMIBLES } from '../components/cotizador/TabConsumibles'
@@ -189,6 +190,7 @@ export default function Cotizador() {
   const [ownerUid,       setOwnerUid]       = useState(() => getDraft().ownerUid ?? null)
 
   const [clientes, setClientes] = useState([])
+  const [showAvanzadoModal, setShowAvanzadoModal] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -605,7 +607,7 @@ export default function Cotizador() {
                 Estándar
               </button>
               <button
-                onClick={() => isPro ? setModo('avanzado') : navigate('/planes')}
+                onClick={() => isPro ? setModo('avanzado') : setShowAvanzadoModal(true)}
                 className={`text-xs px-3 py-1 rounded-full transition-colors font-medium flex items-center gap-1 ${modo === 'avanzado' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 title={!isPro ? 'Disponible en plan Pro' : undefined}
               >
@@ -854,6 +856,21 @@ export default function Cotizador() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAvanzadoModal && (
+        <ProFeatureModal
+          title="Modo Avanzado"
+          description="Desbloquea secciones adicionales del cotizador para incluir todos los costos de tu proyecto."
+          benefits={[
+            'Sección de embalaje: pallets, flejes, guardacantos y guantes',
+            'Tarjeta de combustible para traslados y logística',
+            'Colación por días trabajados en obra',
+            'Ficha de costos completa exportable en PDF',
+            'Resumen detallado por categoría de costo',
+          ]}
+          onClose={() => setShowAvanzadoModal(false)}
+        />
       )}
     </DashboardLayout>
   )

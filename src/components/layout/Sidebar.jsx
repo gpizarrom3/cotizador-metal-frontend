@@ -6,6 +6,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { useUserData } from '../../contexts/UserDataContext'
 import { suscribirInvitacionesPendientes, contarCotizaciones } from '../../firebase/firestore'
 import { usePlan } from '../../hooks/usePlan'
+import ProFeatureModal from '../ui/ProFeatureModal'
 
 const LIMITE_FREE = 10
 const SOPORTE_EMAIL = 'gpizarrom.3@gmail.com'
@@ -42,6 +43,16 @@ const navItems = [
     to: '/catalogo',
     label: 'Cat. Materiales',
     proOnly: true,
+    proFeature: {
+      title: 'Catálogo de materiales',
+      description: 'Crea tu propio catálogo de materiales y úsalos directamente en el cotizador con un clic.',
+      benefits: [
+        'Guarda materiales con precio, unidad, proveedor y peso por metro',
+        'Accede al catálogo global con materiales precargados por el administrador',
+        'Inserta cualquier material al cotizador sin escribirlo de nuevo',
+        'Organiza y filtra tu catálogo por nombre o proveedor',
+      ],
+    },
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -52,6 +63,16 @@ const navItems = [
     to: '/catalogo-servicios',
     label: 'Cat. Servicios',
     proOnly: true,
+    proFeature: {
+      title: 'Catálogo de servicios',
+      description: 'Registra los servicios que ofreces con precio de referencia y agrégalos al cotizador en segundos.',
+      benefits: [
+        'Guarda servicios con descripción, unidad y precio referencial',
+        'Accede al catálogo global de servicios disponibles para todos los Pro',
+        'Agrega servicios al cotizador sin tener que escribirlos cada vez',
+        'Mantén tus tarifas actualizadas en un solo lugar',
+      ],
+    },
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -71,6 +92,16 @@ const navItems = [
     to: '/conexiones',
     label: 'Conexiones',
     proOnly: true,
+    proFeature: {
+      title: 'Conexiones',
+      description: 'Comparte tus cotizaciones con colaboradores, vendedores o clientes de forma segura.',
+      benefits: [
+        'Comparte cotizaciones con cualquier usuario registrado',
+        'Elige entre acceso de solo lectura o permiso de edición',
+        'Conexión individual (tú compartes) o mutua (ambos se ven)',
+        'Recibe cotizaciones compartidas por otros usuarios en tu historial',
+      ],
+    },
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -106,6 +137,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const logoEmpresa = empresa?.logo || null
   const [invPendientes, setInvPendientes] = useState(0)
   const [cotizCount, setCotizCount] = useState(null)
+  const [proModal, setProModal] = useState(null)
 
   useEffect(() => {
     if (!user?.email) return
@@ -175,15 +207,30 @@ export default function Sidebar({ mobileOpen, onClose }) {
       {/* Navegación */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const destino = (item.proOnly && !isPro) ? '/planes' : item.to
+          const isLocked = item.proOnly && !isPro
+          if (isLocked) {
+            return (
+              <button
+                key={item.to}
+                onClick={() => { setProModal(item.proFeature); if (onClose) onClose() }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-stone-400 hover:text-stone-100 hover:bg-stone-800"
+              >
+                {item.icon}
+                <span className="flex-1 text-left">{item.label}</span>
+                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded flex-shrink-0">
+                  PRO
+                </span>
+              </button>
+            )
+          }
           return (
             <NavLink
               key={item.to}
-              to={destino}
+              to={item.to}
               onClick={handleNavClick}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive && destino === item.to
+                  isActive
                     ? 'bg-amber-600/20 text-amber-400 border border-amber-500/40'
                     : 'text-stone-400 hover:text-stone-100 hover:bg-stone-800'
                 }`
@@ -191,11 +238,6 @@ export default function Sidebar({ mobileOpen, onClose }) {
             >
               {item.icon}
               <span className="flex-1">{item.label}</span>
-              {item.proOnly && !isPro && (
-                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded flex-shrink-0">
-                  PRO
-                </span>
-              )}
               {item.to === '/conexiones' && invPendientes > 0 && (
                 <span className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-black flex-shrink-0">
                   {invPendientes}
@@ -204,7 +246,6 @@ export default function Sidebar({ mobileOpen, onClose }) {
             </NavLink>
           )
         })}
-
       </nav>
 
       {/* Footer: usuario + opciones */}
@@ -300,6 +341,15 @@ export default function Sidebar({ mobileOpen, onClose }) {
           Cerrar sesión
         </button>
       </div>
+
+      {proModal && (
+        <ProFeatureModal
+          title={proModal.title}
+          description={proModal.description}
+          benefits={proModal.benefits}
+          onClose={() => setProModal(null)}
+        />
+      )}
     </aside>
   )
 }
