@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Navigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import { useAuth } from '../hooks/useAuth'
 import { usePlan } from '../hooks/usePlan'
@@ -45,7 +45,9 @@ function TipoBadge({ tipo }) {
 
 export default function Conexiones() {
   const { user } = useAuth()
-  const { isPro } = usePlan()
+  const { isPro, loading: planLoading } = usePlan()
+
+  if (!planLoading && !isPro) return <Navigate to="/planes" replace />
 
   const [toEmail, setToEmail]   = useState('')
   const [permiso, setPermiso]   = useState('lectura')
