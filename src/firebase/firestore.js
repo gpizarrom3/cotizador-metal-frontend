@@ -394,13 +394,24 @@ export const obtenerCotizacionesDeOwner = async (ownerUid) => {
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export const obtenerUsuariosAdmin = async () => {
-  const usuariosSnap = await getDocs(collection(db, 'usuarios_lista'))
+  console.log('[Admin] iniciando carga de usuarios...')
+  let usuariosSnap
+  try {
+    usuariosSnap = await getDocs(collection(db, 'usuarios_lista'))
+    console.log('[Admin] usuarios_lista OK, docs:', usuariosSnap.size)
+  } catch (e) {
+    console.error('[Admin] ERROR en usuarios_lista:', e.code, e.message)
+    throw e
+  }
 
   let suscMap = {}
   try {
     const suscSnap = await getDocs(collection(db, 'suscripciones'))
     suscSnap.docs.forEach(d => { suscMap[d.id] = d.data() })
-  } catch { /* si suscripciones no es accesible, todos quedan como free */ }
+    console.log('[Admin] suscripciones OK, docs:', suscSnap.size)
+  } catch (e) {
+    console.warn('[Admin] suscripciones no accesible (todos quedan free):', e.code)
+  }
 
   return usuariosSnap.docs.map(d => {
     const u = d.data()
