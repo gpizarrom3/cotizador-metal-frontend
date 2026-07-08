@@ -26,7 +26,7 @@ export default function AdminPanel() {
   useEffect(() => {
     obtenerUsuariosAdmin()
       .then(setUsuarios)
-      .catch(e => setError('Error al cargar usuarios. Verifica las reglas de Firestore.'))
+      .catch(e => setError(e?.message || 'Error al cargar usuarios. Verifica las reglas de Firestore.'))
       .finally(() => setLoading(false))
   }, [])
 
