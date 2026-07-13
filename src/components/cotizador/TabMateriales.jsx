@@ -694,9 +694,25 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
   const [catalogPickerSearch, setCatalogPickerSearch] = useState('')
   const [catPickerLargoItem, setCatPickerLargoItem] = useState(null)
   const [catPickerLargo, setCatPickerLargo] = useState('')
-  // ── Toggle IA: peso y m² ─────────────────────────────────────────────────────
-  const [pesoOn, setPesoOn]     = useState({}) // { [id]: bool }
-  const [m2On, setM2On]         = useState({}) // { [id]: bool }
+  // ── Toggle IA: peso y m² — se inicializan desde pesoData para sobrevivir cambios de pestaña ──
+  const [pesoOn, setPesoOn] = useState(() => {
+    const init = {}
+    for (const item of sp.items || []) {
+      if (item.pesoData && item.pesoData.modo !== 'manual' && calcPesoFromPesoData(item.pesoData) > 0) {
+        init[item.id] = true
+      }
+    }
+    return init
+  })
+  const [m2On, setM2On] = useState(() => {
+    const init = {}
+    for (const item of sp.items || []) {
+      if (item.pesoData && item.pesoData.modo !== 'manual' && calcM2FromPesoData(item.pesoData) > 0) {
+        init[item.id] = true
+      }
+    }
+    return init
+  })
   const [iaLoading, setIaLoading] = useState({}) // { [id]: bool }
 
   const itemsRef  = useRef(sp.items)
