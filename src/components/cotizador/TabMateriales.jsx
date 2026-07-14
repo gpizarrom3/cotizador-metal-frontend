@@ -842,7 +842,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
               <th className="text-right px-3 py-3 w-28">Longitud (mm)</th>
               <th className="text-right px-3 py-3 w-20">m²</th>
               <th className="text-right px-3 py-3 w-24">
-                <span>Kg</span>
+                <span>Kg/unidad</span>
                 <span className="block text-[10px] text-slate-600 font-normal leading-none mt-0.5">IA / manual</span>
               </th>
               <th className="text-right px-3 py-3 w-40">
