@@ -1,113 +1,30 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { Resend } from 'resend'
-import crypto from 'crypto'
 
 const FROM = process.env.RESEND_FROM || 'CotizaMetal <onboarding@resend.dev>'
 
-function getAdminDb() {
-  if (!getApps().length) {
-    const credentials = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIALS)
-    initializeApp({ credential: cert(credentials) })
-  }
-  return getFirestore()
-}
-
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-
-  // GET — cotización pública por token
-  if (req.method === 'GET') {
-    const { token } = req.query
-    if (!token) return res.status(400).json({ error: 'Missing token' })
-
-    const db = getAdminDb()
-    try {
-      const linkSnap = await db.doc(`publicLinks/${token}`).get()
-      if (!linkSnap.exists) return res.status(404).json({ error: 'Link no encontrado o expirado' })
-
-      const { uid, cotizacionId } = linkSnap.data()
-      const cotSnap = await db.doc(`usuarios/${uid}/cotizaciones/${cotizacionId}`).get()
-      if (!cotSnap.exists) return res.status(404).json({ error: 'Cotización no encontrada' })
-
-      const data = cotSnap.data()
-      const fechaDate = data.fecha?.toDate ? data.fecha.toDate() : null
-      const fechaStr = fechaDate
-        ? fechaDate.toLocaleDateString('es-CL')
-        : (typeof data.fecha === 'string' ? data.fecha : '—')
-
-      const { shareToken: _st, deleted: _d, deletedAt: _da, ...publicData } = data
-      return res.status(200).json({ cot: { id: cotizacionId, ...publicData, fecha: fechaStr } })
-    } catch (err) {
-      console.error('[cotizacion GET]', err)
-      return res.status(500).json({ error: err.message })
-    }
-  }
-
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {})
+  const { to, cot, empresa } = body
+  if (!to || !cot) return res.status(400).json({ error: 'Missing to or cot' })
 
-  // POST con campo "to" → enviar email
-  if (body.to) {
-    const { to, cot, empresa } = body
-    if (!cot) return res.status(400).json({ error: 'Missing cot' })
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const nombreEmpresa = empresa?.nombre || 'CotizaMetal'
+  const clienteNombre = typeof cot.cliente === 'object' ? (cot.cliente?.nombre || '—') : (cot.cliente || '—')
 
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const nombreEmpresa = empresa?.nombre || 'CotizaMetal'
-    const clienteNombre = typeof cot.cliente === 'object' ? (cot.cliente?.nombre || '—') : (cot.cliente || '—')
-
-    try {
-      await resend.emails.send({
-        from: FROM,
-        to,
-        subject: `Cotización ${cot.numero || ''} — ${nombreEmpresa}`,
-        html: buildHtml(cot, empresa, clienteNombre),
-      })
-      return res.status(200).json({ ok: true })
-    } catch (err) {
-      console.error('[cotizacion send]', err)
-      return res.status(500).json({ error: err.message })
-    }
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `Cotización ${cot.numero || ''} — ${nombreEmpresa}`,
+      html: buildHtml(cot, empresa, clienteNombre),
+    })
+    res.status(200).json({ ok: true })
+  } catch (err) {
+    console.error('[cotizacion]', err)
+    res.status(500).json({ error: err.message })
   }
-
-  // POST con campo "uid" → publicar / despublicar link
-  if (body.uid) {
-    const { uid, cotizacionId, action } = body
-    if (!cotizacionId) return res.status(400).json({ error: 'Missing cotizacionId' })
-
-    const db = getAdminDb()
-    const cotRef = db.doc(`usuarios/${uid}/cotizaciones/${cotizacionId}`)
-
-    try {
-      const cotSnap = await cotRef.get()
-      if (!cotSnap.exists) return res.status(404).json({ error: 'Not found' })
-
-      if (action === 'despublicar') {
-        const existingToken = cotSnap.data().shareToken
-        if (existingToken) {
-          await db.doc(`publicLinks/${existingToken}`).delete()
-          await cotRef.update({ shareToken: FieldValue.delete() })
-        }
-        return res.status(200).json({ ok: true })
-      }
-
-      // publicar
-      const shareToken = crypto.randomBytes(20).toString('hex')
-      await db.doc(`publicLinks/${shareToken}`).set({
-        uid,
-        cotizacionId,
-        creadoEn: FieldValue.serverTimestamp(),
-      })
-      await cotRef.update({ shareToken })
-      return res.status(200).json({ shareToken })
-    } catch (err) {
-      console.error('[cotizacion publish]', err)
-      return res.status(500).json({ error: err.message })
-    }
-  }
-
-  return res.status(400).json({ error: 'Bad request' })
 }
 
 const fmt = (n) =>

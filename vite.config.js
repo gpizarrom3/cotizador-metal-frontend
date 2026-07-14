@@ -123,11 +123,10 @@ export default defineConfig(({ mode }) => {
             await handler(req, res)
           })
 
-          // /api/cotizacion — enviar email, publicar link, y vista pública
+          // /api/cotizacion — enviar cotización por email
           server.middlewares.use('/api/cotizacion', async (req, res) => {
             shimRes(res)
-            req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams)
-            if (req.method === 'POST') req.body = await parseBody(req)
+            req.body = await parseBody(req)
             const { default: handler } = await import('./api/cotizacion.js')
             await handler(req, res)
           })
