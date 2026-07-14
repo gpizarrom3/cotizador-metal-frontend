@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useJsApiLoader, GoogleMap, Autocomplete, DirectionsRenderer } from '@react-google-maps/api'
+import { useJsApiLoader, GoogleMap, Autocomplete, Polyline } from '@react-google-maps/api'
 import Toggle from '../ui/Toggle'
 
 const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
-const LIBS       = ['places']
+const LIBS       = ['places', 'geometry']
 const MAP_CENTER = { lat: -33.4489, lng: -70.6693 }
 const MAP_OPTS   = {
   mapTypeControl: false,
@@ -62,9 +62,10 @@ function CombustibleCard({ combustible, setCombustible }) {
 
   const autoOrig = useRef(null)
   const autoDest = useRef(null)
-  const [directions,  setDirections]  = useState(null)
-  const [calculando,  setCalculando]  = useState(false)
-  const [errorRuta,   setErrorRuta]   = useState('')
+  const mapRef   = useRef(null)
+  const [routePath,  setRoutePath]  = useState(null)
+  const [calculando, setCalculando] = useState(false)
+  const [errorRuta,  setErrorRuta]  = useState('')
 
   useEffect(() => {
     if (combustible.activo && !combustible.precio_litro) {
@@ -85,29 +86,30 @@ function CombustibleCard({ combustible, setCombustible }) {
     setCombustible(c => ({ ...c, tipo_vehiculo: value, rendimiento: v?.rendimiento ?? c.rendimiento }))
   }
 
-  const calcularRuta = useCallback(() => {
+  const calcularRuta = useCallback(async () => {
     const origen  = autoOrig.current?.getPlace()?.formatted_address || combustible.origen
     const destino = autoDest.current?.getPlace()?.formatted_address || combustible.destino
     if (!origen || !destino) { setErrorRuta('Selecciona origen y destino desde las sugerencias.'); return }
     setCalculando(true)
     setErrorRuta('')
-    const svc = new window.google.maps.DirectionsService()
-    svc.route(
-      { origin: origen, destination: destino, travelMode: 'DRIVING', region: 'CL' },
-      (result, status) => {
-        setCalculando(false)
-        if (status !== 'OK') { setErrorRuta('No se pudo calcular la ruta. Verifica las direcciones.'); return }
-        const leg    = result.routes[0].legs[0]
-        const kmTotal = Math.round(leg.distance.value / 100) / 10
-        setDirections(result)
-        setCombustible(c => ({
-          ...c,
-          origen:  leg.start_address,
-          destino: leg.end_address,
-          km_total: kmTotal,
-        }))
+    setRoutePath(null)
+    try {
+      const res  = await fetch(`/api/calcular-ruta?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`)
+      const data = await res.json()
+      if (!res.ok || data.error) { setErrorRuta(data.error || 'No se pudo calcular la ruta.'); return }
+      const path = window.google.maps.geometry.encoding.decodePath(data.encodedPolyline)
+      setRoutePath(path)
+      if (mapRef.current) {
+        const bounds = new window.google.maps.LatLngBounds()
+        path.forEach(p => bounds.extend(p))
+        mapRef.current.fitBounds(bounds, 60)
       }
-    )
+      setCombustible(c => ({ ...c, origen, destino, km_total: data.km }))
+    } catch {
+      setErrorRuta('Error al conectar con el servidor.')
+    } finally {
+      setCalculando(false)
+    }
   }, [combustible.origen, combustible.destino, setCombustible])
 
   const kmTotal      = Number(combustible.km_total)     || 0
@@ -219,8 +221,14 @@ function CombustibleCard({ combustible, setCombustible }) {
                 center={MAP_CENTER}
                 zoom={6}
                 options={MAP_OPTS}
+                onLoad={map => { mapRef.current = map }}
               >
-                {directions && <DirectionsRenderer directions={directions} options={{ suppressMarkers: false, polylineOptions: { strokeColor: '#f97316', strokeWeight: 5 } }} />}
+                {routePath && (
+                  <Polyline
+                    path={routePath}
+                    options={{ strokeColor: '#f97316', strokeWeight: 5, strokeOpacity: 0.85 }}
+                  />
+                )}
               </GoogleMap>
 
               {kmTotal > 0 && (
