@@ -24,10 +24,19 @@ const iconDestino = new L.Icon({
 })
 
 const TIPOS_COMBUSTIBLE = [
-  { value: 'gasolina_93', label: 'Gasolina 93' },
-  { value: 'gasolina_95', label: 'Gasolina 95' },
-  { value: 'gasolina_97', label: 'Gasolina 97' },
-  { value: 'diesel',      label: 'Diesel' },
+  { value: 'gasolina_93', label: 'Gasolina 93', precio: 1039 },
+  { value: 'gasolina_95', label: 'Gasolina 95', precio: 1092 },
+  { value: 'gasolina_97', label: 'Gasolina 97', precio: 1154 },
+  { value: 'diesel',      label: 'Diesel',       precio:  923 },
+]
+
+const TIPOS_VEHICULO = [
+  { value: 'auto',      label: 'Auto / Sedan',     rendimiento: 13 },
+  { value: 'suv',       label: 'SUV / 4×4',        rendimiento: 11 },
+  { value: 'camioneta', label: 'Camioneta pickup',  rendimiento: 9  },
+  { value: 'furgon',    label: 'Furgón / Van',      rendimiento: 8  },
+  { value: 'camion_l',  label: 'Camión ligero',     rendimiento: 6  },
+  { value: 'camion_p',  label: 'Camión pesado',     rendimiento: 4  },
 ]
 
 function FitBounds({ bounds }) {
@@ -63,18 +72,36 @@ function CombustibleCard({ combustible, setCombustible }) {
   const [destinoInput, setDestinoInput] = useState(combustible.destino || '')
   const [calculando,   setCalculando]   = useState(false)
   const [errorRuta,    setErrorRuta]    = useState('')
-  const [cargandoPrecio, setCargandoPrecio] = useState(false)
-  const [fuentePrecio,   setFuentePrecio]   = useState('')
 
   const origenCoords  = combustible.origen_coords  || null
   const destinoCoords = combustible.destino_coords || null
   const rutaCoords    = combustible.ruta_coords    || null
 
+  // Al activar, carga precio por defecto si aún no tiene uno
+  useEffect(() => {
+    if (combustible.activo && !combustible.precio_litro) {
+      const tipo = combustible.tipo_combustible || 'gasolina_93'
+      const ref  = TIPOS_COMBUSTIBLE.find(t => t.value === tipo)
+      if (ref) upd('precio_litro', ref.precio)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combustible.activo])
+
+  const handleTipoCombustible = (tipo) => {
+    const ref = TIPOS_COMBUSTIBLE.find(t => t.value === tipo)
+    setCombustible(c => ({ ...c, tipo_combustible: tipo, precio_litro: ref?.precio ?? c.precio_litro }))
+  }
+
+  const handleTipoVehiculo = (value) => {
+    const v = TIPOS_VEHICULO.find(t => t.value === value)
+    setCombustible(c => ({ ...c, tipo_vehiculo: value, rendimiento: v?.rendimiento ?? c.rendimiento }))
+  }
+
   const geocode = async (address) => {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ', Chile')}&format=json&limit=1`
     const res  = await fetch(url, { headers: { 'Accept-Language': 'es' } })
     const data = await res.json()
-    if (!data.length) throw new Error(`No se encontró "${address}"`)
+    if (!data.length) throw new Error(`No se encontró la dirección: "${address}". Intenta agregar la ciudad o comuna.`)
     return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
   }
 
@@ -84,46 +111,25 @@ function CombustibleCard({ combustible, setCombustible }) {
     setErrorRuta('')
     try {
       const [orig, dest] = await Promise.all([geocode(origenInput), geocode(destinoInput)])
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${orig.lng},${orig.lat};${dest.lng},${dest.lat}?overview=full&geometries=geojson`
-      const routeRes  = await fetch(osrmUrl)
+      const osrmUrl  = `https://router.project-osrm.org/route/v1/driving/${orig.lng},${orig.lat};${dest.lng},${dest.lat}?overview=full&geometries=geojson`
+      const routeRes = await fetch(osrmUrl)
       const routeData = await routeRes.json()
-      if (routeData.code !== 'Ok') throw new Error('No se pudo calcular la ruta entre esas direcciones')
-      const route    = routeData.routes[0]
-      const kmTotal  = Math.round(route.distance / 100) / 10
-      const coords   = route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+      if (routeData.code !== 'Ok') throw new Error('No se pudo trazar la ruta entre esas ubicaciones.')
+      const route   = routeData.routes[0]
+      const kmTotal = Math.round(route.distance / 100) / 10
+      const coords  = route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
       setCombustible(c => ({
         ...c,
-        origen: origenInput,
-        destino: destinoInput,
+        origen: origenInput, destino: destinoInput,
         origen_coords:  { lat: orig.lat, lng: orig.lng },
         destino_coords: { lat: dest.lat, lng: dest.lng },
-        km_total:    kmTotal,
-        ruta_coords: coords,
+        km_total: kmTotal, ruta_coords: coords,
       }))
     } catch (e) {
-      setErrorRuta(e.message || 'Error al calcular la ruta')
+      setErrorRuta(e.message || 'Error al calcular la ruta.')
     } finally {
       setCalculando(false)
     }
-  }
-
-  const fetchPrecio = async (tipo) => {
-    setCargandoPrecio(true)
-    setFuentePrecio('')
-    try {
-      const res  = await fetch(`/api/precio-combustible?tipo=${tipo}`)
-      const data = await res.json()
-      if (data.precio) {
-        upd('precio_litro', data.precio)
-        setFuentePrecio(data.fuente === 'cne' ? 'CNE (tiempo real)' : 'referencia RM')
-      }
-    } catch (_) {}
-    finally { setCargandoPrecio(false) }
-  }
-
-  const handleTipo = (tipo) => {
-    upd('tipo_combustible', tipo)
-    fetchPrecio(tipo)
   }
 
   const kmTotal      = Number(combustible.km_total)     || 0
@@ -136,9 +142,7 @@ function CombustibleCard({ combustible, setCombustible }) {
   const mapBounds = origenCoords && destinoCoords
     ? [[origenCoords.lat, origenCoords.lng], [destinoCoords.lat, destinoCoords.lng]]
     : null
-  const mapCenter = origenCoords
-    ? [origenCoords.lat, origenCoords.lng]
-    : [-33.4489, -70.6693]
+  const mapCenter = origenCoords ? [origenCoords.lat, origenCoords.lng] : [-33.4489, -70.6693]
 
   return (
     <div className="card border border-slate-700">
@@ -158,26 +162,33 @@ function CombustibleCard({ combustible, setCombustible }) {
       {combustible.activo && (
         <div className="mt-4 space-y-5">
 
-          {/* Origen / Destino */}
+          {/* ── Ruta ── */}
           <div className="space-y-3">
+            <p className="text-slate-500 text-xs">Ingresa calle, pasaje o dirección completa. Incluye la comuna para mayor precisión.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="label">Lugar de origen</label>
+                <label className="label">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500 mr-1.5" />
+                  Punto de origen
+                </label>
                 <input
                   type="text"
                   className="input-field text-sm py-2"
-                  placeholder="Ej: Santiago Centro"
+                  placeholder="Ej: Pasaje Los Aromos 456, Pudahuel"
                   value={origenInput}
                   onChange={e => setOrigenInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && calcularRuta()}
                 />
               </div>
               <div>
-                <label className="label">Lugar de destino</label>
+                <label className="label">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-1.5" />
+                  Punto de destino
+                </label>
                 <input
                   type="text"
                   className="input-field text-sm py-2"
-                  placeholder="Ej: Valparaíso"
+                  placeholder="Ej: Av. Balmaceda 1234, Calama"
                   value={destinoInput}
                   onChange={e => setDestinoInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && calcularRuta()}
@@ -202,11 +213,11 @@ function CombustibleCard({ combustible, setCombustible }) {
             {errorRuta && <p className="text-red-400 text-sm">{errorRuta}</p>}
           </div>
 
-          {/* Mapa */}
+          {/* ── Mapa ── */}
           <div className="rounded-xl overflow-hidden border border-slate-600" style={{ height: 300 }}>
             <MapContainer
               center={mapCenter}
-              zoom={origenCoords ? 9 : 6}
+              zoom={origenCoords ? 11 : 6}
               style={{ height: '100%', width: '100%' }}
               scrollWheelZoom={false}
             >
@@ -227,42 +238,52 @@ function CombustibleCard({ combustible, setCombustible }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
               <span className="text-orange-400 font-bold">{kmTotal} km</span>
-              <span className="text-slate-400">{combustible.origen} → {combustible.destino}</span>
+              <span className="text-slate-500">{combustible.origen} → {combustible.destino}</span>
             </div>
           )}
 
-          {/* Tipo combustible + precio + rendimiento */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* ── Combustible ── */}
+          <div className="border-t border-slate-700 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Tipo de combustible</label>
               <select
                 className="input-field text-sm py-2"
                 value={combustible.tipo_combustible || 'gasolina_93'}
-                onChange={e => handleTipo(e.target.value)}
+                onChange={e => handleTipoCombustible(e.target.value)}
               >
                 {TIPOS_COMBUSTIBLE.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                  <option key={t.value} value={t.value}>{t.label} — ref. ${t.precio.toLocaleString('es-CL')}/L</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="label flex items-center gap-2">
-                Precio ($/litro)
-                {cargandoPrecio
-                  ? <span className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                  : fuentePrecio && <span className="text-slate-500 font-normal text-[10px]">({fuentePrecio})</span>
-                }
-              </label>
+              <label className="label">Precio ($/litro) — editable</label>
               <input
                 type="number" min="0"
                 className="input-field text-sm py-2"
-                placeholder="Ej: 1092"
                 value={combustible.precio_litro || ''}
                 onChange={e => upd('precio_litro', Number(e.target.value))}
               />
             </div>
+          </div>
+
+          {/* ── Vehículo ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <label className="label">Tipo de vehículo</label>
+              <select
+                className="input-field text-sm py-2"
+                value={combustible.tipo_vehiculo || ''}
+                onChange={e => handleTipoVehiculo(e.target.value)}
+              >
+                <option value="">— Seleccionar —</option>
+                {TIPOS_VEHICULO.map(t => (
+                  <option key={t.value} value={t.value}>{t.label} — {t.rendimiento} km/L (estimado)</option>
+                ))}
+              </select>
+            </div>
             <div>
-              <label className="label">Rendimiento (km/litro)</label>
+              <label className="label">Rendimiento (km/L) — editable</label>
               <input
                 type="number" min="1" step="0.5"
                 className="input-field text-sm py-2"
@@ -279,7 +300,7 @@ function CombustibleCard({ combustible, setCombustible }) {
               <input
                 type="number" min="1"
                 className="input-field text-sm py-2"
-                placeholder="Ej: 3"
+                placeholder="1"
                 value={combustible.total_viajes || ''}
                 onChange={e => upd('total_viajes', Number(e.target.value))}
               />
