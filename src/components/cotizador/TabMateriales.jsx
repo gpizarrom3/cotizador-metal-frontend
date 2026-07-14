@@ -1180,7 +1180,8 @@ export default function TabMateriales({ materiales, setMateriales, modo = 'avanz
   ]
 
   useEffect(() => {
-    if (!targetSpId && materiales.length > 0) setTargetSpId(materiales[0].id)
+    const valid = materiales.some(sp => sp.id === targetSpId)
+    if (!valid && materiales.length > 0) setTargetSpId(materiales[0].id)
   }, [materiales, targetSpId])
 
   // ── Sub-producto ops ──────────────────────────────────────────────────────
