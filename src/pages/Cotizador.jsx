@@ -5,6 +5,7 @@ import DashboardLayout from '../components/layout/DashboardLayout'
 import TabMateriales, { emptyMaterial, emptySubproducto, calcPesoFromPesoData } from '../components/cotizador/TabMateriales'
 import TabConsumibles, { DEFAULT_CONSUMIBLES } from '../components/cotizador/TabConsumibles'
 import TabHorasHombre, { emptyGrupoHH, newRole as newHHRole } from '../components/cotizador/TabHorasHombre'
+import TabTraslados from '../components/cotizador/TabTraslados'
 import TabServicios from '../components/cotizador/TabServicios'
 import TabBases from '../components/cotizador/TabBases'
 import TabEmbalaje from '../components/cotizador/TabEmbalaje'
@@ -584,6 +585,7 @@ export default function Cotizador() {
       ? { id: 'consumibles', label: 'Consumibles' }
       : { id: 'materiales',  label: 'Materiales'  },
     { id: 'hh',        label: 'Horas Hombre' },
+    { id: 'traslados', label: 'Traslados' },
     { id: 'servicios', label: 'Servicios' },
     { id: 'bases',     label: '% Bases' },
     { id: 'embalaje',  label: 'Embalaje y Envío' },
@@ -754,7 +756,8 @@ export default function Cotizador() {
 
       {activeTab === 'materiales'  && <TabMateriales materiales={materiales} setMateriales={setMateriales} modo={modo} />}
       {activeTab === 'consumibles' && <TabConsumibles consumibles={consumibles} setConsumibles={setConsumibles} />}
-      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} gruposHH={gruposHH} setGruposHH={setGruposHH} combustible={combustible} setCombustible={setCombustible} />}
+      {activeTab === 'hh'          && <TabHorasHombre roles={roles} setRoles={setRoles} configRoles={configDefaults.roles} gruposHH={gruposHH} setGruposHH={setGruposHH} />}
+      {activeTab === 'traslados'   && <TabTraslados combustible={combustible} setCombustible={setCombustible} />}
       {activeTab === 'servicios'   && <TabServicios servicios={servicios} setServicios={setServicios} />}
       {activeTab === 'bases'       && (
         <TabBases
