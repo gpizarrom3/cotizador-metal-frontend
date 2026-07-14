@@ -783,6 +783,7 @@ export default function Cotizador() {
           pesoMateriales={pesoTotalEstructura} pesoServicios={pesoServicios}
           materiales={materiales}
           roles={rolesEfectivos}
+          totalCombustible={totalCombustible}
         />
       )}
 

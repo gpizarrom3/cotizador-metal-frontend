@@ -34,6 +34,7 @@ export default function TabResumen({
   pesoMateriales = 0, pesoServicios = 0,
   materiales = [],
   roles = [],
+  totalCombustible = 0,
 }) {
   const {
     flete = 0, incluyeIVA = false, validezDias = 30,
@@ -282,6 +283,16 @@ export default function TabResumen({
             })
           })()}
 
+          {totalCombustible > 0 && (
+            <div className="flex justify-between items-center py-1 pl-5">
+              <span className="text-slate-500 text-sm flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500/70 flex-shrink-0" />
+                Combustible y traslados
+              </span>
+              <span className="text-slate-500 font-medium text-sm">{fmtM(totalCombustible)}</span>
+            </div>
+          )}
+
           {totalServicios > 0 && (
             <div className="pt-1">
               <p className="text-xs text-slate-500 uppercase tracking-wider px-1 mb-1">Servicios externos</p>
@@ -428,7 +439,15 @@ export default function TabResumen({
                     ? <div className="flex justify-between text-slate-400"><span>Consumibles</span><span>{fmtM(totalConsumibles)}</span></div>
                     : <div className="flex justify-between text-slate-400"><span>Materiales</span><span>{fmtM(totalMateriales)}</span></div>
                   }
-                  <div className="flex justify-between text-slate-400"><span>Horas Hombre</span><span>{fmtM(totalHH)}</span></div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Horas Hombre{totalCombustible > 0 ? ' + Traslados' : ''}</span>
+                    <span>{fmtM(totalHH)}</span>
+                  </div>
+                  {totalCombustible > 0 && (
+                    <div className="flex justify-between text-orange-500/70 pl-3">
+                      <span>└ Combustible</span><span>{fmtM(totalCombustible)}</span>
+                    </div>
+                  )}
                   {(totalServicios + totalMarkupServicios) > 0 && (
                     <div className="flex justify-between text-slate-400">
                       <span>Servicios ext.{totalMarkupServicios > 0 ? ' + gestión' : ''}</span>
