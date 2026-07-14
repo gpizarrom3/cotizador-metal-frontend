@@ -47,6 +47,104 @@ function FitBounds({ bounds }) {
   return null
 }
 
+// Geocodificador con sugerencias usando Photon (Komoot) — mejor cobertura Chile que Nominatim
+async function buscarDirecciones(query) {
+  const q   = encodeURIComponent(query)
+  // bbox cubre todo Chile continental + islas: lon -75.7/-66.0, lat -55.9/-17.5
+  const url = `https://photon.komoot.io/api/?q=${q}&limit=6&lang=es&bbox=-75.7,-55.9,-66.0,-17.5`
+  const res  = await fetch(url)
+  const data = await res.json()
+  return (data.features || []).filter(f => f.geometry?.coordinates?.length === 2)
+}
+
+function labelFeature(f) {
+  const p = f.properties
+  const partes = []
+  if (p.name && p.name !== p.street) partes.push(p.name)
+  if (p.street) partes.push(p.housenumber ? `${p.street} ${p.housenumber}` : p.street)
+  if (p.city || p.district) partes.push(p.city || p.district)
+  if (p.state) partes.push(p.state)
+  return partes.filter(Boolean).join(', ') || 'Ubicación sin nombre'
+}
+
+function AddressInput({ label, colorDot, placeholder, value, onChange, onSelect }) {
+  const [sugerencias, setSugerencias] = useState([])
+  const [buscando,    setBuscando]    = useState(false)
+  const [abierto,     setAbierto]     = useState(false)
+  const [sinResultados, setSinResultados] = useState(false)
+
+  const buscar = async () => {
+    if (!value.trim()) return
+    setBuscando(true)
+    setSinResultados(false)
+    setAbierto(false)
+    try {
+      const hits = await buscarDirecciones(value)
+      setSugerencias(hits)
+      setSinResultados(hits.length === 0)
+      setAbierto(true)
+    } catch {
+      setSinResultados(true)
+    } finally {
+      setBuscando(false)
+    }
+  }
+
+  const elegir = (f) => {
+    const [lng, lat] = f.geometry.coordinates
+    const texto = labelFeature(f)
+    onChange(texto)
+    onSelect({ lat, lng })
+    setSugerencias([])
+    setAbierto(false)
+  }
+
+  return (
+    <div className="relative">
+      <label className="label flex items-center gap-1.5">
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorDot}`} />
+        {label}
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          className="input-field text-sm py-2 flex-1"
+          placeholder={placeholder}
+          value={value}
+          onChange={e => { onChange(e.target.value); setAbierto(false); setSinResultados(false) }}
+          onKeyDown={e => e.key === 'Enter' && buscar()}
+        />
+        <button
+          onClick={buscar}
+          disabled={buscando || !value.trim()}
+          className="flex-shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg disabled:opacity-40 transition-colors flex items-center gap-1.5"
+        >
+          {buscando
+            ? <span className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+            : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          }
+          Buscar
+        </button>
+      </div>
+      {abierto && (
+        <div className="absolute z-[999] top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
+          {sugerencias.map((f, i) => (
+            <button key={i} onClick={() => elegir(f)}
+              className="w-full text-left px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-700 border-b border-slate-700/60 last:border-0 transition-colors">
+              {labelFeature(f)}
+            </button>
+          ))}
+          {sinResultados && (
+            <p className="px-3 py-2.5 text-sm text-slate-500">
+              No se encontró la dirección. Prueba incluyendo la comuna o ciudad (ej: <em>Av. San Martín 123, Maipú</em>).
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
 const calcDiasTrabajados = (r) => Math.ceil(Number(r.horas) / 8) || 0
@@ -68,8 +166,8 @@ export const emptyGrupoHH = (nombre = 'MANO DE OBRA') => ({
 function CombustibleCard({ combustible, setCombustible }) {
   const upd = (field, val) => setCombustible(c => ({ ...c, [field]: val }))
 
-  const [origenInput,  setOrigenInput]  = useState(combustible.origen  || '')
-  const [destinoInput, setDestinoInput] = useState(combustible.destino || '')
+  const [origenTexto,  setOrigenTexto]  = useState(combustible.origen  || '')
+  const [destinoTexto, setDestinoTexto] = useState(combustible.destino || '')
   const [calculando,   setCalculando]   = useState(false)
   const [errorRuta,    setErrorRuta]    = useState('')
 
@@ -77,7 +175,6 @@ function CombustibleCard({ combustible, setCombustible }) {
   const destinoCoords = combustible.destino_coords || null
   const rutaCoords    = combustible.ruta_coords    || null
 
-  // Al activar, carga precio por defecto si aún no tiene uno
   useEffect(() => {
     if (combustible.activo && !combustible.precio_litro) {
       const tipo = combustible.tipo_combustible || 'gasolina_93'
@@ -97,34 +194,24 @@ function CombustibleCard({ combustible, setCombustible }) {
     setCombustible(c => ({ ...c, tipo_vehiculo: value, rendimiento: v?.rendimiento ?? c.rendimiento }))
   }
 
-  const geocode = async (address) => {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ', Chile')}&format=json&limit=1`
-    const res  = await fetch(url, { headers: { 'Accept-Language': 'es' } })
-    const data = await res.json()
-    if (!data.length) throw new Error(`No se encontró la dirección: "${address}". Intenta agregar la ciudad o comuna.`)
-    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-  }
-
   const calcularRuta = async () => {
-    if (!origenInput.trim() || !destinoInput.trim()) return
+    if (!origenCoords || !destinoCoords) {
+      setErrorRuta('Primero busca y selecciona ambas direcciones desde los resultados.')
+      return
+    }
     setCalculando(true)
     setErrorRuta('')
     try {
-      const [orig, dest] = await Promise.all([geocode(origenInput), geocode(destinoInput)])
-      const osrmUrl  = `https://router.project-osrm.org/route/v1/driving/${orig.lng},${orig.lat};${dest.lng},${dest.lat}?overview=full&geometries=geojson`
-      const routeRes = await fetch(osrmUrl)
+      const { lat: lat1, lng: lng1 } = origenCoords
+      const { lat: lat2, lng: lng2 } = destinoCoords
+      const osrmUrl   = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
+      const routeRes  = await fetch(osrmUrl)
       const routeData = await routeRes.json()
       if (routeData.code !== 'Ok') throw new Error('No se pudo trazar la ruta entre esas ubicaciones.')
       const route   = routeData.routes[0]
       const kmTotal = Math.round(route.distance / 100) / 10
       const coords  = route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
-      setCombustible(c => ({
-        ...c,
-        origen: origenInput, destino: destinoInput,
-        origen_coords:  { lat: orig.lat, lng: orig.lng },
-        destino_coords: { lat: dest.lat, lng: dest.lng },
-        km_total: kmTotal, ruta_coords: coords,
-      }))
+      setCombustible(c => ({ ...c, km_total: kmTotal, ruta_coords: coords }))
     } catch (e) {
       setErrorRuta(e.message || 'Error al calcular la ruta.')
     } finally {
@@ -144,6 +231,8 @@ function CombustibleCard({ combustible, setCombustible }) {
     : null
   const mapCenter = origenCoords ? [origenCoords.lat, origenCoords.lng] : [-33.4489, -70.6693]
 
+  const ambosPuntosSel = origenCoords && destinoCoords
+
   return (
     <div className="card border border-slate-700">
       <div className="flex items-center justify-between mb-1">
@@ -162,54 +251,50 @@ function CombustibleCard({ combustible, setCombustible }) {
       {combustible.activo && (
         <div className="mt-4 space-y-5">
 
-          {/* ── Ruta ── */}
+          {/* ── Búsqueda de direcciones ── */}
           <div className="space-y-3">
-            <p className="text-slate-500 text-xs">Ingresa calle, pasaje o dirección completa. Incluye la comuna para mayor precisión.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="label">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500 mr-1.5" />
-                  Punto de origen
-                </label>
-                <input
-                  type="text"
-                  className="input-field text-sm py-2"
-                  placeholder="Ej: Pasaje Los Aromos 456, Pudahuel"
-                  value={origenInput}
-                  onChange={e => setOrigenInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && calcularRuta()}
-                />
-              </div>
-              <div>
-                <label className="label">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-1.5" />
-                  Punto de destino
-                </label>
-                <input
-                  type="text"
-                  className="input-field text-sm py-2"
-                  placeholder="Ej: Av. Balmaceda 1234, Calama"
-                  value={destinoInput}
-                  onChange={e => setDestinoInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && calcularRuta()}
-                />
-              </div>
+              <AddressInput
+                label="Punto de origen"
+                colorDot="bg-green-500"
+                placeholder="Ej: Pasaje Los Aromos 456, Pudahuel"
+                value={origenTexto}
+                onChange={setOrigenTexto}
+                onSelect={coords => {
+                  setCombustible(c => ({ ...c, origen: origenTexto, origen_coords: coords, km_total: 0, ruta_coords: null }))
+                  setErrorRuta('')
+                }}
+              />
+              <AddressInput
+                label="Punto de destino"
+                colorDot="bg-red-500"
+                placeholder="Ej: Av. Balmaceda 1234, Calama"
+                value={destinoTexto}
+                onChange={setDestinoTexto}
+                onSelect={coords => {
+                  setCombustible(c => ({ ...c, destino: destinoTexto, destino_coords: coords, km_total: 0, ruta_coords: null }))
+                  setErrorRuta('')
+                }}
+              />
             </div>
-            <button
-              onClick={calcularRuta}
-              disabled={calculando || !origenInput.trim() || !destinoInput.trim()}
-              className="btn-primary text-sm py-2 px-5 disabled:opacity-50 flex items-center gap-2"
-            >
-              {calculando
-                ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Calculando ruta...</>
-                : <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                    Calcular ruta
-                  </>
-              }
-            </button>
+
+            {ambosPuntosSel && (
+              <button
+                onClick={calcularRuta}
+                disabled={calculando}
+                className="btn-primary text-sm py-2 px-5 disabled:opacity-50 flex items-center gap-2"
+              >
+                {calculando
+                  ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Calculando ruta...</>
+                  : <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      Calcular ruta y distancia
+                    </>
+                }
+              </button>
+            )}
             {errorRuta && <p className="text-red-400 text-sm">{errorRuta}</p>}
           </div>
 
