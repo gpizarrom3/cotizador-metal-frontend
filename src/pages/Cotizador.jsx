@@ -80,16 +80,28 @@ const DEFAULT_CONFIG = {
 
 const DEFAULT_CLIENTE = { nombre: '', rut: '', email: '', telefono: '' }
 
-const DEFAULT_COMBUSTIBLE = {
-  activo: false,
-  tipo_combustible: 'gasolina_93',
-  precio_litro: 0,
-  origen: '', destino: '',
-  origen_coords: null, destino_coords: null,
-  km_total: 0, ruta_coords: null,
-  rendimiento: 12,
-  total_viajes: 1,
-  litros_dia: 0, total_dias: 0, // legacy
+const DEFAULT_COMBUSTIBLE = { activo: false, traslados: [] }
+
+const migrarCombustible = (raw) => {
+  if (!raw) return { ...DEFAULT_COMBUSTIBLE }
+  if (Array.isArray(raw.traslados)) return { activo: raw.activo ?? false, traslados: raw.traslados }
+  // Legacy: single route → migrate to array
+  const hasRoute = raw.km_total > 0 || raw.origen
+  return {
+    activo: raw.activo ?? false,
+    traslados: hasRoute ? [{
+      id: 1,
+      nombre: '',
+      tipo_combustible: raw.tipo_combustible || 'gasolina_93',
+      precio_litro: raw.precio_litro || 1039,
+      origen: raw.origen || '',
+      destino: raw.destino || '',
+      km_total: raw.km_total || 0,
+      rendimiento: raw.rendimiento || 12,
+      tipo_vehiculo: raw.tipo_vehiculo || '',
+      total_viajes: raw.total_viajes || 1,
+    }] : [],
+  }
 }
 
 const DEFAULT_EMBALAJE = {
@@ -173,7 +185,7 @@ export default function Cotizador() {
     return d.conMaterial !== undefined ? d.conMaterial : null
   })
   const [consumibles, setConsumibles] = useState(() => getDraft().consumibles ?? DEFAULT_CONSUMIBLES)
-  const [combustible, setCombustible] = useState(() => getDraft().combustible ?? { ...DEFAULT_COMBUSTIBLE })
+  const [combustible, setCombustible] = useState(() => migrarCombustible(getDraft().combustible))
   const [versionGuardada, setVersionGuardada] = useState(() => {
     try {
       const v = localStorage.getItem('cotizador_original')
@@ -315,13 +327,15 @@ export default function Cotizador() {
 
   const totalCombustible = (() => {
     if (!combustible.activo) return 0
-    const km         = Number(combustible.km_total)     || 0
-    const rendim     = Number(combustible.rendimiento)  || 12
-    const viajes     = Number(combustible.total_viajes) || 1
-    const precio     = Number(combustible.precio_litro) || 0
-    if (km > 0 && precio > 0) return (km * viajes / rendim) * precio
-    // fallback legacy: litros_dia × total_dias
-    return (Number(combustible.precio_litro) * Number(combustible.litros_dia) * Number(combustible.total_dias)) || 0
+    const traslados = combustible.traslados || []
+    return traslados.reduce((acc, t) => {
+      const km     = Number(t.km_total)     || 0
+      const rendim = Number(t.rendimiento)  || 12
+      const viajes = Number(t.total_viajes) || 1
+      const precio = Number(t.precio_litro) || 0
+      if (km <= 0 || precio <= 0) return acc
+      return acc + (km * viajes / rendim) * precio
+    }, 0)
   })()
 
   const totalHH = rolesEfectivos.reduce((acc, r) => {
