@@ -1,27 +1,25 @@
-import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useJsApiLoader, GoogleMap, Autocomplete, DirectionsRenderer } from '@react-google-maps/api'
 import Toggle from '../ui/Toggle'
 
-// Fix Leaflet icons en Vite (no usa webpack require)
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl:       'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl:     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
-
-const iconOrigen = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-})
-const iconDestino = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-})
+const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
+const LIBS       = ['places']
+const MAP_CENTER = { lat: -33.4489, lng: -70.6693 }
+const MAP_OPTS   = {
+  mapTypeControl: false,
+  streetViewControl: false,
+  fullscreenControl: false,
+  styles: [
+    { elementType: 'geometry',        stylers: [{ color: '#1e293b' }] },
+    { elementType: 'labels.text.fill',stylers: [{ color: '#94a3b8' }] },
+    { elementType: 'labels.text.stroke',stylers:[{ color: '#0f172a' }] },
+    { featureType: 'road',            elementType: 'geometry', stylers: [{ color: '#334155' }] },
+    { featureType: 'road.highway',    elementType: 'geometry', stylers: [{ color: '#475569' }] },
+    { featureType: 'water',           elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
+    { featureType: 'poi',             stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit',         stylers: [{ visibility: 'off' }] },
+  ],
+}
 
 const TIPOS_COMBUSTIBLE = [
   { value: 'gasolina_93', label: 'Gasolina 93', precio: 1039 },
@@ -31,119 +29,13 @@ const TIPOS_COMBUSTIBLE = [
 ]
 
 const TIPOS_VEHICULO = [
-  { value: 'auto',      label: 'Auto / Sedan',     rendimiento: 13 },
-  { value: 'suv',       label: 'SUV / 4×4',        rendimiento: 11 },
-  { value: 'camioneta', label: 'Camioneta pickup',  rendimiento: 9  },
-  { value: 'furgon',    label: 'Furgón / Van',      rendimiento: 8  },
-  { value: 'camion_l',  label: 'Camión ligero',     rendimiento: 6  },
-  { value: 'camion_p',  label: 'Camión pesado',     rendimiento: 4  },
+  { value: 'auto',      label: 'Auto / Sedan',    rendimiento: 13 },
+  { value: 'suv',       label: 'SUV / 4×4',       rendimiento: 11 },
+  { value: 'camioneta', label: 'Camioneta pickup', rendimiento: 9  },
+  { value: 'furgon',    label: 'Furgón / Van',     rendimiento: 8  },
+  { value: 'camion_l',  label: 'Camión ligero',    rendimiento: 6  },
+  { value: 'camion_p',  label: 'Camión pesado',    rendimiento: 4  },
 ]
-
-function FitBounds({ bounds }) {
-  const map = useMap()
-  useEffect(() => {
-    if (bounds) map.fitBounds(bounds, { padding: [50, 50] })
-  }, [map, bounds])
-  return null
-}
-
-// Geocodificador con sugerencias usando Photon (Komoot) — mejor cobertura Chile que Nominatim
-async function buscarDirecciones(query) {
-  const q   = encodeURIComponent(query)
-  // bbox cubre todo Chile continental + islas: lon -75.7/-66.0, lat -55.9/-17.5
-  const url = `https://photon.komoot.io/api/?q=${q}&limit=6&lang=es&bbox=-75.7,-55.9,-66.0,-17.5`
-  const res  = await fetch(url)
-  const data = await res.json()
-  return (data.features || []).filter(f => f.geometry?.coordinates?.length === 2)
-}
-
-function labelFeature(f) {
-  const p = f.properties
-  const partes = []
-  if (p.name && p.name !== p.street) partes.push(p.name)
-  if (p.street) partes.push(p.housenumber ? `${p.street} ${p.housenumber}` : p.street)
-  if (p.city || p.district) partes.push(p.city || p.district)
-  if (p.state) partes.push(p.state)
-  return partes.filter(Boolean).join(', ') || 'Ubicación sin nombre'
-}
-
-function AddressInput({ label, colorDot, placeholder, value, onChange, onSelect }) {
-  const [sugerencias, setSugerencias] = useState([])
-  const [buscando,    setBuscando]    = useState(false)
-  const [abierto,     setAbierto]     = useState(false)
-  const [sinResultados, setSinResultados] = useState(false)
-
-  const buscar = async () => {
-    if (!value.trim()) return
-    setBuscando(true)
-    setSinResultados(false)
-    setAbierto(false)
-    try {
-      const hits = await buscarDirecciones(value)
-      setSugerencias(hits)
-      setSinResultados(hits.length === 0)
-      setAbierto(true)
-    } catch {
-      setSinResultados(true)
-    } finally {
-      setBuscando(false)
-    }
-  }
-
-  const elegir = (f) => {
-    const [lng, lat] = f.geometry.coordinates
-    const texto = labelFeature(f)
-    onChange(texto)
-    onSelect({ lat, lng })
-    setSugerencias([])
-    setAbierto(false)
-  }
-
-  return (
-    <div className="relative">
-      <label className="label flex items-center gap-1.5">
-        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorDot}`} />
-        {label}
-      </label>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          className="input-field text-sm py-2 flex-1"
-          placeholder={placeholder}
-          value={value}
-          onChange={e => { onChange(e.target.value); setAbierto(false); setSinResultados(false) }}
-          onKeyDown={e => e.key === 'Enter' && buscar()}
-        />
-        <button
-          onClick={buscar}
-          disabled={buscando || !value.trim()}
-          className="flex-shrink-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 py-2 rounded-lg disabled:opacity-40 transition-colors flex items-center gap-1.5"
-        >
-          {buscando
-            ? <span className="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
-            : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          }
-          Buscar
-        </button>
-      </div>
-      {abierto && (
-        <div className="absolute z-[999] top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
-          {sugerencias.map((f, i) => (
-            <button key={i} onClick={() => elegir(f)}
-              className="w-full text-left px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-700 border-b border-slate-700/60 last:border-0 transition-colors">
-              {labelFeature(f)}
-            </button>
-          ))}
-          {sinResultados && (
-            <p className="px-3 py-2.5 text-sm text-slate-500">
-              No se encontró la dirección. Prueba incluyendo la comuna o ciudad (ej: <em>Av. San Martín 123, Maipú</em>).
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
@@ -166,14 +58,13 @@ export const emptyGrupoHH = (nombre = 'MANO DE OBRA') => ({
 function CombustibleCard({ combustible, setCombustible }) {
   const upd = (field, val) => setCombustible(c => ({ ...c, [field]: val }))
 
-  const [origenTexto,  setOrigenTexto]  = useState(combustible.origen  || '')
-  const [destinoTexto, setDestinoTexto] = useState(combustible.destino || '')
-  const [calculando,   setCalculando]   = useState(false)
-  const [errorRuta,    setErrorRuta]    = useState('')
+  const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_KEY, libraries: LIBS })
 
-  const origenCoords  = combustible.origen_coords  || null
-  const destinoCoords = combustible.destino_coords || null
-  const rutaCoords    = combustible.ruta_coords    || null
+  const autoOrig = useRef(null)
+  const autoDest = useRef(null)
+  const [directions,  setDirections]  = useState(null)
+  const [calculando,  setCalculando]  = useState(false)
+  const [errorRuta,   setErrorRuta]   = useState('')
 
   useEffect(() => {
     if (combustible.activo && !combustible.precio_litro) {
@@ -194,30 +85,30 @@ function CombustibleCard({ combustible, setCombustible }) {
     setCombustible(c => ({ ...c, tipo_vehiculo: value, rendimiento: v?.rendimiento ?? c.rendimiento }))
   }
 
-  const calcularRuta = async () => {
-    if (!origenCoords || !destinoCoords) {
-      setErrorRuta('Primero busca y selecciona ambas direcciones desde los resultados.')
-      return
-    }
+  const calcularRuta = useCallback(() => {
+    const origen  = autoOrig.current?.getPlace()?.formatted_address || combustible.origen
+    const destino = autoDest.current?.getPlace()?.formatted_address || combustible.destino
+    if (!origen || !destino) { setErrorRuta('Selecciona origen y destino desde las sugerencias.'); return }
     setCalculando(true)
     setErrorRuta('')
-    try {
-      const { lat: lat1, lng: lng1 } = origenCoords
-      const { lat: lat2, lng: lng2 } = destinoCoords
-      const osrmUrl   = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`
-      const routeRes  = await fetch(osrmUrl)
-      const routeData = await routeRes.json()
-      if (routeData.code !== 'Ok') throw new Error('No se pudo trazar la ruta entre esas ubicaciones.')
-      const route   = routeData.routes[0]
-      const kmTotal = Math.round(route.distance / 100) / 10
-      const coords  = route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
-      setCombustible(c => ({ ...c, km_total: kmTotal, ruta_coords: coords }))
-    } catch (e) {
-      setErrorRuta(e.message || 'Error al calcular la ruta.')
-    } finally {
-      setCalculando(false)
-    }
-  }
+    const svc = new window.google.maps.DirectionsService()
+    svc.route(
+      { origin: origen, destination: destino, travelMode: 'DRIVING', region: 'CL' },
+      (result, status) => {
+        setCalculando(false)
+        if (status !== 'OK') { setErrorRuta('No se pudo calcular la ruta. Verifica las direcciones.'); return }
+        const leg    = result.routes[0].legs[0]
+        const kmTotal = Math.round(leg.distance.value / 100) / 10
+        setDirections(result)
+        setCombustible(c => ({
+          ...c,
+          origen:  leg.start_address,
+          destino: leg.end_address,
+          km_total: kmTotal,
+        }))
+      }
+    )
+  }, [combustible.origen, combustible.destino, setCombustible])
 
   const kmTotal      = Number(combustible.km_total)     || 0
   const rendimiento  = Number(combustible.rendimiento)  || 12
@@ -225,13 +116,6 @@ function CombustibleCard({ combustible, setCombustible }) {
   const precioLitro  = Number(combustible.precio_litro) || 0
   const litrosTotales = kmTotal > 0 ? (kmTotal * totalViajes) / rendimiento : 0
   const costoTotal    = litrosTotales * precioLitro
-
-  const mapBounds = origenCoords && destinoCoords
-    ? [[origenCoords.lat, origenCoords.lng], [destinoCoords.lat, destinoCoords.lng]]
-    : null
-  const mapCenter = origenCoords ? [origenCoords.lat, origenCoords.lng] : [-33.4489, -70.6693]
-
-  const ambosPuntosSel = origenCoords && destinoCoords
 
   return (
     <div className="card border border-slate-700">
@@ -251,104 +135,115 @@ function CombustibleCard({ combustible, setCombustible }) {
       {combustible.activo && (
         <div className="mt-4 space-y-5">
 
-          {/* ── Búsqueda de direcciones ── */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <AddressInput
-                label="Punto de origen"
-                colorDot="bg-green-500"
-                placeholder="Ej: Pasaje Los Aromos 456, Pudahuel"
-                value={origenTexto}
-                onChange={setOrigenTexto}
-                onSelect={coords => {
-                  setCombustible(c => ({ ...c, origen: origenTexto, origen_coords: coords, km_total: 0, ruta_coords: null }))
-                  setErrorRuta('')
-                }}
-              />
-              <AddressInput
-                label="Punto de destino"
-                colorDot="bg-red-500"
-                placeholder="Ej: Av. Balmaceda 1234, Calama"
-                value={destinoTexto}
-                onChange={setDestinoTexto}
-                onSelect={coords => {
-                  setCombustible(c => ({ ...c, destino: destinoTexto, destino_coords: coords, km_total: 0, ruta_coords: null }))
-                  setErrorRuta('')
-                }}
-              />
+          {!GOOGLE_KEY ? (
+            /* ── Sin API key ── */
+            <div className="bg-amber-950/40 border border-amber-600/40 rounded-xl p-4 space-y-2">
+              <p className="text-amber-400 font-semibold text-sm">Se necesita una Google Maps API Key</p>
+              <ol className="text-amber-200/70 text-xs space-y-1 list-decimal list-inside">
+                <li>Ve a <b>console.cloud.google.com</b> → crea o selecciona un proyecto</li>
+                <li>Activa: <b>Maps JavaScript API</b>, <b>Places API</b> y <b>Directions API</b></li>
+                <li>Crea una clave de API (Credentials → Create credentials)</li>
+                <li>En Vercel: Settings → Environment Variables → agrega <code className="bg-black/30 px-1 rounded">VITE_GOOGLE_MAPS_KEY</code></li>
+                <li>Redespliega el proyecto</li>
+              </ol>
+              <p className="text-slate-500 text-xs">Google otorga $200 USD/mes de crédito gratuito (más que suficiente para este uso).</p>
             </div>
+          ) : !isLoaded ? (
+            <div className="flex items-center gap-2 text-slate-400 text-sm py-4">
+              <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              Cargando Google Maps...
+            </div>
+          ) : (
+            <>
+              {/* ── Inputs con autocompletado Google ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="label flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-500" />Punto de origen
+                  </label>
+                  <Autocomplete
+                    onLoad={a => { autoOrig.current = a }}
+                    onPlaceChanged={() => {
+                      const p = autoOrig.current?.getPlace()
+                      if (p?.formatted_address) setCombustible(c => ({ ...c, origen: p.formatted_address, km_total: 0 }))
+                      setDirections(null)
+                    }}
+                    options={{ componentRestrictions: { country: 'cl' } }}
+                  >
+                    <input
+                      type="text"
+                      className="input-field text-sm py-2 w-full"
+                      placeholder="Ej: Pasaje Los Aromos 456, Pudahuel"
+                      defaultValue={combustible.origen || ''}
+                    />
+                  </Autocomplete>
+                </div>
+                <div>
+                  <label className="label flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500" />Punto de destino
+                  </label>
+                  <Autocomplete
+                    onLoad={a => { autoDest.current = a }}
+                    onPlaceChanged={() => {
+                      const p = autoDest.current?.getPlace()
+                      if (p?.formatted_address) setCombustible(c => ({ ...c, destino: p.formatted_address, km_total: 0 }))
+                      setDirections(null)
+                    }}
+                    options={{ componentRestrictions: { country: 'cl' } }}
+                  >
+                    <input
+                      type="text"
+                      className="input-field text-sm py-2 w-full"
+                      placeholder="Ej: Av. Balmaceda 1234, Calama"
+                      defaultValue={combustible.destino || ''}
+                    />
+                  </Autocomplete>
+                </div>
+              </div>
 
-            {ambosPuntosSel && (
               <button
                 onClick={calcularRuta}
                 disabled={calculando}
                 className="btn-primary text-sm py-2 px-5 disabled:opacity-50 flex items-center gap-2"
               >
                 {calculando
-                  ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Calculando ruta...</>
-                  : <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      Calcular ruta y distancia
-                    </>
+                  ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Calculando...</>
+                  : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>Calcular ruta</>
                 }
               </button>
-            )}
-            {errorRuta && <p className="text-red-400 text-sm">{errorRuta}</p>}
-          </div>
+              {errorRuta && <p className="text-red-400 text-sm">{errorRuta}</p>}
 
-          {/* ── Mapa ── */}
-          <div className="rounded-xl overflow-hidden border border-slate-600" style={{ height: 300 }}>
-            <MapContainer
-              center={mapCenter}
-              zoom={origenCoords ? 11 : 6}
-              style={{ height: '100%', width: '100%' }}
-              scrollWheelZoom={false}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {origenCoords  && <Marker position={[origenCoords.lat,  origenCoords.lng]}  icon={iconOrigen}  />}
-              {destinoCoords && <Marker position={[destinoCoords.lat, destinoCoords.lng]} icon={iconDestino} />}
-              {rutaCoords    && <Polyline positions={rutaCoords} color="#f97316" weight={4} opacity={0.85} />}
-              {mapBounds     && <FitBounds bounds={mapBounds} />}
-            </MapContainer>
-          </div>
+              {/* ── Mapa Google ── */}
+              <GoogleMap
+                mapContainerStyle={{ width: '100%', height: 300, borderRadius: 12, overflow: 'hidden' }}
+                center={MAP_CENTER}
+                zoom={6}
+                options={MAP_OPTS}
+              >
+                {directions && <DirectionsRenderer directions={directions} options={{ suppressMarkers: false, polylineOptions: { strokeColor: '#f97316', strokeWeight: 5 } }} />}
+              </GoogleMap>
 
-          {kmTotal > 0 && (
-            <div className="bg-slate-900 rounded-lg px-4 py-2.5 flex items-center gap-3 flex-wrap text-sm">
-              <svg className="w-4 h-4 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              <span className="text-orange-400 font-bold">{kmTotal} km</span>
-              <span className="text-slate-500">{combustible.origen} → {combustible.destino}</span>
-            </div>
+              {kmTotal > 0 && (
+                <div className="bg-slate-900 rounded-lg px-4 py-2.5 flex items-center gap-3 flex-wrap text-sm">
+                  <svg className="w-4 h-4 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                  <span className="text-orange-400 font-bold">{kmTotal} km</span>
+                  <span className="text-slate-500 text-xs">{combustible.origen} → {combustible.destino}</span>
+                </div>
+              )}
+            </>
           )}
 
           {/* ── Combustible ── */}
           <div className="border-t border-slate-700 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Tipo de combustible</label>
-              <select
-                className="input-field text-sm py-2"
-                value={combustible.tipo_combustible || 'gasolina_93'}
-                onChange={e => handleTipoCombustible(e.target.value)}
-              >
-                {TIPOS_COMBUSTIBLE.map(t => (
-                  <option key={t.value} value={t.value}>{t.label} — ref. ${t.precio.toLocaleString('es-CL')}/L</option>
-                ))}
+              <select className="input-field text-sm py-2" value={combustible.tipo_combustible || 'gasolina_93'} onChange={e => handleTipoCombustible(e.target.value)}>
+                {TIPOS_COMBUSTIBLE.map(t => <option key={t.value} value={t.value}>{t.label} — ref. ${t.precio.toLocaleString('es-CL')}/L</option>)}
               </select>
             </div>
             <div>
               <label className="label">Precio ($/litro) — editable</label>
-              <input
-                type="number" min="0"
-                className="input-field text-sm py-2"
-                value={combustible.precio_litro || ''}
-                onChange={e => upd('precio_litro', Number(e.target.value))}
-              />
+              <input type="number" min="0" className="input-field text-sm py-2" value={combustible.precio_litro || ''} onChange={e => upd('precio_litro', Number(e.target.value))} />
             </div>
           </div>
 
@@ -356,39 +251,21 @@ function CombustibleCard({ combustible, setCombustible }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <label className="label">Tipo de vehículo</label>
-              <select
-                className="input-field text-sm py-2"
-                value={combustible.tipo_vehiculo || ''}
-                onChange={e => handleTipoVehiculo(e.target.value)}
-              >
+              <select className="input-field text-sm py-2" value={combustible.tipo_vehiculo || ''} onChange={e => handleTipoVehiculo(e.target.value)}>
                 <option value="">— Seleccionar —</option>
-                {TIPOS_VEHICULO.map(t => (
-                  <option key={t.value} value={t.value}>{t.label} — {t.rendimiento} km/L (estimado)</option>
-                ))}
+                {TIPOS_VEHICULO.map(t => <option key={t.value} value={t.value}>{t.label} — {t.rendimiento} km/L (estimado)</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Rendimiento (km/L) — editable</label>
-              <input
-                type="number" min="1" step="0.5"
-                className="input-field text-sm py-2"
-                placeholder="Ej: 12"
-                value={combustible.rendimiento || ''}
-                onChange={e => upd('rendimiento', Number(e.target.value))}
-              />
+              <label className="label">Rendimiento (km/L)</label>
+              <input type="number" min="1" step="0.5" className="input-field text-sm py-2" placeholder="Ej: 12" value={combustible.rendimiento || ''} onChange={e => upd('rendimiento', Number(e.target.value))} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">N° de viajes</label>
-              <input
-                type="number" min="1"
-                className="input-field text-sm py-2"
-                placeholder="1"
-                value={combustible.total_viajes || ''}
-                onChange={e => upd('total_viajes', Number(e.target.value))}
-              />
+              <input type="number" min="1" className="input-field text-sm py-2" placeholder="1" value={combustible.total_viajes || ''} onChange={e => upd('total_viajes', Number(e.target.value))} />
             </div>
           </div>
 
