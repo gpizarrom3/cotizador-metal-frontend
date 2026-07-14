@@ -79,7 +79,17 @@ const DEFAULT_CONFIG = {
 
 const DEFAULT_CLIENTE = { nombre: '', rut: '', email: '', telefono: '' }
 
-const DEFAULT_COMBUSTIBLE = { activo: false, precio_litro: 0, litros_dia: 0, total_dias: 0 }
+const DEFAULT_COMBUSTIBLE = {
+  activo: false,
+  tipo_combustible: 'gasolina_93',
+  precio_litro: 0,
+  origen: '', destino: '',
+  origen_coords: null, destino_coords: null,
+  km_total: 0, ruta_coords: null,
+  rendimiento: 12,
+  total_viajes: 1,
+  litros_dia: 0, total_dias: 0, // legacy
+}
 
 const DEFAULT_EMBALAJE = {
   activo: true,
@@ -302,9 +312,16 @@ export default function Cotizador() {
   const gruposHHActuales = new Set(gruposHH.map(g => g.nombre))
   const rolesEfectivos = roles.filter(r => !r.grupo || gruposHHActuales.has(r.grupo))
 
-  const totalCombustible = combustible.activo
-    ? (Number(combustible.precio_litro) * Number(combustible.litros_dia) * Number(combustible.total_dias)) || 0
-    : 0
+  const totalCombustible = (() => {
+    if (!combustible.activo) return 0
+    const km         = Number(combustible.km_total)     || 0
+    const rendim     = Number(combustible.rendimiento)  || 12
+    const viajes     = Number(combustible.total_viajes) || 1
+    const precio     = Number(combustible.precio_litro) || 0
+    if (km > 0 && precio > 0) return (km * viajes / rendim) * precio
+    // fallback legacy: litros_dia × total_dias
+    return (Number(combustible.precio_litro) * Number(combustible.litros_dia) * Number(combustible.total_dias)) || 0
+  })()
 
   const totalHH = rolesEfectivos.reduce((acc, r) => {
     const hh  = (Number(r.precio_hora) * Number(r.horas) * Number(r.cantidad)) || 0
