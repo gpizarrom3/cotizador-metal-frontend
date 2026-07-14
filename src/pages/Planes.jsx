@@ -23,10 +23,10 @@ export default function Planes() {
     setLoadingCheckout(true)
     setError('')
     try {
-      const res = await fetch('/api/create-mp-subscription', {
+      const res = await fetch('/api/mp-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: user.uid, email: user.email }),
+        body: JSON.stringify({ action: 'create', uid: user.uid, email: user.email }),
       })
       const data = await res.json()
       if (data.url) {
@@ -70,10 +70,10 @@ export default function Planes() {
     setLoadingCancel(true)
     setError('')
     try {
-      const res = await fetch('/api/cancel-mp-subscription', {
+      const res = await fetch('/api/mp-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: user.uid }),
+        body: JSON.stringify({ action: 'cancel', uid: user.uid }),
       })
       const data = await res.json()
       if (data.ok) {

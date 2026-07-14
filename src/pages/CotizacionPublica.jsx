@@ -10,7 +10,7 @@ export default function CotizacionPublica() {
 
   useEffect(() => {
     if (!token) return
-    fetch(`/api/cotizacion-publica?token=${token}`)
+    fetch(`/api/cotizacion?token=${token}`)
       .then(r => r.json())
       .then(data => {
         if (data.error) setError(data.error)

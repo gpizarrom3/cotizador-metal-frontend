@@ -1,34 +1,117 @@
+import { initializeApp, cert, getApps } from 'firebase-admin/app'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { Resend } from 'resend'
+import crypto from 'crypto'
 
 const FROM = process.env.RESEND_FROM || 'CotizaMetal <onboarding@resend.dev>'
 
-const fmt = (n) =>
-  (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+function getAdminDb() {
+  if (!getApps().length) {
+    const credentials = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIALS)
+    initializeApp({ credential: cert(credentials) })
+  }
+  return getFirestore()
+}
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+
+  // GET — cotización pública por token
+  if (req.method === 'GET') {
+    const { token } = req.query
+    if (!token) return res.status(400).json({ error: 'Missing token' })
+
+    const db = getAdminDb()
+    try {
+      const linkSnap = await db.doc(`publicLinks/${token}`).get()
+      if (!linkSnap.exists) return res.status(404).json({ error: 'Link no encontrado o expirado' })
+
+      const { uid, cotizacionId } = linkSnap.data()
+      const cotSnap = await db.doc(`usuarios/${uid}/cotizaciones/${cotizacionId}`).get()
+      if (!cotSnap.exists) return res.status(404).json({ error: 'Cotización no encontrada' })
+
+      const data = cotSnap.data()
+      const fechaDate = data.fecha?.toDate ? data.fecha.toDate() : null
+      const fechaStr = fechaDate
+        ? fechaDate.toLocaleDateString('es-CL')
+        : (typeof data.fecha === 'string' ? data.fecha : '—')
+
+      const { shareToken: _st, deleted: _d, deletedAt: _da, ...publicData } = data
+      return res.status(200).json({ cot: { id: cotizacionId, ...publicData, fecha: fechaStr } })
+    } catch (err) {
+      console.error('[cotizacion GET]', err)
+      return res.status(500).json({ error: err.message })
+    }
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {})
-  const { to, cot, empresa } = body
-  if (!to || !cot) return res.status(400).json({ error: 'Missing to or cot' })
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  const nombreEmpresa = empresa?.nombre || 'CotizaMetal'
-  const clienteNombre = typeof cot.cliente === 'object' ? (cot.cliente?.nombre || '—') : (cot.cliente || '—')
+  // POST con campo "to" → enviar email
+  if (body.to) {
+    const { to, cot, empresa } = body
+    if (!cot) return res.status(400).json({ error: 'Missing cot' })
 
-  try {
-    await resend.emails.send({
-      from: FROM,
-      to,
-      subject: `Cotización ${cot.numero || ''} — ${nombreEmpresa}`,
-      html: buildHtml(cot, empresa, clienteNombre),
-    })
-    res.status(200).json({ ok: true })
-  } catch (err) {
-    console.error('[send-cotizacion]', err)
-    res.status(500).json({ error: err.message })
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    const nombreEmpresa = empresa?.nombre || 'CotizaMetal'
+    const clienteNombre = typeof cot.cliente === 'object' ? (cot.cliente?.nombre || '—') : (cot.cliente || '—')
+
+    try {
+      await resend.emails.send({
+        from: FROM,
+        to,
+        subject: `Cotización ${cot.numero || ''} — ${nombreEmpresa}`,
+        html: buildHtml(cot, empresa, clienteNombre),
+      })
+      return res.status(200).json({ ok: true })
+    } catch (err) {
+      console.error('[cotizacion send]', err)
+      return res.status(500).json({ error: err.message })
+    }
   }
+
+  // POST con campo "uid" → publicar / despublicar link
+  if (body.uid) {
+    const { uid, cotizacionId, action } = body
+    if (!cotizacionId) return res.status(400).json({ error: 'Missing cotizacionId' })
+
+    const db = getAdminDb()
+    const cotRef = db.doc(`usuarios/${uid}/cotizaciones/${cotizacionId}`)
+
+    try {
+      const cotSnap = await cotRef.get()
+      if (!cotSnap.exists) return res.status(404).json({ error: 'Not found' })
+
+      if (action === 'despublicar') {
+        const existingToken = cotSnap.data().shareToken
+        if (existingToken) {
+          await db.doc(`publicLinks/${existingToken}`).delete()
+          await cotRef.update({ shareToken: FieldValue.delete() })
+        }
+        return res.status(200).json({ ok: true })
+      }
+
+      // publicar
+      const shareToken = crypto.randomBytes(20).toString('hex')
+      await db.doc(`publicLinks/${shareToken}`).set({
+        uid,
+        cotizacionId,
+        creadoEn: FieldValue.serverTimestamp(),
+      })
+      await cotRef.update({ shareToken })
+      return res.status(200).json({ shareToken })
+    } catch (err) {
+      console.error('[cotizacion publish]', err)
+      return res.status(500).json({ error: err.message })
+    }
+  }
+
+  return res.status(400).json({ error: 'Bad request' })
 }
+
+const fmt = (n) =>
+  (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
 function buildHtml(cot, empresa, clienteNombre) {
   const e = empresa || {}
@@ -64,7 +147,6 @@ function buildHtml(cot, empresa, clienteNombre) {
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:580px;margin:0 auto;padding:32px 16px">
 
-    <!-- Header empresa -->
     <div style="background:#1e293b;border:1px solid #334155;border-radius:12px 12px 0 0;padding:24px 28px;display:flex;align-items:center;justify-content:space-between">
       <div>
         <p style="color:#f1f5f9;font-size:17px;font-weight:700;margin:0">${e.nombre || 'CotizaMetal'}</p>
@@ -77,7 +159,6 @@ function buildHtml(cot, empresa, clienteNombre) {
       </div>
     </div>
 
-    <!-- Cliente -->
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-top:none;padding:16px 28px">
       <p style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px 0">Cliente</p>
       <p style="color:#1e293b;font-size:15px;font-weight:600;margin:0">${clienteNombre}</p>
@@ -89,7 +170,6 @@ function buildHtml(cot, empresa, clienteNombre) {
       <p style="color:#475569;font-size:13px;margin:0">${cot.config.descripcion}</p>
     </div>` : ''}
 
-    <!-- Desglose -->
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-top:none;padding:20px 28px">
       <p style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px 0">Desglose</p>
       <table style="width:100%;border-collapse:collapse">
@@ -101,7 +181,6 @@ function buildHtml(cot, empresa, clienteNombre) {
       </table>
     </div>
 
-    <!-- Condiciones -->
     ${condiciones ? `
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:14px 28px">
       <p style="color:#64748b;font-size:12px;margin:0">${condiciones}</p>

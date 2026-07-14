@@ -70,7 +70,7 @@ export default function Historial() {
     if (!emailModal.to || !preview) return
     setEmailModal(m => ({ ...m, sending: true, error: '', sent: false }))
     try {
-      const res = await fetch('/api/send-cotizacion', {
+      const res = await fetch('/api/cotizacion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: emailModal.to, cot: preview.cot, empresa }),
@@ -88,7 +88,7 @@ export default function Historial() {
     if (!preview || !user) return
     setShareState(s => ({ ...s, loading: true, error: '' }))
     try {
-      const res = await fetch('/api/publicar-cotizacion', {
+      const res = await fetch('/api/cotizacion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user.uid, cotizacionId: preview.cot.id, action: 'publicar' }),
@@ -107,7 +107,7 @@ export default function Historial() {
     if (!preview || !user) return
     setShareState(s => ({ ...s, removing: true, error: '' }))
     try {
-      const res = await fetch('/api/publicar-cotizacion', {
+      const res = await fetch('/api/cotizacion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: user.uid, cotizacionId: preview.cot.id, action: 'despublicar' }),

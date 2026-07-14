@@ -115,43 +115,20 @@ export default defineConfig(({ mode }) => {
             })
           })
 
-          // /api/create-mp-subscription — MercadoPago suscripción
-          server.middlewares.use('/api/create-mp-subscription', async (req, res) => {
+          // /api/mp-subscription — crear y cancelar suscripción MP
+          server.middlewares.use('/api/mp-subscription', async (req, res) => {
             shimRes(res)
             req.body = await parseBody(req)
-            const { default: handler } = await import('./api/create-mp-subscription.js')
+            const { default: handler } = await import('./api/mp-subscription.js')
             await handler(req, res)
           })
 
-          // /api/cancel-mp-subscription — cancelar suscripción MP
-          server.middlewares.use('/api/cancel-mp-subscription', async (req, res) => {
-            shimRes(res)
-            req.body = await parseBody(req)
-            const { default: handler } = await import('./api/cancel-mp-subscription.js')
-            await handler(req, res)
-          })
-
-          // /api/send-cotizacion — enviar cotización por email
-          server.middlewares.use('/api/send-cotizacion', async (req, res) => {
-            shimRes(res)
-            req.body = await parseBody(req)
-            const { default: handler } = await import('./api/send-cotizacion.js')
-            await handler(req, res)
-          })
-
-          // /api/publicar-cotizacion — generar/quitar link público
-          server.middlewares.use('/api/publicar-cotizacion', async (req, res) => {
-            shimRes(res)
-            req.body = await parseBody(req)
-            const { default: handler } = await import('./api/publicar-cotizacion.js')
-            await handler(req, res)
-          })
-
-          // /api/cotizacion-publica — consulta pública por token
-          server.middlewares.use('/api/cotizacion-publica', async (req, res) => {
+          // /api/cotizacion — enviar email, publicar link, y vista pública
+          server.middlewares.use('/api/cotizacion', async (req, res) => {
             shimRes(res)
             req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams)
-            const { default: handler } = await import('./api/cotizacion-publica.js')
+            if (req.method === 'POST') req.body = await parseBody(req)
+            const { default: handler } = await import('./api/cotizacion.js')
             await handler(req, res)
           })
         },
