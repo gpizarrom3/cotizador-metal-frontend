@@ -16,6 +16,7 @@ import PrivateRoute from './components/PrivateRoute'
 import Terminos from './pages/Terminos'
 import Privacidad from './pages/Privacidad'
 import Landing from './pages/Landing'
+import CotizacionPublica from './pages/CotizacionPublica'
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
           path="/planes"
           element={<PrivateRoute><Planes /></PrivateRoute>}
         />
+        <Route path="/c/:token" element={<CotizacionPublica />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </UserDataProvider>

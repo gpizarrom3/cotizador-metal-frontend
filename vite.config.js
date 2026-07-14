@@ -130,6 +130,30 @@ export default defineConfig(({ mode }) => {
             const { default: handler } = await import('./api/cancel-mp-subscription.js')
             await handler(req, res)
           })
+
+          // /api/send-cotizacion — enviar cotización por email
+          server.middlewares.use('/api/send-cotizacion', async (req, res) => {
+            shimRes(res)
+            req.body = await parseBody(req)
+            const { default: handler } = await import('./api/send-cotizacion.js')
+            await handler(req, res)
+          })
+
+          // /api/publicar-cotizacion — generar/quitar link público
+          server.middlewares.use('/api/publicar-cotizacion', async (req, res) => {
+            shimRes(res)
+            req.body = await parseBody(req)
+            const { default: handler } = await import('./api/publicar-cotizacion.js')
+            await handler(req, res)
+          })
+
+          // /api/cotizacion-publica — consulta pública por token
+          server.middlewares.use('/api/cotizacion-publica', async (req, res) => {
+            shimRes(res)
+            req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams)
+            const { default: handler } = await import('./api/cotizacion-publica.js')
+            await handler(req, res)
+          })
         },
       },
     ],

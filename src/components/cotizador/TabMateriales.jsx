@@ -688,7 +688,7 @@ function M2SubRow({ item, onUpdate }) {
 }
 
 // ── Tarjeta de sub-producto ───────────────────────────────────────────────────
-function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNombre, onRemove, onAddItem, onRemoveItem, onUpdateItem, onFillItem, modo = 'avanzado' }) {
+function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNombre, onRemove, onAddItem, onRemoveItem, onDuplicateItem, onUpdateItem, onFillItem, modo = 'avanzado' }) {
   const total = (sp.items || []).reduce((acc, m) => acc + (Number(m.cantidad) * Number(m.precio_unitario) || 0), 0)
   const [catalogPickerId, setCatalogPickerId] = useState(null)
   const [catalogPickerSearch, setCatalogPickerSearch] = useState('')
@@ -962,6 +962,10 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                               : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             }
                           </button>
+                          {/* ⧉ duplicar */}
+                          <button onClick={() => onDuplicateItem(m.id)} title="Duplicar fila" className="text-slate-500 hover:text-blue-400 transition-colors p-0.5 rounded">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                          </button>
                           {/* ✕ eliminar */}
                           <button onClick={() => onRemoveItem(m.id)} className="text-slate-500 hover:text-red-400 transition-colors p-0.5 rounded">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1216,6 +1220,17 @@ export default function TabMateriales({ materiales, setMateriales, modo = 'avanz
   const fillItem = (spId, itemId, fields) =>
     setMateriales(prev => prev.map(sp => sp.id === spId ? { ...sp, items: sp.items.map(m => m.id === itemId ? { ...m, ...fields } : m) } : sp))
 
+  const duplicateItem = (spId, itemId) =>
+    setMateriales(prev => prev.map(sp => {
+      if (sp.id !== spId) return sp
+      const idx = sp.items.findIndex(m => m.id === itemId)
+      if (idx === -1) return sp
+      const copy = { ...sp.items[idx], id: Date.now() + Math.random() }
+      const newItems = [...sp.items]
+      newItems.splice(idx + 1, 0, copy)
+      return { ...sp, items: newItems }
+    }))
+
   // ── Add from tools (calculadora / IA / catálogo) ──────────────────────────
   const addFromTool = (item) => {
     const spId = targetSpId || materiales[0]?.id
@@ -1334,6 +1349,7 @@ export default function TabMateriales({ materiales, setMateriales, modo = 'avanz
           onRemove={() => removeSubproducto(sp.id)}
           onAddItem={() => addItem(sp.id)}
           onRemoveItem={itemId => removeItem(sp.id, itemId)}
+          onDuplicateItem={itemId => duplicateItem(sp.id, itemId)}
           onUpdateItem={(itemId, field, value) => updateItem(sp.id, itemId, field, value)}
           onFillItem={(itemId, fields) => fillItem(sp.id, itemId, fields)}
           modo={modo}

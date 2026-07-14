@@ -13,7 +13,7 @@ const STATUS_STYLE = {
   Entregada: 'bg-emerald-900/40 text-emerald-300 border-emerald-500/30',
 }
 
-const STATUS_COLOR = { Pendiente: '#78716c', Aprobada: '#4ade80', Entregada: '#34d399' }
+const STATUS_COLOR = { Pendiente: '#78716c', Aprobada: '#4ade80', Entregada: '#34d399', Rechazada: '#f87171' }
 const MESES_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 // ── Gráfico de barras puro (CSS/flexbox) ────────────────────────────────────
@@ -122,10 +122,17 @@ export default function Dashboard() {
   const prevMes    = cotizaciones.filter((c) => esMes(c, mesPrev, anioPrev))
   const montoMes   = thisMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
   const montoMesP  = prevMes.reduce((s, c) => s + (Number(c.totalFinal ?? c.costoTotal) || 0), 0)
-  const entregadas = cotizaciones.filter((c) => c.estado === 'Entregada').length
+  const cerradas   = cotizaciones.filter((c) => c.estado === 'Aprobada' || c.estado === 'Entregada').length
   const tasaCierre = cotizaciones.length > 0
-    ? `${Math.round((entregadas / cotizaciones.length) * 100)}%`
+    ? `${Math.round((cerradas / cotizaciones.length) * 100)}%`
     : '—'
+
+  const SIETE_DIAS = 7 * 24 * 60 * 60 * 1000
+  const pendientesViejas = cotizaciones.filter((c) =>
+    (!c.estado || c.estado === 'Pendiente') &&
+    c.fechaDate &&
+    (now - c.fechaDate) > SIETE_DIAS
+  )
   const clientesUnicos = new Set(
     cotizaciones.map((c) => (typeof c.cliente === 'object' ? c.cliente?.nombre : c.cliente)).filter(Boolean)
   ).size
@@ -148,8 +155,8 @@ export default function Dashboard() {
     { label: 'Cotizaciones este mes',     value: String(thisMes.length) },
     { label: 'Clientes únicos',           value: String(clientesUnicos) },
     { label: 'Monto cotizado (mes)',       value: fmt(montoMes) },
-    { label: 'Tasa de cierre',            value: tasaCierre },
-    { label: 'Cotiz. más alta del mes',   value: maxMes !== null ? fmt(maxMes) : '—' },
+    { label: 'Tasa de aprobación',        value: tasaCierre },
+    { label: 'Sin respuesta (+7 días)',   value: String(pendientesViejas.length), isAlert: pendientesViejas.length > 0 },
     { label: 'Variación vs mes anterior', value: variacion, isVariacion: true, positive: variacionPositiva },
   ]
 
@@ -168,7 +175,7 @@ export default function Dashboard() {
 
   // Donut: por estado
   const total   = cotizaciones.length
-  const pieData = ['Pendiente', 'Aprobada', 'Entregada']
+  const pieData = ['Pendiente', 'Aprobada', 'Entregada', 'Rechazada']
     .map((estado) => ({
       name:  estado,
       value: cotizaciones.filter((c) => c.estado === estado).length,
@@ -198,6 +205,8 @@ export default function Dashboard() {
             <p className={`text-2xl font-bold mt-1 ${
               stat.isVariacion
                 ? stat.positive ? 'text-green-400' : 'text-red-400'
+                : stat.isAlert
+                ? 'text-amber-400'
                 : 'text-stone-100'
             }`}>
               {loading ? '—' : stat.value}
@@ -266,6 +275,42 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Alerta pendientes sin respuesta */}
+      {!loading && pendientesViejas.length > 0 && (
+        <div className="mb-5 card border-amber-500/30 bg-amber-500/5">
+          <div className="flex items-center gap-2 mb-3">
+            <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <h3 className="text-amber-400 font-semibold text-sm">Cotizaciones pendientes sin respuesta hace más de 7 días</h3>
+          </div>
+          <div className="space-y-2">
+            {pendientesViejas.slice(0, 5).map((c) => {
+              const nombre = typeof c.cliente === 'object' ? c.cliente?.nombre : c.cliente
+              const diasEspera = c.fechaDate ? Math.floor((now - c.fechaDate) / (24 * 60 * 60 * 1000)) : 0
+              return (
+                <div key={c.id} className="flex items-center justify-between text-sm py-2 border-b border-amber-500/10 last:border-0">
+                  <div>
+                    <span className="text-amber-500 font-mono text-xs mr-2">{c.numero}</span>
+                    <span className="text-stone-300">{nombre || '—'}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-stone-400 text-xs">{fmt(c.totalFinal || 0)}</span>
+                    <span className="text-amber-600 text-xs font-medium">{diasEspera} días</span>
+                    <button onClick={() => navigate('/historial')} className="text-xs text-amber-500 hover:text-amber-400 transition-colors">
+                      Ver →
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+            {pendientesViejas.length > 5 && (
+              <p className="text-stone-500 text-xs text-center pt-1">y {pendientesViejas.length - 5} más...</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Cotizaciones recientes */}
       <div className="card">

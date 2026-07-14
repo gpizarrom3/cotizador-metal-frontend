@@ -16,12 +16,13 @@ import { useUserData } from '../contexts/UserDataContext'
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
-const ESTADOS = ['Pendiente', 'Aprobada', 'Entregada']
+const ESTADOS = ['Pendiente', 'Aprobada', 'Entregada', 'Rechazada']
 
 const STATUS_STYLE = {
   'Pendiente':  'bg-slate-700/60 text-slate-300 border-slate-600',
   'Aprobada':   'bg-green-900/40 text-green-400 border-green-500/30',
   'Entregada':  'bg-emerald-900/40 text-emerald-300 border-emerald-500/30',
+  'Rechazada':  'bg-red-900/40 text-red-400 border-red-500/30',
 }
 
 const DRAFT_KEY = 'cotizador_draft'
@@ -53,9 +54,72 @@ export default function Historial() {
   const [preview, setPreview]         = useState(null)
   const [exportandoPDF, setExportandoPDF] = useState(false)
   const previewRef = useRef(null)
+  const [emailModal, setEmailModal] = useState({ open: false, to: '', sending: false, sent: false, error: '' })
+  const [shareState, setShareState] = useState({ loading: false, url: null, removing: false, error: '', cotId: null })
 
-  const handlePreview = (cot, tipo) => setPreview({ cot, tipo })
-  const cerrarPreview = () => setPreview(null)
+  const handlePreview = (cot, tipo) => {
+    setPreview({ cot, tipo })
+    setEmailModal({ open: false, to: '', sending: false, sent: false, error: '' })
+    const origin = window.location.origin
+    const token = cot.shareToken
+    setShareState({ loading: false, url: token ? `${origin}/c/${token}` : null, removing: false, error: '', cotId: cot.id })
+  }
+  const cerrarPreview = () => { setPreview(null); setEmailModal(m => ({ ...m, open: false })) }
+
+  const handleEnviarEmail = async () => {
+    if (!emailModal.to || !preview) return
+    setEmailModal(m => ({ ...m, sending: true, error: '', sent: false }))
+    try {
+      const res = await fetch('/api/send-cotizacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: emailModal.to, cot: preview.cot, empresa }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error || 'Error al enviar')
+      setEmailModal(m => ({ ...m, sending: false, sent: true }))
+      setTimeout(() => setEmailModal(m => ({ ...m, open: false, sent: false })), 3000)
+    } catch (err) {
+      setEmailModal(m => ({ ...m, sending: false, error: err.message }))
+    }
+  }
+
+  const handleCompartir = async () => {
+    if (!preview || !user) return
+    setShareState(s => ({ ...s, loading: true, error: '' }))
+    try {
+      const res = await fetch('/api/publicar-cotizacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid, cotizacionId: preview.cot.id, action: 'publicar' }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      const url = `${window.location.origin}/c/${data.shareToken}`
+      setShareState(s => ({ ...s, loading: false, url, cotId: preview.cot.id }))
+      setCotizaciones(prev => prev.map(c => c.id === preview.cot.id ? { ...c, shareToken: data.shareToken } : c))
+    } catch (err) {
+      setShareState(s => ({ ...s, loading: false, error: err.message }))
+    }
+  }
+
+  const handleQuitarLink = async () => {
+    if (!preview || !user) return
+    setShareState(s => ({ ...s, removing: true, error: '' }))
+    try {
+      const res = await fetch('/api/publicar-cotizacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid, cotizacionId: preview.cot.id, action: 'despublicar' }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setShareState(s => ({ ...s, removing: false, url: null }))
+      setCotizaciones(prev => prev.map(c => c.id === preview.cot.id ? { ...c, shareToken: undefined } : c))
+    } catch (err) {
+      setShareState(s => ({ ...s, removing: false, error: err.message }))
+    }
+  }
 
   const handleDescargarPDF = async () => {
     if (!preview) return
@@ -201,6 +265,8 @@ export default function Historial() {
       embalaje:        cot.embalaje        || {},
       conMaterial:     cot.conMaterial     ?? true,
       consumibles:     cot.consumibles     || [],
+      combustible:     cot.combustible     || null,
+      gruposHH:        cot.gruposHH        || [],
     }
 
     const existing = getDraft()
@@ -243,6 +309,8 @@ export default function Historial() {
       embalaje:        cot.embalaje        || {},
       conMaterial:     cot.conMaterial     ?? null,
       consumibles:     cot.consumibles     || [],
+      combustible:     cot.combustible     || null,
+      gruposHH:        cot.gruposHH        || [],
       numeroCot:       '',
       estado:          'Pendiente',
     }
@@ -785,7 +853,35 @@ export default function Historial() {
                 <span className="text-blue-400 font-mono">{preview.cot.numero}</span>
               </span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Botón email */}
+              {preview.tipo === 'cotizacion' && (
+                <button
+                  onClick={() => setEmailModal(m => ({ ...m, open: !m.open, sent: false, error: '' }))}
+                  title="Enviar por email"
+                  className={`p-2 rounded-lg transition-colors border ${emailModal.open ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'border-slate-700 text-slate-400 hover:text-blue-400 hover:border-blue-500/50'}`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              )}
+              {/* Botón compartir */}
+              {preview.tipo === 'cotizacion' && (
+                <button
+                  onClick={shareState.url ? undefined : handleCompartir}
+                  title={shareState.url ? 'Link público activo' : 'Generar link público'}
+                  disabled={shareState.loading}
+                  className={`p-2 rounded-lg transition-colors border ${shareState.url ? 'bg-green-600/20 border-green-500/50 text-green-400' : 'border-slate-700 text-slate-400 hover:text-green-400 hover:border-green-500/50'}`}
+                >
+                  {shareState.loading
+                    ? <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin block" />
+                    : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                  }
+                </button>
+              )}
               <button
                 onClick={handleDescargarPDF}
                 disabled={exportandoPDF}
@@ -804,6 +900,56 @@ export default function Historial() {
               </button>
             </div>
           </div>
+          {/* Panel email */}
+          {emailModal.open && (
+            <div className="flex-shrink-0 bg-slate-800 border-b border-slate-700 px-6 py-3 flex items-center gap-3 flex-wrap">
+              <span className="text-slate-400 text-sm whitespace-nowrap">Enviar a:</span>
+              <input
+                type="email"
+                placeholder="cliente@empresa.cl"
+                value={emailModal.to}
+                onChange={e => setEmailModal(m => ({ ...m, to: e.target.value, sent: false, error: '' }))}
+                onKeyDown={e => e.key === 'Enter' && handleEnviarEmail()}
+                className="input-field text-sm py-1.5 flex-1 min-w-40 max-w-xs"
+                autoFocus
+              />
+              <button
+                onClick={handleEnviarEmail}
+                disabled={emailModal.sending || !emailModal.to}
+                className="btn-primary text-sm py-1.5 px-4 disabled:opacity-50 whitespace-nowrap"
+              >
+                {emailModal.sending ? 'Enviando...' : 'Enviar cotización'}
+              </button>
+              {emailModal.sent && <span className="text-green-400 text-sm">✓ Enviado</span>}
+              {emailModal.error && <span className="text-red-400 text-sm">{emailModal.error}</span>}
+            </div>
+          )}
+          {/* Panel share link */}
+          {shareState.url && (
+            <div className="flex-shrink-0 bg-green-900/20 border-b border-green-500/20 px-6 py-2.5 flex items-center gap-3 flex-wrap">
+              <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              <span className="text-green-400 text-xs whitespace-nowrap font-medium">Link público:</span>
+              <input readOnly value={shareState.url} className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 min-w-0 select-all" onClick={e => e.target.select()} />
+              <button
+                onClick={() => { navigator.clipboard.writeText(shareState.url); }}
+                className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded transition-colors whitespace-nowrap"
+              >
+                Copiar
+              </button>
+              <button
+                onClick={handleQuitarLink}
+                disabled={shareState.removing}
+                className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded transition-colors whitespace-nowrap"
+              >
+                {shareState.removing ? 'Quitando...' : 'Quitar link'}
+              </button>
+            </div>
+          )}
+          {shareState.error && (
+            <div className="flex-shrink-0 bg-red-900/20 border-b border-red-500/20 px-6 py-2 text-red-400 text-xs">{shareState.error}</div>
+          )}
           <div className="flex-1 overflow-y-auto bg-slate-200 p-6 flex justify-center" ref={previewRef}>
             <div id="historial-preview-content" className="w-full max-w-4xl">
               {preview.tipo === 'cotizacion' ? (
