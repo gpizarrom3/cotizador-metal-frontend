@@ -838,8 +838,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
           <thead>
             <tr className="table-header">
               <th className="text-left px-3 py-3 rounded-l-lg">Material</th>
-              <th className="text-left px-3 py-3 w-32">Formato</th>
-              <th className="text-right px-3 py-3 w-28">Longitud (mm)</th>
+              <th className="text-left px-3 py-3 w-36">Formato</th>
               <th className="text-right px-3 py-3 w-20">m²</th>
               <th className="text-right px-3 py-3 w-24">
                 <span>Kg/unidad</span>
@@ -857,22 +856,19 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
           <tbody>
             {(sp.items || []).length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-slate-500 text-sm">
+                <td colSpan={8} className="text-center py-8 text-slate-500 text-sm">
                   Sin materiales. Agrega una fila o usa las herramientas de arriba.
                 </td>
               </tr>
             ) : (
               (sp.items || []).map((m) => {
-                const longitudMm = m.pesoData?.modo === 'catalogo' && m.pesoData?.metros
-                  ? Math.round(m.pesoData.metros * 1000)
-                  : (m.longitudMm || '')
                 const m2Pieza = resolveM2(m)
                 return (
                   <Fragment key={m.id}>
                     <tr className="border-b border-slate-700">
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
-                          <input type="text" className="input-field py-1.5 text-sm flex-1 min-w-0" placeholder="Nombre" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} />
+                          <input type="text" className="input-field py-1.5 text-sm flex-1 min-w-0" placeholder="Ej: Barra diám. 80mm largo 1200mm, Acero 4340" value={m.nombre} onChange={e => onUpdateItem(m.id, 'nombre', e.target.value)} />
                           {catalogo.length > 0 && (
                             <button
                               onClick={() => { setCatalogPickerId(catalogPickerId === m.id ? null : m.id); setCatalogPickerSearch('') }}
@@ -886,22 +882,23 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2"><input type="text" className="input-field py-1.5 text-sm w-full" placeholder="Formato" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)} /></td>
                       <td className="px-3 py-2">
-                        <input
-                          type="number" min="0" step="1"
-                          className="input-field py-1.5 text-sm text-right w-full"
-                          placeholder="—"
-                          value={longitudMm}
-                          onChange={e => {
-                            const mm = Number(e.target.value) || 0
-                            const metros = mm / 1000
-                            if (m.pesoData?.catPesoPorMetro > 0) {
-                              onUpdateItem(m.id, 'pesoData', { ...m.pesoData, metros })
-                            }
-                            onUpdateItem(m.id, 'longitudMm', mm || '')
-                          }}
-                        />
+                        <select className="input-field py-1.5 text-sm w-full" value={m.formato} onChange={e => onUpdateItem(m.id, 'formato', e.target.value)}>
+                          <option value="">— Formato —</option>
+                          <option value="Barra">Barra</option>
+                          <option value="Plancha">Plancha</option>
+                          <option value="Viga">Viga</option>
+                          <option value="Tira">Tira</option>
+                          <option value="Tubo redondo">Tubo redondo</option>
+                          <option value="Tubo cuadrado">Tubo cuadrado</option>
+                          <option value="Tubo rectangular">Tubo rectangular</option>
+                          <option value="Ángulo">Ángulo</option>
+                          <option value="Canal">Canal</option>
+                          <option value="Tee">Tee</option>
+                          <option value="Pletina">Pletina</option>
+                          <option value="Perfil">Perfil</option>
+                          <option value="Otro">Otro</option>
+                        </select>
                       </td>
                       <td className="px-3 py-2 text-right text-sky-400 text-sm whitespace-nowrap">
                         {m2On[m.id] && m2Pieza !== null ? m2Pieza.toFixed(3) : <span className="text-slate-700">—</span>}
@@ -979,7 +976,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-600">
-              <td colSpan={3} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
+              <td colSpan={2} className="px-3 py-2 text-right text-slate-400 text-sm font-medium">Subtotal:</td>
               <td className="px-3 py-2 text-right">
                 {m2Grupo > 0 && (
                   <span className="text-sky-400 text-xs font-medium">{m2Grupo.toFixed(3)} m²</span>
