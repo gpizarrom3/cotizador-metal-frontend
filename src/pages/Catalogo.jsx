@@ -49,7 +49,7 @@ function MaterialRow({ i, onEdit, onDelete }) {
           ? <span className="text-emerald-400 font-medium text-sm">{i.peso_por_metro} kg/m</span>
           : <span className="text-slate-700">—</span>}
       </td>
-      <td className="px-4 py-3 text-slate-200 text-right font-medium">{fmt(i.precio_unitario)}</td>
+      <td className="px-4 py-3 text-slate-200 text-right font-medium">{fmt(i._base ? i.precio_unit : i.precio_unitario)}</td>
       <td className="px-4 py-3 text-center">
         {(onEdit || onDelete) && (
           <div className="flex items-center justify-center gap-2">
