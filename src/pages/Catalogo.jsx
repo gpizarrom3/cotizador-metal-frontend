@@ -30,11 +30,22 @@ const TIPO_BADGE = {
   tubo:    { label: 'Tubo',     cls: 'bg-cyan-900/60 text-cyan-300' },
   perfil:  { label: 'Perfil',   cls: 'bg-amber-900/60 text-amber-300' },
   viga:    { label: 'Viga',     cls: 'bg-orange-900/60 text-orange-300' },
+  angulo:  { label: 'Ángulo',   cls: 'bg-lime-900/60 text-lime-300' },
 }
 
-function MaterialRow({ i, onEdit, onDelete }) {
+function MaterialRow({ i, onEdit, onDelete, checked, onCheck }) {
   return (
-    <tr className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+    <tr className={`border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors ${checked ? 'bg-violet-900/10' : ''}`}>
+      {onCheck !== undefined && (
+        <td className="pl-4 pr-2 py-3">
+          <input
+            type="checkbox"
+            checked={checked || false}
+            onChange={() => onCheck(i.id)}
+            className="w-4 h-4 rounded border-slate-600 bg-slate-800 accent-violet-500 cursor-pointer"
+          />
+        </td>
+      )}
       <td className="px-4 py-3 text-slate-200 font-medium">{i.nombre}</td>
       <td className="px-4 py-3">
         {i.tipo && TIPO_BADGE[i.tipo]
@@ -93,6 +104,11 @@ export default function Catalogo() {
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, global: false })
   const [activeTab, setActiveTab]     = useState('mis')
 
+  // Selección múltiple
+  const [selectedIds, setSelectedIds]         = useState(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [deletingBulk, setDeletingBulk]       = useState(false)
+
   useEffect(() => {
     if (!user) return
     obtenerCatalogo(user.uid)
@@ -107,6 +123,9 @@ export default function Catalogo() {
       .catch(() => {})
   }, [])
 
+  // Limpiar selección al cambiar de tab o búsqueda
+  useEffect(() => { setSelectedIds(new Set()) }, [activeTab, search])
+
   if (!planLoading && !isPro) return <Navigate to="/planes" replace />
 
   const filtered = items.filter((i) =>
@@ -118,6 +137,49 @@ export default function Catalogo() {
     i.nombre?.toLowerCase().includes(search.toLowerCase()) ||
     i.proveedor?.toLowerCase().includes(search.toLowerCase())
   )
+
+  // Selección
+  const allFilteredSelected = filtered.length > 0 && filtered.every(i => selectedIds.has(i.id))
+  const someFilteredSelected = filtered.some(i => selectedIds.has(i.id)) && !allFilteredSelected
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filtered.forEach(i => next.delete(i.id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        filtered.forEach(i => next.add(i.id))
+        return next
+      })
+    }
+  }
+
+  const ejecutarEliminarSeleccionados = async () => {
+    setConfirmBulkDelete(false)
+    setDeletingBulk(true)
+    try {
+      await Promise.all([...selectedIds].map(id => eliminarItemCatalogo(user.uid, id)))
+      setItems(prev => prev.filter(i => !selectedIds.has(i.id)))
+      setSelectedIds(new Set())
+    } catch {
+      setError('Error al eliminar algunos materiales.')
+    } finally {
+      setDeletingBulk(false)
+    }
+  }
 
   const abrirNuevo = () => { setEditando(null); setIsGlobalEdit(false); setForm(EMPTY_FORM); setShowModal(true) }
   const abrirNuevoGlobal = () => { setEditando(null); setIsGlobalEdit(true); setForm(EMPTY_FORM); setShowModal(true) }
@@ -356,42 +418,84 @@ export default function Catalogo() {
               <p className="text-slate-400 text-sm">Cargando catálogo...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="table-header">
-                    <th className="text-left px-4 py-3 rounded-l-lg">Material</th>
-                    <th className="text-left px-4 py-3">Tipo</th>
-                    <th className="text-left px-4 py-3">Proveedor</th>
-                    <th className="text-left px-4 py-3">Formato</th>
-                    <th className="text-left px-4 py-3">Unidad</th>
-                    <th className="text-right px-4 py-3">kg/m lineal</th>
-                    <th className="text-right px-4 py-3">Precio ref.</th>
-                    <th className="text-center px-4 py-3 rounded-r-lg">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-10 text-slate-500">
-                        {items.length === 0
-                          ? 'Aún no hay materiales en el catálogo. Agrega uno para usarlo en el cotizador.'
-                          : 'No se encontraron materiales.'}
-                      </td>
+            <>
+              {/* Barra de acciones bulk */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center justify-between bg-violet-900/20 border border-violet-500/30 rounded-xl px-4 py-3 mb-4">
+                  <span className="text-violet-300 text-sm font-medium">
+                    {selectedIds.size} material{selectedIds.size !== 1 ? 'es' : ''} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setSelectedIds(new Set())}
+                      className="text-slate-400 hover:text-slate-200 text-sm"
+                    >
+                      Deseleccionar
+                    </button>
+                    <button
+                      onClick={() => setConfirmBulkDelete(true)}
+                      disabled={deletingBulk}
+                      className="flex items-center gap-1.5 text-red-400 hover:text-red-300 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      {deletingBulk ? 'Eliminando...' : 'Eliminar seleccionados'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="table-header">
+                      <th className="pl-4 pr-2 py-3 rounded-l-lg">
+                        <input
+                          type="checkbox"
+                          checked={allFilteredSelected}
+                          ref={el => { if (el) el.indeterminate = someFilteredSelected }}
+                          onChange={toggleSelectAll}
+                          disabled={filtered.length === 0}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-800 accent-violet-500 cursor-pointer disabled:opacity-30"
+                          title="Seleccionar todos"
+                        />
+                      </th>
+                      <th className="text-left px-4 py-3">Material</th>
+                      <th className="text-left px-4 py-3">Tipo</th>
+                      <th className="text-left px-4 py-3">Proveedor</th>
+                      <th className="text-left px-4 py-3">Formato</th>
+                      <th className="text-left px-4 py-3">Unidad</th>
+                      <th className="text-right px-4 py-3">kg/m lineal</th>
+                      <th className="text-right px-4 py-3">Precio ref.</th>
+                      <th className="text-center px-4 py-3 rounded-r-lg">Acciones</th>
                     </tr>
-                  ) : (
-                    filtered.map((i) => (
-                      <MaterialRow
-                        key={i.id}
-                        i={i}
-                        onEdit={() => abrirEditar(i, false)}
-                        onDelete={() => handleEliminar(i.id, false)}
-                      />
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="text-center py-10 text-slate-500">
+                          {items.length === 0
+                            ? 'Aún no hay materiales en el catálogo. Agrega uno para usarlo en el cotizador.'
+                            : 'No se encontraron materiales.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filtered.map((i) => (
+                        <MaterialRow
+                          key={i.id}
+                          i={i}
+                          checked={selectedIds.has(i.id)}
+                          onCheck={toggleSelect}
+                          onEdit={() => abrirEditar(i, false)}
+                          onDelete={() => handleEliminar(i.id, false)}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -476,6 +580,7 @@ export default function Catalogo() {
         </div>
       )}
 
+      {/* Confirm eliminar uno */}
       <ConfirmModal
         open={confirmDelete.open}
         title={confirmDelete.global ? 'Eliminar material global' : 'Eliminar material'}
@@ -484,6 +589,15 @@ export default function Catalogo() {
           : 'Este material será eliminado de tu catálogo permanentemente.'}
         onConfirm={ejecutarEliminar}
         onCancel={() => setConfirmDelete({ open: false, id: null, global: false })}
+      />
+
+      {/* Confirm eliminar seleccionados */}
+      <ConfirmModal
+        open={confirmBulkDelete}
+        title="Eliminar materiales seleccionados"
+        message={`Se eliminarán ${selectedIds.size} material${selectedIds.size !== 1 ? 'es' : ''} de tu catálogo permanentemente. Esta acción no se puede deshacer.`}
+        onConfirm={ejecutarEliminarSeleccionados}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
     </DashboardLayout>
   )
