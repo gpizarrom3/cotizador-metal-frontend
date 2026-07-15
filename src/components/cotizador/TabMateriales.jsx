@@ -1137,7 +1137,7 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                             nombre: c.nombre,
                             proveedor: c.proveedor || '',
                             formato: c.formato || '',
-                            precio_unitario: c.precio_unitario || 0,
+                            precio_unitario: c._base ? (c.precio_unit || 0) : (c.precio_unitario || 0),
                           })
                           setCatalogPickerId(null); setCatalogPickerSearch('')
                         }
@@ -1151,7 +1151,10 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                         )}
                       </div>
                       {c.proveedor && <p className="text-slate-400 text-xs mt-0.5">{c.proveedor}</p>}
-                      {!c._base && <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(c.precio_unitario)}{c.unidad ? ` / ${c.unidad}` : ''}</p>}
+                      {c._base
+                        ? (c.precio_unit > 0 && <p className="text-slate-400 text-xs mt-1">ref. <span className="font-semibold text-slate-300">{fmt(c.precio_unit)}</span>{c.unidad ? ` / ${c.unidad}` : ''}</p>)
+                        : <p className="text-violet-400 font-semibold text-xs mt-1">{fmt(c.precio_unitario)}{c.unidad ? ` / ${c.unidad}` : ''}</p>
+                      }
                     </button>
                   ))
                 }
