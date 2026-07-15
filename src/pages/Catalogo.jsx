@@ -258,7 +258,8 @@ export default function Catalogo() {
                   <th className="text-left px-4 py-3">Tipo</th>
                   <th className="text-left px-4 py-3">Formato</th>
                   <th className="text-left px-4 py-3">Unidad</th>
-                  <th className="text-right px-4 py-3 rounded-r-lg">kg/m lineal</th>
+                  <th className="text-right px-4 py-3">kg/m lineal</th>
+                  <th className="text-right px-4 py-3 rounded-r-lg">Precio ref.</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,7 +267,7 @@ export default function Catalogo() {
                   i.nombre?.toLowerCase().includes(search.toLowerCase()) ||
                   i.formato?.toLowerCase().includes(search.toLowerCase())
                 ).length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-10 text-slate-500">Sin resultados.</td></tr>
+                  <tr><td colSpan={6} className="text-center py-10 text-slate-500">Sin resultados.</td></tr>
                 ) : (
                   CATALOGO_BASE.filter(i =>
                     i.nombre?.toLowerCase().includes(search.toLowerCase()) ||
@@ -285,6 +286,9 @@ export default function Catalogo() {
                         {i.peso_por_metro > 0
                           ? <span className="text-emerald-400 font-medium text-sm">{i.peso_por_metro} kg/m</span>
                           : <span className="text-slate-700">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-slate-200 text-right font-medium">
+                        {i.precio_unit > 0 ? fmt(i.precio_unit) : <span className="text-slate-700">—</span>}
                       </td>
                     </tr>
                   ))
