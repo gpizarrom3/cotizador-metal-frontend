@@ -1070,6 +1070,15 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                           {' '}(perímetro {catPickerLargoItem.perimetro_mm} mm × {(Number(catPickerLargo) / 1000).toFixed(3)} m)
                         </p>
                       )}
+                      {catPickerLargoItem.precio_unit > 0 && (
+                        <p>
+                          Precio estimado:{' '}
+                          <span className="text-yellow-400 font-semibold">
+                            ${Math.round(catPickerLargoItem.precio_unit * (Number(catPickerLargo) / 1000)).toLocaleString('es-CL')} CLP
+                          </span>
+                          {' '}({catPickerLargoItem.precio_unit} CLP/m × {(Number(catPickerLargo) / 1000).toFixed(3)} m)
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1082,11 +1091,14 @@ function SubproductoCard({ sp, isOnly, catalogoPesos, catalogo = [], onUpdateNom
                     onClick={() => {
                       const largoM = Number(catPickerLargo) / 1000
                       const pesoKg = catPickerLargoItem.peso_por_metro * largoM
+                      const precioCalc = catPickerLargoItem.precio_unit > 0
+                        ? Math.round(catPickerLargoItem.precio_unit * largoM)
+                        : Math.round(pesoKg * 1100)
                       onFillItem(catalogPickerId, {
-                        nombre: catPickerLargoItem.nombre,
+                        nombre: `${catPickerLargoItem.nombre} · L:${catPickerLargo}mm`,
                         proveedor: catPickerLargoItem.proveedor || '',
                         formato: catPickerLargoItem.formato || '',
-                        precio_unitario: catPickerLargoItem.precio_unitario || 0,
+                        precio_unitario: precioCalc,
                         longitudMm: Number(catPickerLargo),
                         pesoData: {
                           modo: 'catalogo',
