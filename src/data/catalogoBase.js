@@ -6,8 +6,8 @@
 
 export const PRECIO_KG_A36    = 1100   // CLP/kg — acero estructural A36/A572
 export const PRECIO_KG_ALEADO = 1400   // CLP/kg — acero aleado (SAE 4140, 1045, 1020, etc.)
-export const PRECIO_KG_INOX_T = 4000   // CLP/kg — inoxidable e < 8mm
-export const PRECIO_KG_INOX_G = 6000   // CLP/kg — inoxidable e ≥ 8mm
+export const PRECIO_KG_INOX_T = 4000   // CLP/kg — inoxidable e/Ø < 6mm
+export const PRECIO_KG_INOX_G = 6000   // CLP/kg — inoxidable e/Ø ≥ 6mm
 
 export const CATALOGO_BASE = [
   // ─── VIGAS IPE ───────────────────────────────────────────────────────────────
@@ -402,37 +402,37 @@ export const CATALOGO_BASE = [
   { nombre: 'Plancha LAF e=2.5mm  (19.6 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: '2.5mm  (19.6 kg/m²)', peso_por_metro: 0, precio_unit: 1100, proveedor: 'Prodalam/Kupfer' },
   { nombre: 'Plancha LAF e=3.0mm  (23.6 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: '3.0mm  (23.6 kg/m²)', peso_por_metro: 0, precio_unit: 1100, proveedor: 'Prodalam/Kupfer' },
 
-  // ─── TUBOS REDONDOS INOX AISI 304 (soldado) — 4000 CLP/kg ───────────────────
-  { nombre: 'Tubo redondo inox 304 Ø12.7×1.2mm (1/2")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø12.7×1.2mm', peso_por_metro: 0.34,  perimetro_mm: 40,   precio_unit: 1360,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø19.1×1.5mm (3/4")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø19.1×1.5mm', peso_por_metro: 0.65,  perimetro_mm: 60,   precio_unit: 2600,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø25.4×1.5mm (1")',   tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø25.4×1.5mm', peso_por_metro: 0.89,  perimetro_mm: 80,   precio_unit: 3560,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø31.8×1.5mm (1¼")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø31.8×1.5mm', peso_por_metro: 1.13,  perimetro_mm: 100,  precio_unit: 4520,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø38.1×1.5mm (1½")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø38.1×1.5mm', peso_por_metro: 1.36,  perimetro_mm: 120,  precio_unit: 5440,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø50.8×2.0mm (2")',   tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø50.8×2.0mm', peso_por_metro: 2.42,  perimetro_mm: 160,  precio_unit: 9680,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø63.5×2.0mm (2½")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø63.5×2.0mm', peso_por_metro: 3.06,  perimetro_mm: 199,  precio_unit: 12240,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø76.2×2.0mm (3")',   tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø76.2×2.0mm', peso_por_metro: 3.69,  perimetro_mm: 239,  precio_unit: 14760,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo redondo inox 304 Ø101.6×2.0mm (4")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø101.6×2.0mm',peso_por_metro: 4.95,  perimetro_mm: 319,  precio_unit: 19800,  proveedor: 'Kupfer/Otero' },
+  // ─── TUBOS REDONDOS INOX AISI 304 (soldado) — 6000 CLP/kg (Ø ≥ 6mm) ──────────
+  { nombre: 'Tubo redondo inox 304 Ø12.7×1.2mm (1/2")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø12.7×1.2mm', peso_por_metro: 0.34,  perimetro_mm: 40,   precio_unit: 2040,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø19.1×1.5mm (3/4")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø19.1×1.5mm', peso_por_metro: 0.65,  perimetro_mm: 60,   precio_unit: 3900,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø25.4×1.5mm (1")',   tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø25.4×1.5mm', peso_por_metro: 0.89,  perimetro_mm: 80,   precio_unit: 5340,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø31.8×1.5mm (1¼")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø31.8×1.5mm', peso_por_metro: 1.13,  perimetro_mm: 100,  precio_unit: 6780,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø38.1×1.5mm (1½")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø38.1×1.5mm', peso_por_metro: 1.36,  perimetro_mm: 120,  precio_unit: 8160,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø50.8×2.0mm (2")',   tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø50.8×2.0mm', peso_por_metro: 2.42,  perimetro_mm: 160,  precio_unit: 14520,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø63.5×2.0mm (2½")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø63.5×2.0mm', peso_por_metro: 3.06,  perimetro_mm: 199,  precio_unit: 18360,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø76.2×2.0mm (3")',   tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø76.2×2.0mm', peso_por_metro: 3.69,  perimetro_mm: 239,  precio_unit: 22140,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo redondo inox 304 Ø101.6×2.0mm (4")', tipo: 'tubo', unidad: 'metro', formato: 'INOX Ø101.6×2.0mm',peso_por_metro: 4.95,  perimetro_mm: 319,  precio_unit: 29700,  proveedor: 'Kupfer/Otero' },
 
-  // ─── TUBOS CUADRADOS INOX AISI 304 — 4000 CLP/kg ────────────────────────────
-  { nombre: 'Tubo cuadrado inox 304 20×20×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 20×20×1.5mm',  peso_por_metro: 0.88,  perimetro_mm: 80,   precio_unit: 3520,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo cuadrado inox 304 25×25×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 25×25×1.5mm',  peso_por_metro: 1.11,  perimetro_mm: 100,  precio_unit: 4440,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo cuadrado inox 304 30×30×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 30×30×1.5mm',  peso_por_metro: 1.35,  perimetro_mm: 120,  precio_unit: 5400,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo cuadrado inox 304 40×40×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 40×40×1.5mm',  peso_por_metro: 1.83,  perimetro_mm: 160,  precio_unit: 7320,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo cuadrado inox 304 50×50×2.0mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 50×50×2.0mm',  peso_por_metro: 3.03,  perimetro_mm: 200,  precio_unit: 12120,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo cuadrado inox 304 60×60×2.0mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 60×60×2.0mm',  peso_por_metro: 3.67,  perimetro_mm: 240,  precio_unit: 14680,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo cuadrado inox 304 80×80×2.0mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 80×80×2.0mm',  peso_por_metro: 4.93,  perimetro_mm: 320,  precio_unit: 19720,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Tubo cuadrado inox 304 100×100×3.0mm',tipo: 'tubo', unidad: 'metro', formato: 'INOX 100×100×3.0mm',peso_por_metro: 9.20,  perimetro_mm: 400,  precio_unit: 36800,  proveedor: 'Kupfer/Otero' },
+  // ─── TUBOS CUADRADOS INOX AISI 304 — 6000 CLP/kg (lado ≥ 6mm) ───────────────
+  { nombre: 'Tubo cuadrado inox 304 20×20×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 20×20×1.5mm',  peso_por_metro: 0.88,  perimetro_mm: 80,   precio_unit: 5280,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo cuadrado inox 304 25×25×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 25×25×1.5mm',  peso_por_metro: 1.11,  perimetro_mm: 100,  precio_unit: 6660,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo cuadrado inox 304 30×30×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 30×30×1.5mm',  peso_por_metro: 1.35,  perimetro_mm: 120,  precio_unit: 8100,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo cuadrado inox 304 40×40×1.5mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 40×40×1.5mm',  peso_por_metro: 1.83,  perimetro_mm: 160,  precio_unit: 10980,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo cuadrado inox 304 50×50×2.0mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 50×50×2.0mm',  peso_por_metro: 3.03,  perimetro_mm: 200,  precio_unit: 18180,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo cuadrado inox 304 60×60×2.0mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 60×60×2.0mm',  peso_por_metro: 3.67,  perimetro_mm: 240,  precio_unit: 22020,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo cuadrado inox 304 80×80×2.0mm',  tipo: 'tubo', unidad: 'metro', formato: 'INOX 80×80×2.0mm',  peso_por_metro: 4.93,  perimetro_mm: 320,  precio_unit: 29580,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Tubo cuadrado inox 304 100×100×3.0mm',tipo: 'tubo', unidad: 'metro', formato: 'INOX 100×100×3.0mm',peso_por_metro: 9.20,  perimetro_mm: 400,  precio_unit: 55200,  proveedor: 'Kupfer/Otero' },
 
-  // ─── BARRAS REDONDAS MACIZAS INOX AISI 304 — 4000 CLP/kg ────────────────────
-  { nombre: 'Barra redonda inox 304 Ø8mm',   tipo: 'barra', unidad: 'metro', formato: 'INOX Ø8mm',   peso_por_metro: 0.40,  perimetro_mm: 25,   precio_unit: 1600,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø10mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø10mm',  peso_por_metro: 0.62,  perimetro_mm: 31,   precio_unit: 2480,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø12mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø12mm',  peso_por_metro: 0.89,  perimetro_mm: 38,   precio_unit: 3560,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø16mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø16mm',  peso_por_metro: 1.59,  perimetro_mm: 50,   precio_unit: 6360,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø20mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø20mm',  peso_por_metro: 2.48,  perimetro_mm: 63,   precio_unit: 9920,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø25mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø25mm',  peso_por_metro: 3.88,  perimetro_mm: 79,   precio_unit: 15520,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø30mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø30mm',  peso_por_metro: 5.58,  perimetro_mm: 94,   precio_unit: 22320,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø40mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø40mm',  peso_por_metro: 9.93,  perimetro_mm: 126,  precio_unit: 39720,  proveedor: 'Kupfer/Otero' },
-  { nombre: 'Barra redonda inox 304 Ø50mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø50mm',  peso_por_metro: 15.51, perimetro_mm: 157,  precio_unit: 62040,  proveedor: 'Kupfer/Otero' },
+  // ─── BARRAS REDONDAS MACIZAS INOX AISI 304 — 6000 CLP/kg (Ø ≥ 6mm) ──────────
+  { nombre: 'Barra redonda inox 304 Ø8mm',   tipo: 'barra', unidad: 'metro', formato: 'INOX Ø8mm',   peso_por_metro: 0.40,  perimetro_mm: 25,   precio_unit: 2400,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø10mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø10mm',  peso_por_metro: 0.62,  perimetro_mm: 31,   precio_unit: 3720,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø12mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø12mm',  peso_por_metro: 0.89,  perimetro_mm: 38,   precio_unit: 5340,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø16mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø16mm',  peso_por_metro: 1.59,  perimetro_mm: 50,   precio_unit: 9540,   proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø20mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø20mm',  peso_por_metro: 2.48,  perimetro_mm: 63,   precio_unit: 14880,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø25mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø25mm',  peso_por_metro: 3.88,  perimetro_mm: 79,   precio_unit: 23280,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø30mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø30mm',  peso_por_metro: 5.58,  perimetro_mm: 94,   precio_unit: 33480,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø40mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø40mm',  peso_por_metro: 9.93,  perimetro_mm: 126,  precio_unit: 59580,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Barra redonda inox 304 Ø50mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX Ø50mm',  peso_por_metro: 15.51, perimetro_mm: 157,  precio_unit: 93060,  proveedor: 'Kupfer/Otero' },
 
   // ─── ÁNGULOS INOX AISI 304 — 4000 CLP/kg ────────────────────────────────────
   { nombre: 'Ángulo inox 304 L25×25×3mm',  tipo: 'angulo', unidad: 'metro', formato: 'INOX L25×25×3mm',  peso_por_metro: 1.11,  perimetro_mm: 50,   precio_unit: 4440,   proveedor: 'Kupfer/Otero' },
@@ -448,10 +448,10 @@ export const CATALOGO_BASE = [
   { nombre: 'Platina inox 304 40×4mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX 40×4mm',  peso_por_metro: 1.26,  perimetro_mm: 88,   precio_unit: 5040,   proveedor: 'Kupfer/Otero' },
   { nombre: 'Platina inox 304 50×5mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX 50×5mm',  peso_por_metro: 1.98,  perimetro_mm: 110,  precio_unit: 7920,   proveedor: 'Kupfer/Otero' },
   { nombre: 'Platina inox 304 60×5mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX 60×5mm',  peso_por_metro: 2.37,  perimetro_mm: 130,  precio_unit: 9480,   proveedor: 'Kupfer/Otero' },
-  { nombre: 'Platina inox 304 80×6mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX 80×6mm',  peso_por_metro: 3.79,  perimetro_mm: 172,  precio_unit: 15160,  proveedor: 'Kupfer/Otero' },
+  { nombre: 'Platina inox 304 80×6mm',  tipo: 'barra', unidad: 'metro', formato: 'INOX 80×6mm',  peso_por_metro: 3.79,  perimetro_mm: 172,  precio_unit: 22740,  proveedor: 'Kupfer/Otero' },
 
   // ─── PLANCHAS INOX AISI 304 ──────────────────────────────────────────────────
-  // e < 8mm → 4000 CLP/kg | e ≥ 8mm → 6000 CLP/kg (densidad 7900 kg/m³)
+  // e < 6mm → 4000 CLP/kg | e ≥ 6mm → 6000 CLP/kg (densidad 7900 kg/m³)
   { nombre: 'Plancha inox 304 e=0.8mm  (6.3 kg/m²)',  tipo: 'plancha', unidad: 'kg', formato: 'INOX 0.8mm  (6.3 kg/m²)',  peso_por_metro: 0, precio_unit: 4000, proveedor: 'Kupfer/Otero' },
   { nombre: 'Plancha inox 304 e=1.0mm  (7.9 kg/m²)',  tipo: 'plancha', unidad: 'kg', formato: 'INOX 1.0mm  (7.9 kg/m²)',  peso_por_metro: 0, precio_unit: 4000, proveedor: 'Kupfer/Otero' },
   { nombre: 'Plancha inox 304 e=1.2mm  (9.5 kg/m²)',  tipo: 'plancha', unidad: 'kg', formato: 'INOX 1.2mm  (9.5 kg/m²)',  peso_por_metro: 0, precio_unit: 4000, proveedor: 'Kupfer/Otero' },
@@ -459,7 +459,7 @@ export const CATALOGO_BASE = [
   { nombre: 'Plancha inox 304 e=2.0mm  (15.8 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 2.0mm  (15.8 kg/m²)', peso_por_metro: 0, precio_unit: 4000, proveedor: 'Kupfer/Otero' },
   { nombre: 'Plancha inox 304 e=3.0mm  (23.7 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 3.0mm  (23.7 kg/m²)', peso_por_metro: 0, precio_unit: 4000, proveedor: 'Kupfer/Otero' },
   { nombre: 'Plancha inox 304 e=4.0mm  (31.6 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 4.0mm  (31.6 kg/m²)', peso_por_metro: 0, precio_unit: 4000, proveedor: 'Kupfer/Otero' },
-  { nombre: 'Plancha inox 304 e=6.0mm  (47.4 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 6.0mm  (47.4 kg/m²)', peso_por_metro: 0, precio_unit: 4000, proveedor: 'Kupfer/Otero' },
+  { nombre: 'Plancha inox 304 e=6.0mm  (47.4 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 6.0mm  (47.4 kg/m²)', peso_por_metro: 0, precio_unit: 6000, proveedor: 'Kupfer/Otero' },
   { nombre: 'Plancha inox 304 e=8.0mm  (63.2 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 8.0mm  (63.2 kg/m²)', peso_por_metro: 0, precio_unit: 6000, proveedor: 'Kupfer/Otero' },
   { nombre: 'Plancha inox 304 e=10mm   (79.0 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 10mm   (79.0 kg/m²)', peso_por_metro: 0, precio_unit: 6000, proveedor: 'Kupfer/Otero' },
   { nombre: 'Plancha inox 304 e=12mm   (94.8 kg/m²)', tipo: 'plancha', unidad: 'kg', formato: 'INOX 12mm   (94.8 kg/m²)', peso_por_metro: 0, precio_unit: 6000, proveedor: 'Kupfer/Otero' },
