@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 const CLAUDE_PROMPT = (query) =>
   `Eres un experto en materiales metalmecánicos en Chile. El usuario busca: "${query}".
@@ -64,6 +65,31 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.svg', 'icons.svg'],
+        manifest: {
+          name: 'Cotizador Metal',
+          short_name: 'Cotizador',
+          description: 'Cotizador de materiales metalmecánicos — Chile',
+          theme_color: '#0f172a',
+          background_color: '#0f172a',
+          display: 'standalone',
+          start_url: '/',
+          scope: '/',
+          icons: [
+            { src: 'pwa-64x64.png',              sizes: '64x64',   type: 'image/png' },
+            { src: 'pwa-192x192.png',             sizes: '192x192', type: 'image/png' },
+            { src: 'pwa-512x512.png',             sizes: '512x512', type: 'image/png' },
+            { src: 'maskable-icon-512x512.png',   sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          ],
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api\//],
+        },
+      }),
       {
         name: 'api-dev-server',
         configureServer(server) {
