@@ -1,9 +1,11 @@
 // Catálogo base de materiales metalmecánicos
 // precio_unit = CLP por unidad (metro o kg según campo unidad)
-// Fórmula: peso_por_metro × 1100 CLP/kg (acero A36/estructural, mercado Chile 2025)
-// Planchas: 1100 CLP/kg directo.
+// Fórmula: peso_por_metro × precio_kg (mercado Chile 2025)
+//   A36/estructural: 1100 CLP/kg | Aleado (4140, 1045, etc.): 1400 CLP/kg
+//   Inoxidable e<8mm: 4000 CLP/kg | Inoxidable e≥8mm: 6000 CLP/kg
 
 export const PRECIO_KG_A36    = 1100   // CLP/kg — acero estructural A36/A572
+export const PRECIO_KG_ALEADO = 1400   // CLP/kg — acero aleado (SAE 4140, 1045, 1020, etc.)
 export const PRECIO_KG_INOX_T = 4000   // CLP/kg — inoxidable e < 8mm
 export const PRECIO_KG_INOX_G = 6000   // CLP/kg — inoxidable e ≥ 8mm
 
