@@ -281,6 +281,54 @@ export const CATALOGO_BASE = [
   { nombre: 'Barra cuadrada maciza 80×80mm',  tipo: 'barra', unidad: 'metro', formato: '80×80mm',  peso_por_metro: 50.2,  perimetro_mm: 320,  precio_unit: 55220,  proveedor: 'Prodalam/Otero' },
   { nombre: 'Barra cuadrada maciza 100×100mm',tipo: 'barra', unidad: 'metro', formato: '100×100mm',peso_por_metro: 78.5,  perimetro_mm: 400,  precio_unit: 86350,  proveedor: 'Prodalam/Otero' },
 
+  // ─── BARRAS REDONDAS SAE 1020 (trefilado/calibrado) — 1400 CLP/kg ─────────────
+  { nombre: 'Barra redonda SAE 1020 Ø10mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø10mm',  peso_por_metro: 0.62,  perimetro_mm: 31,   precio_unit: 868,    proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø12mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø12mm',  peso_por_metro: 0.89,  perimetro_mm: 38,   precio_unit: 1246,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø16mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø16mm',  peso_por_metro: 1.58,  perimetro_mm: 50,   precio_unit: 2212,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø20mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø20mm',  peso_por_metro: 2.47,  perimetro_mm: 63,   precio_unit: 3458,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø25mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø25mm',  peso_por_metro: 3.85,  perimetro_mm: 79,   precio_unit: 5390,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø30mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø30mm',  peso_por_metro: 5.55,  perimetro_mm: 94,   precio_unit: 7770,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø35mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø35mm',  peso_por_metro: 7.55,  perimetro_mm: 110,  precio_unit: 10570,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø40mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø40mm',  peso_por_metro: 9.86,  perimetro_mm: 126,  precio_unit: 13804,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø50mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø50mm',  peso_por_metro: 15.4,  perimetro_mm: 157,  precio_unit: 21560,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø60mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø60mm',  peso_por_metro: 22.2,  perimetro_mm: 188,  precio_unit: 31080,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø80mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø80mm',  peso_por_metro: 39.5,  perimetro_mm: 251,  precio_unit: 55300,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1020 Ø100mm', tipo: 'barra', unidad: 'metro', formato: 'SAE1020 Ø100mm', peso_por_metro: 61.7,  perimetro_mm: 314,  precio_unit: 86380,  proveedor: 'Otero/Kupfer' },
+
+  // ─── BARRAS REDONDAS SAE 1045 (medio carbono) — 1400 CLP/kg ──────────────────
+  { nombre: 'Barra redonda SAE 1045 Ø20mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø20mm',  peso_por_metro: 2.47,  perimetro_mm: 63,   precio_unit: 3458,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø25mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø25mm',  peso_por_metro: 3.85,  perimetro_mm: 79,   precio_unit: 5390,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø30mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø30mm',  peso_por_metro: 5.55,  perimetro_mm: 94,   precio_unit: 7770,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø35mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø35mm',  peso_por_metro: 7.55,  perimetro_mm: 110,  precio_unit: 10570,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø40mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø40mm',  peso_por_metro: 9.86,  perimetro_mm: 126,  precio_unit: 13804,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø50mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø50mm',  peso_por_metro: 15.4,  perimetro_mm: 157,  precio_unit: 21560,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø60mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø60mm',  peso_por_metro: 22.2,  perimetro_mm: 188,  precio_unit: 31080,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø70mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø70mm',  peso_por_metro: 30.2,  perimetro_mm: 220,  precio_unit: 42280,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø80mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø80mm',  peso_por_metro: 39.5,  perimetro_mm: 251,  precio_unit: 55300,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 1045 Ø100mm', tipo: 'barra', unidad: 'metro', formato: 'SAE1045 Ø100mm', peso_por_metro: 61.7,  perimetro_mm: 314,  precio_unit: 86380,  proveedor: 'Otero/Kupfer' },
+
+  // ─── BARRAS REDONDAS SAE 4140 (Cr-Mo aleado) — 1400 CLP/kg ───────────────────
+  { nombre: 'Barra redonda SAE 4140 Ø25mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø25mm',  peso_por_metro: 3.85,  perimetro_mm: 79,   precio_unit: 5390,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø30mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø30mm',  peso_por_metro: 5.55,  perimetro_mm: 94,   precio_unit: 7770,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø35mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø35mm',  peso_por_metro: 7.55,  perimetro_mm: 110,  precio_unit: 10570,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø40mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø40mm',  peso_por_metro: 9.86,  perimetro_mm: 126,  precio_unit: 13804,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø50mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø50mm',  peso_por_metro: 15.4,  perimetro_mm: 157,  precio_unit: 21560,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø60mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø60mm',  peso_por_metro: 22.2,  perimetro_mm: 188,  precio_unit: 31080,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø70mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø70mm',  peso_por_metro: 30.2,  perimetro_mm: 220,  precio_unit: 42280,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø80mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø80mm',  peso_por_metro: 39.5,  perimetro_mm: 251,  precio_unit: 55300,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra redonda SAE 4140 Ø100mm', tipo: 'barra', unidad: 'metro', formato: 'SAE4140 Ø100mm', peso_por_metro: 61.7,  perimetro_mm: 314,  precio_unit: 86380,  proveedor: 'Otero/Kupfer' },
+
+  // ─── BARRAS HEXAGONALES SAE 1045 — 1400 CLP/kg ───────────────────────────────
+  { nombre: 'Barra hexagonal SAE 1045 13mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex13mm',  peso_por_metro: 1.15,  perimetro_mm: 45,   precio_unit: 1610,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 17mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex17mm',  peso_por_metro: 1.96,  perimetro_mm: 59,   precio_unit: 2744,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 19mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex19mm',  peso_por_metro: 2.45,  perimetro_mm: 66,   precio_unit: 3430,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 22mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex22mm',  peso_por_metro: 3.29,  perimetro_mm: 76,   precio_unit: 4606,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 27mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex27mm',  peso_por_metro: 4.96,  perimetro_mm: 94,   precio_unit: 6944,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 32mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex32mm',  peso_por_metro: 6.96,  perimetro_mm: 111,  precio_unit: 9744,   proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 36mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex36mm',  peso_por_metro: 8.81,  perimetro_mm: 125,  precio_unit: 12334,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 41mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex41mm',  peso_por_metro: 11.43, perimetro_mm: 142,  precio_unit: 16002,  proveedor: 'Otero/Kupfer' },
+  { nombre: 'Barra hexagonal SAE 1045 46mm',  tipo: 'barra', unidad: 'metro', formato: 'SAE1045 hex46mm',  peso_por_metro: 14.38, perimetro_mm: 159,  precio_unit: 20132,  proveedor: 'Otero/Kupfer' },
+
   // ─── PLATINAS / BARRAS PLANAS ─────────────────────────────────────────────────
   { nombre: 'Platina 25×3mm',   tipo: 'barra', unidad: 'metro', formato: '25×3mm',   peso_por_metro: 0.59,  perimetro_mm: 56,   precio_unit: 649,    proveedor: 'Prodalam/Otero' },
   { nombre: 'Platina 25×4mm',   tipo: 'barra', unidad: 'metro', formato: '25×4mm',   peso_por_metro: 0.79,  perimetro_mm: 58,   precio_unit: 869,    proveedor: 'Prodalam/Otero' },
